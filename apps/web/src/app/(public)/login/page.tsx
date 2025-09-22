@@ -2,8 +2,10 @@
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+    const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
@@ -21,13 +23,19 @@ export default function LoginPage() {
             password,
         });
 
+        // stop loading
         setLoading(false)
-        if (res?.error)
-            setError(res.error)
-        return;
-    }
-    window.location.href = "/";
 
+        if (res?.error)
+            setError(res.error || "Failed to login");
+
+        // redirect to home page
+        router.replace("/dashboard");
+        router.refresh();
+
+        return;
+
+    }
 
     return (
         <div className="max-w-sm mx-auto p-6 space-y-4">
@@ -48,7 +56,9 @@ export default function LoginPage() {
                 <button
                     className="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
                     disabled={loading}
-                ></button>
+                >
+                    {loading ? "Loading..." : "Login"}
+                </button>
 
                 {error && <p className="text-red-600">{error}</p>}
             </form>
