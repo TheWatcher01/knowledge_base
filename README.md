@@ -36,7 +36,7 @@ The platform allows users to **create, ingest, and query knowledge bases** throu
 
 ## 📂 Monorepo Structure
 
-```
+```bash
 knowledge_base/
 ├── apps/
 │   └── web/           # Next.js frontend / backend (App Router)

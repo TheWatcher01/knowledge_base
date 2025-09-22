@@ -24,13 +24,22 @@ export default function RegisterPage() {
             body: JSON.stringify({ email, password }),
         });
 
+        // Test read response
+        const payload = await res.json().catch(() => ({}));
+
         // Handle response
         setLoading(false);
-        if (res.ok) {
-            setError(await res.text());
+
+        // Display error message if registration failed
+        if (!res.ok) {
+            setError(payload?.error ?? "Failed to register");
             return;
         }
+
+        // Display success message and clear form
         setMsg("Registration successful! You can now log in.");
+        setEmail("");
+        setPassword("");
     }
 
     return (

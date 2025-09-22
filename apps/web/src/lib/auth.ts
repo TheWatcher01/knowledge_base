@@ -42,12 +42,13 @@ export const authOptions: AuthOptions = {
             if (token && session.user) {
                 (session.user as any).id = token.id;
                 (session.user as any).role = token.role;
-}
-return session;
+            }
+
+            return session;
         },
     },
-pages: {
-    signIn: "/login",
+    pages: {
+        signIn: "/login",
     },
-secret: process.env.AUTH_SECRET,
+    secret: process.env.AUTH_SECRET,
 };

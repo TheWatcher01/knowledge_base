@@ -24,17 +24,17 @@ export default function LoginPage() {
         });
 
         // stop loading
-        setLoading(false)
+        setLoading(false);
 
-        if (res?.error)
+
+        if (res?.error) {
             setError(res.error || "Failed to login");
+            return;
+        }
 
         // redirect to home page
         router.replace("/dashboard");
         router.refresh();
-
-        return;
-
     }
 
     return (
@@ -42,6 +42,7 @@ export default function LoginPage() {
             <h1 className="text-xl font-semibold">Login</h1>
             <form onSubmit={onSubmit} className="space-y-3">
                 <input className="border rounded px-3 py-2 w-full"
+                    type="email"
                     placeholder="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -54,6 +55,7 @@ export default function LoginPage() {
                 />
 
                 <button
+                    type="submit"
                     className="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
                     disabled={loading}
                 >
