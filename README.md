@@ -1,10 +1,100 @@
-# Knowledge Base Monorepo
+# 📘 Knowledge Base Platform
 
-This is a monorepo for a Knowledge Base application built with Next.js, TypeScript, Tailwind CSS, Prisma, and Docker. The project includes a web application for managing knowledge bases and a set of Docker services for backend functionality.
+A **full-stack Knowledge Base application** built with **Next.js (App Router)**, **TailwindCSS / shadcn/ui**, **Prisma**, and **Auth.js**.
+The platform allows users to **create, ingest, and query knowledge bases** through a modern web interface, while delegating RAG (Retrieval-Augmented Generation) and LLM processing to [Open-WebUI](https://github.com/open-webui/open-webui).
 
-## Project Structure
+---
 
+## 🚀 Features
 
-## Getting Started
+* **User Authentication** with [Auth.js](https://authjs.dev/) (credentials provider, bcrypt, JWT).
+* **Dashboard** for managing personal Knowledge Bases (CRUD).
+* **Knowledge Base content ingestion**:
+
+  * Notes (text CRUD).
+  * Files (uploaded, parsed via [Apache Tika](https://tika.apache.org/), ingested in RAG).
+  * URLs (indexed with [SearxNG](https://docs.searxng.org/), ingested in RAG).
+* **Chat interface**: query your knowledge base with streaming completions via Open-WebUI.
+* **Backend logging**: track usage and events (MongoDB).
+* **Dockerized services**: PostgreSQL, MongoDB, Tika, SearxNG, Open-WebUI.
+
+---
+
+## 🛠️ Tech Stack
+
+* **Frontend / Backend**: [Next.js 14](https://nextjs.org/) (App Router)
+* **UI**: [TailwindCSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
+* **Authentication**: [Auth.js](https://authjs.dev/)
+* **Database**: PostgreSQL + [Prisma ORM](https://www.prisma.io/)
+* **NoSQL Logging**: MongoDB
+* **RAG / LLM**: [Open-WebUI](https://github.com/open-webui/open-webui) with [ChromaDB](https://www.trychroma.com/)
+* **File Parsing**: [Apache Tika](https://tika.apache.org/)
+* **Web Crawling**: [SearxNG](https://docs.searxng.org/)
+* **Deployment**: Docker Compose
+
+---
+
+## 📂 Monorepo Structure
+
+```
+knowledge_base/
+├── apps/
+│   └── web/           # Next.js frontend / backend (App Router)
+├── docker/
+│   └── compose.yml    # Services: Postgres, Mongo, Tika, SearxNG, Open-WebUI
+└── packages/          # (optional) shared libraries
+```
+
+---
+
+## ⚡ Getting Started
 
 ### Prerequisites
+
+* Node.js 20+
+* PNPM
+* Docker + Docker Compose
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/TheWatcher01/knowledge_base.git
+cd knowledge_base
+
+# Install dependencies
+pnpm install
+```
+
+### Development
+
+```bash
+# Start Docker services (DBs, Tika, SearxNG, Open-WebUI)
+docker compose up -d
+
+# Start the web app
+cd apps/web
+pnpm dev
+```
+
+The app will be available at:
+👉 [http://localhost:3000](http://localhost:3000)
+
+---
+
+## 📌 Roadmap
+
+* [x] User authentication (register, login).
+* [x] Dashboard with Knowledge Base CRUD.
+* [ ] Notes CRUD with ingestion.
+* [ ] File uploads → Tika → ingestion.
+* [ ] URL ingestion via SearxNG.
+* [ ] Chat interface (SSE streaming).
+* [ ] Usage logs (MongoDB).
+* [ ] Documentation (MCD/MLD, C4 diagrams, user guide).
+
+---
+
+## 📖 License
+
+This project is open-source and available under the **MIT License**.
