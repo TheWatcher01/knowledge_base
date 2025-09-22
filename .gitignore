@@ -1,0 +1,91 @@
+node_modules/
+.env
+.env.local
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Node / pnpm
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Turbo / Next
+.turbo/
+apps/**/.next/
+apps/**/.vercel/
+apps/**/.cache/
+apps/**/.storybook-out/
+
+# TypeScript
+apps/**/*.tsbuildinfo
+
+# Env & secrets
+.env.*
+apps/**/.env
+apps/**/.env.*
+
+# Logs
+logs/
+*.log
+apps/**/logs/
+apps/**/coverage/
+coverage/
+
+# Uploads / caches runtime
+tmp/
+temp/
+apps/**/tmp/
+apps/**/temp/
+
+# VSCode / IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+
+# Docker
+**/.docker/*
+.dockerignore
+
+# Local files
+*.local
+
+# dependencies
+/.node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+*.pem
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+/src/generated/prisma
