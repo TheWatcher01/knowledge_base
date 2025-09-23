@@ -27,8 +27,9 @@ export default async function NotesPage({
     return (
         <section className="space-y-6">
             <CreateNoteForm kbId={id} />
+
             {notes.length === 0 ? (
-                <p className="text-muted-foreground">Aucune note pour l’instant.</p>
+                <p className="text-muted-foreground">No notes yet.</p>
             ) : (
                 <ul className="space-y-3">
                     {notes.map((note) => (

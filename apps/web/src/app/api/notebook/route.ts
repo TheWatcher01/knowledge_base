@@ -4,7 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { owuiJson } from "@/lib/owui";
-import { collectionName, OWUI_BASE } from "@/lib/config"; // <— importer OWUI_BASE
+import { collectionName, OWUI_BASE } from "@/lib/config";
 
 const Body = z.object({
   kbId: z.string().uuid(),
@@ -34,22 +34,33 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!OWUI_BASE) {
-    return NextResponse.json(
-      { error: "OWUI not configured" },
-      { status: 503 },
-    );
+  let ingestionStatus: "success" | "skipped" | "failed" = "skipped";
+
+  if (OWUI_BASE) {
+    try {
+      await owuiJson("/retrieval/process/text", {
+        method: "POST",
+        body: JSON.stringify({
+          text: content,
+          collection_name: collectionName(kbId),
+        }),
+      });
+      ingestionStatus = "success";
+    } catch (error) {
+      console.warn(
+        "[api/notebook] Open WebUI unavailable, note creation continued.",
+        error,
+      );
+
+      if (process.env.MOCK_OPEN_WEBUI === "true") {
+        ingestionStatus = "skipped";
+      } else {
+        ingestionStatus = "failed";
+      }
+    }
   }
 
-  await owuiJson("/retrieval/process/text", {
-    method: "POST",
-    body: JSON.stringify({
-      text: content,
-      collection_name: collectionName(kbId),
-    }),
-  });
-
-  await prisma.document.create({
+  const note = await prisma.document.create({
     data: {
       kbId,
       title,
@@ -58,5 +69,13 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    note,
+    ingestionStatus,
+    message:
+      ingestionStatus === "failed"
+        ? "Note saved but AI ingestion failed."
+        : undefined,
+  });
 }
