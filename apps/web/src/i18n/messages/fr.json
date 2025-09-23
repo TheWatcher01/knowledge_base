@@ -1,0 +1,32 @@
+{
+    "common": {
+        "brand": {
+            "short": "KB",
+            "name": "Knowledge Base"
+        },
+        "cta": {
+            "login": "Connexion",
+            "signup": "Créer un compte",
+            "logout": "Déconnexion"
+        },
+        "nav": {
+            "dashboard": "Tableau de bord",
+            "kbs": "Bases de connaissance"
+        },
+        "status": {
+            "loading": "Chargement...",
+            "saving": "Enregistrement...",
+            "creating": "Création..."
+        }
+    },
+    "landing": {
+        "headline": "Centralisez votre savoir, collaborez en toute simplicité.",
+        "subheadline": "Knowledge Base vous aide à organiser vos notes, fichiers, liens et conversations grâce à une interface claire et sécurisée.",
+        "heroLogin": "Se connecter",
+        "heroSignup": "Créer un compte",
+        "footer": {
+            "copyright": "© {year} Knowledge Base",
+            "tagline": "Conçu pour vos équipes."
+        }
+    }
+}

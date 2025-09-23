@@ -1,0 +1,32 @@
+{
+    "common": {
+        "brand": {
+            "short": "KB",
+            "name": "Knowledge Base"
+        },
+        "cta": {
+            "login": "Login",
+            "signup": "Sign up",
+            "logout": "Logout"
+        },
+        "nav": {
+            "dashboard": "Dashboard",
+            "kbs": "Knowledge Bases"
+        },
+        "status": {
+            "loading": "Loading...",
+            "saving": "Saving...",
+            "creating": "Creating..."
+        }
+    },
+    "landing": {
+        "headline": "Centralize your knowledge, collaborate with ease.",
+        "subheadline": "Knowledge Base helps you organize notes, files, links, and conversations with a clear and secure interface.",
+        "heroLogin": "Log in",
+        "heroSignup": "Sign up",
+        "footer": {
+            "copyright": "© {year} Knowledge Base",
+            "tagline": "Designed for your teams."
+        }
+    }
+}
