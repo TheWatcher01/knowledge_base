@@ -44,7 +44,7 @@ export default async function KnowledgeBaseUrlsPage({ params }: PageProps) {
                 <div className="rounded-xl border border-dashed border-[color-mix(in_srgb,var(--kb-border)_60%,transparent_40%)] bg-[color-mix(in_srgb,var(--kb-surface)_96%,black_4%)] px-6 py-10 text-center shadow-[0_16px_28px_-26px_rgba(0,0,0,0.55)]">
                     <h3 className="text-lg font-semibold text-[var(--kb-text)]">No link saved</h3>
                     <p className="mt-2 text-sm text-[var(--kb-text-muted)]">
-                        Soon you'll be able to store relevant URLs here, with a summary of the content and their indexing status.
+                        Soon you will be able to store relevant URLs here, with a summary of the content and their indexing status.
                     </p>
                 </div>
             ) : (

@@ -66,7 +66,7 @@ export default function LoginPage() {
             </form>
 
             <p className="text-sm">
-                Don't have an account? Please contact the administrator.{" "}
+                Do not have an account? Please contact the administrator.{" "}
                 <a className="underline text-blue-600" href="/register">
                     Register
                 </a>

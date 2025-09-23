@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { owuiJson } from "@/lib/owui";
 import { OWUI_BASE, OWUI_TOKEN, collectionName } from "@/lib/config";
 
+type RetrievedDoc = { text: string };
+
 // Edge runtime
 export const runtime = "edge";
 
@@ -10,17 +12,20 @@ export async function POST(req: NextRequest) {
     const { kbId, model, question } = await req.json();
 
     // Retrieve relevant documents from the knowledge base
-    const { docs } = await owuiJson("/retrieval/query/doc", {
+    const response = (await owuiJson("/retrieval/query/doc", {
         method: "POST",
         body: JSON.stringify({
             query: question,
             collection_name: collectionName(kbId),
             k: 5,
         }),
-    });
+    })) as { docs?: RetrievedDoc[] };
 
-    // Format context for the prompt
-    const ctx = (docs || []).map((d: any, i: number) => `Doc${i + 1}:\n${d.text}`).join("\n\n");
+    const docs = response.docs ?? [];
+    const ctx = docs
+        .map((doc, index) => `Doc${index + 1}:\n${doc.text}`)
+        .join("\n\n");
+
 
     // Create the prompt
     const prompt = `Réponds de façon concise en citant Doc1..N.\n\n${ctx}\n\nQuestion:\n${question}`;
