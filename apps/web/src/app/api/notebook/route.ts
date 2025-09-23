@@ -4,7 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { owuiJson } from "@/lib/owui";
-import { collectionName, OWUI_BASE } from "@/lib/config";
+import { OWUI_BASE, collectionName } from "@/lib/config";
 
 const Body = z.object({
   kbId: z.string().uuid(),
@@ -34,32 +34,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let ingestionStatus: "success" | "skipped" | "failed" = "skipped";
-
-  if (OWUI_BASE) {
-    try {
-      await owuiJson("/retrieval/process/text", {
-        method: "POST",
-        body: JSON.stringify({
-          text: content,
-          collection_name: collectionName(kbId),
-        }),
-      });
-      ingestionStatus = "success";
-    } catch (error) {
-      console.warn(
-        "[api/notebook] Open WebUI unavailable, note creation continued.",
-        error,
-      );
-
-      if (process.env.MOCK_OPEN_WEBUI === "true") {
-        ingestionStatus = "skipped";
-      } else {
-        ingestionStatus = "failed";
-      }
-    }
-  }
-
   const note = await prisma.document.create({
     data: {
       kbId,
@@ -68,6 +42,32 @@ export async function POST(req: NextRequest) {
       source: content,
     },
   });
+
+  let ingestionStatus: "success" | "skipped" | "failed" = "skipped";
+
+  if (OWUI_BASE && process.env.MOCK_OPEN_WEBUI !== "true") {
+    try {
+      await owuiJson("/api/v1/retrieval/process/text", {
+        method: "POST",
+        body: JSON.stringify({
+          name: note.id,
+          content,
+          collection_name: collectionName(kbId),
+        }),
+      });
+      ingestionStatus = "success";
+    } catch (error) {
+      console.warn(
+        "[api/notebook] Open WebUI unavailable, note created without ingestion.",
+        error,
+      );
+      ingestionStatus = "failed";
+    }
+  } else if (process.env.MOCK_OPEN_WEBUI === "true") {
+    ingestionStatus = "skipped";
+  } else {
+    ingestionStatus = "failed";
+  }
 
   return NextResponse.json({
     ok: true,

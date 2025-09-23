@@ -21,7 +21,7 @@ export default async function KnowledgeBasesPage() {
                 <div>
                     <h1 className="text-2xl font-semibold">Knowledge Bases</h1>
                     <p className="text-muted-foreground">
-                        Créez, gérez et ouvrez vos bases de connaissances.
+                        Create, manage, and open your knowledge bases.
                     </p>
                 </div>
                 <CreateKbForm />
@@ -29,7 +29,7 @@ export default async function KnowledgeBasesPage() {
 
             {knowledgeBases.length === 0 ? (
                 <p className="text-muted-foreground">
-                    Aucune base pour le moment. Créez-en une pour commencer.
+                    No knowledge base yet. Create one to get started.
                 </p>
             ) : (
                 <ul className="space-y-3">
@@ -39,8 +39,7 @@ export default async function KnowledgeBasesPage() {
                             className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
                         >
                             <div>
-                                <div className="text-lg font-medi   
-                                um">{kb.name}</div>
+                                <div className="text-lg font-medium">{kb.name}</div>
                                 {kb.description && (
                                     <p className="text-sm text-muted-foreground">
                                         {kb.description}
@@ -53,7 +52,7 @@ export default async function KnowledgeBasesPage() {
                                     href={`/kb/${kb.id}`}
                                     className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
                                 >
-                                    Ouvrir
+                                    Open
                                 </Link>
                                 <DeleteKbButton kbId={kb.id} />
                             </div>

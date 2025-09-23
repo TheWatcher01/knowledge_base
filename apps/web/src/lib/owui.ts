@@ -1,3 +1,5 @@
+// apps/web/src/lib/owui.ts
+
 import { OWUI_BASE, OWUI_TOKEN } from "./config";
 
 // Helper to call the Open Web UI API

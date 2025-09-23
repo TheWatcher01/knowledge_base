@@ -2,12 +2,13 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { OWUI_BASE, collectionName } from "@/lib/config";
+import { owuiJson } from "@/lib/owui";
 
-export async function DELETE({
-    params,
-}: {
-    params: Promise<{ id: string }>;
-}) {
+export async function DELETE(
+    _request: Request,
+    { params }: { params: Promise<{ id: string }> },
+) {
     const { id } = await params;
 
     const session = await getServerSession(authOptions);
@@ -15,13 +16,40 @@ export async function DELETE({
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const kb = await prisma.knowledgeBase.findUnique({
+    const kb = await prisma.knowledgeBase.findFirst({
         where: { id, ownerId: session.user.id },
+        include: { documents: true },
     });
     if (!kb) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    await prisma.knowledgeBase.delete({ where: { id } });
+    if (OWUI_BASE && process.env.MOCK_OPEN_WEBUI !== "true") {
+        const deletions = kb.documents.map((document) =>
+            owuiJson("/api/v1/retrieval/delete", {
+                method: "POST",
+                body: JSON.stringify({
+                    collection_name: collectionName(id),
+                    file_id: document.id,
+                }),
+            }),
+        );
+
+        const results = await Promise.allSettled(deletions);
+        results.forEach((result, index) => {
+            if (result.status === "rejected") {
+                console.warn(
+                    `[api/kb/${id}] Failed to delete Open WebUI entry ${kb.documents[index]?.id}.`,
+                    result.reason,
+                );
+            }
+        });
+    }
+
+    await prisma.$transaction([
+        prisma.document.deleteMany({ where: { kbId: id } }),
+        prisma.knowledgeBase.delete({ where: { id } }),
+    ]);
+
     return NextResponse.json({ ok: true });
 }

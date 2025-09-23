@@ -9,7 +9,7 @@ export function DeleteKbButton({ kbId }: { kbId: string }) {
     const [error, setError] = useState<string | null>(null);
 
     async function onDelete() {
-        if (!confirm("Supprimer cette base de connaissances ?")) return;
+        if (!confirm("Delete this knowledge base?")) return;
         setLoading(true);
         setError(null);
 
@@ -19,7 +19,7 @@ export function DeleteKbButton({ kbId }: { kbId: string }) {
 
         if (!res.ok) {
             const payload = await res.json().catch(() => ({}));
-            setError(payload?.error ?? "Échec de la suppression.");
+            setError(payload?.error ?? "Failed to delete.");
             setLoading(false);
             return;
         }
@@ -35,7 +35,7 @@ export function DeleteKbButton({ kbId }: { kbId: string }) {
                 className="rounded-md border border-destructive px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
                 disabled={loading}
             >
-                {loading ? "Suppression..." : "Supprimer"}
+                {loading ? "Deleting..." : "Delete"}
             </button>
             {error && <span className="text-xs text-red-600">{error}</span>}
         </div>
