@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { set } from "zod";
 
 
 export function CreateKbForm() {
@@ -37,8 +36,8 @@ export function CreateKbForm() {
     }
 
     return (
-        <form onSubmit={onSubmit} className="flex flex-col gap-2 sm:flex-row sm-items-center">
-            <div className="flex flex-col gap-2 sm:flex-row">
+        <form onSubmit={onSubmit} className="w-full max-w-xl space-y-2">
+            <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[1.4fr_1fr_auto]">
                 <input
                     className="w-full rounded-md border px-3 py-2 text-sm"
                     placeholder="Knowledge Base Name"
