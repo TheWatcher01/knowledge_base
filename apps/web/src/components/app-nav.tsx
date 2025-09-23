@@ -43,7 +43,7 @@ export function AppNav({ userEmail }: { userEmail?: string | null }) {
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="rounded-md border px-3 py-1.5 text-xs font-semibold transition hover:bg-muted"
           >
-            Se déconnecter
+            Sign out
           </button>
         </div>
       </div>
