@@ -127,6 +127,17 @@
       "submitting": "Saving...",
       "error": "Couldn't save the note."
     },
+    "noteActions": {
+      "edit": "Edit",
+      "save": "Save",
+      "saveLoading": "Saving...",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleteLoading": "Deleting...",
+      "deleteConfirm": "Delete this note?",
+      "updateError": "Couldn't update the note.",
+      "deleteError": "Couldn't delete the note."
+    },
     "files": {
       "title": "Imported files",
       "description": "Centralize here the documents (PDF, DOCX, etc.) that enrich this knowledge base.",

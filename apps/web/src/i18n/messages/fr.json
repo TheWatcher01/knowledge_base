@@ -127,6 +127,17 @@
       "submitting": "Enregistrement...",
       "error": "Impossible d'enregistrer la note."
     },
+    "noteActions": {
+      "edit": "Modifier",
+      "save": "Enregistrer",
+      "saveLoading": "Enregistrement...",
+      "cancel": "Annuler",
+      "delete": "Supprimer",
+      "deleteLoading": "Suppression...",
+      "deleteConfirm": "Supprimer cette note ?",
+      "updateError": "Impossible de mettre à jour la note.",
+      "deleteError": "Impossible de supprimer la note."
+    },
     "files": {
       "title": "Fichiers importés",
       "description": "Centralisez ici les documents (PDF, DOCX, etc.) qui enrichissent cette base.",
