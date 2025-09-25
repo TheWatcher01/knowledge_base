@@ -1,32 +1,164 @@
 {
-    "common": {
-        "brand": {
-            "short": "KB",
-            "name": "Knowledge Base"
-        },
-        "cta": {
-            "login": "Connexion",
-            "signup": "Créer un compte",
-            "logout": "Déconnexion"
-        },
-        "nav": {
-            "dashboard": "Tableau de bord",
-            "kbs": "Bases de connaissance"
-        },
-        "status": {
-            "loading": "Chargement...",
-            "saving": "Enregistrement...",
-            "creating": "Création..."
-        }
+  "common": {
+    "brand": {
+      "short": "KB",
+      "name": "Knowledge Base"
     },
-    "landing": {
-        "headline": "Centralisez votre savoir, collaborez en toute simplicité.",
-        "subheadline": "Knowledge Base vous aide à organiser vos notes, fichiers, liens et conversations grâce à une interface claire et sécurisée.",
-        "heroLogin": "Se connecter",
-        "heroSignup": "Créer un compte",
-        "footer": {
-            "copyright": "© {year} Knowledge Base",
-            "tagline": "Conçu pour vos équipes."
-        }
+    "cta": {
+      "login": "Connexion",
+      "signup": "Créer un compte",
+      "logout": "Déconnexion"
+    },
+    "nav": {
+      "dashboard": "Tableau de bord",
+      "kbs": "Bases de connaissance"
+    },
+    "status": {
+      "loading": "Chargement...",
+      "saving": "Enregistrement...",
+      "creating": "Création...",
+      "deleting": "Suppression..."
+    },
+    "form": {
+      "email": "Adresse e-mail",
+      "password": "Mot de passe",
+      "optionalHint": "(facultatif)"
     }
+  },
+  "landing": {
+    "headline": "Centralisez votre savoir, collaborez en toute simplicité.",
+    "subheadline": "Knowledge Base vous aide à organiser vos notes, fichiers, liens et conversations grâce à une interface claire et sécurisée.",
+    "heroLogin": "Se connecter",
+    "heroSignup": "Créer un compte",
+    "footer": {
+      "copyright": "© {year} Knowledge Base",
+      "tagline": "Conçu pour vos équipes."
+    }
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "description": "Votre tableau de bord apparaîtra ici."
+  },
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "submit": "Se connecter",
+      "submitting": "Chargement...",
+      "error": "Échec de la connexion",
+      "prompt": "Pas encore de compte ? Contactez l'administrateur.",
+      "register": "Inscription"
+    },
+    "register": {
+      "title": "Inscription",
+      "submit": "S'inscrire",
+      "submitting": "Inscription en cours...",
+      "success": "Inscription réussie ! Vous pouvez maintenant vous connecter.",
+      "error": "Échec de l'inscription"
+    }
+  },
+  "kb": {
+    "list": {
+      "title": "Bases de connaissance",
+      "subtitle": "Créez, gérez et ouvrez vos bases de connaissance.",
+      "empty": "Aucune base pour le moment. Créez-en une pour commencer.",
+      "open": "Ouvrir"
+    },
+    "createForm": {
+      "namePlaceholder": "Nom de la base",
+      "descriptionPlaceholder": "Description (facultatif)",
+      "submit": "Créer",
+      "submitting": "Création...",
+      "error": "Impossible de créer la base de connaissance"
+    },
+    "delete": {
+      "confirm": "Supprimer cette base de connaissance ?",
+      "submit": "Supprimer",
+      "submitting": "Suppression...",
+      "error": "Impossible de supprimer."
+    },
+    "layout": {
+      "missingDescription": "Ajoutez une description pour contextualiser cette base de connaissance.",
+      "createdOn": "Créée le",
+      "documents": "Documents"
+    },
+    "tabs": {
+      "overview": "Vue d'ensemble",
+      "notes": "Notes",
+      "files": "Fichiers",
+      "urls": "Liens",
+      "chat": "Chat"
+    },
+    "overview": {
+      "stats": {
+        "note": {
+          "label": "Notes",
+          "description": "Idées, comptes rendus et informations contextuelles."
+        },
+        "file": {
+          "label": "Fichiers",
+          "description": "Documents importés pour enrichir la base."
+        },
+        "url": {
+          "label": "Liens",
+          "description": "Ressources externes utilisées comme références."
+        }
+      },
+      "nextSteps": {
+        "title": "Prochaines étapes",
+        "description": "Planifiez les actions à venir pour enrichir cette base de connaissance.",
+        "items": {
+          "files": "Ajoutez les fichiers clés et vérifiez leur ingestion.",
+          "urls": "Renseignez les liens de référence pour conserver le contexte à jour.",
+          "questions": "Préparez des exemples de questions pour la future interface de chat."
+        }
+      },
+      "latestNotes": {
+        "title": "Dernières notes",
+        "empty": "Aucune note pour l'instant. Ajoutez votre première note depuis l'onglet \"Notes\"."
+      }
+    },
+    "notes": {
+      "empty": "Aucune note pour le moment."
+    },
+    "noteForm": {
+      "titlePlaceholder": "Titre",
+      "contentPlaceholder": "Contenu de la note",
+      "submit": "Ajouter une note",
+      "submitting": "Enregistrement...",
+      "error": "Impossible d'enregistrer la note."
+    },
+    "files": {
+      "title": "Fichiers importés",
+      "description": "Centralisez ici les documents (PDF, DOCX, etc.) qui enrichissent cette base.",
+      "ctaTitle": "Importer un document",
+      "ctaDescription": "L'envoi et l'extraction de contenu seront disponibles dans la prochaine itération.",
+      "ctaDisabled": "Ajouter un fichier (bientôt)",
+      "emptyTitle": "Aucun fichier",
+      "emptyDescription": "Lorsque vous ajouterez des fichiers, ils apparaîtront ici avec leur date d'import et leur statut d'indexation.",
+      "historyTitle": "Historique des imports",
+      "entryDate": "Importé le {date} · {time}"
+    },
+    "urls": {
+      "title": "Ressources en ligne",
+      "description": "Référencez les pages web liées à cette base et gardez-les facilement accessibles.",
+      "ctaTitle": "Ajouter un lien",
+      "ctaDescription": "Le formulaire d'enrichissement sera bientôt disponible (validation, normalisation et indexation).",
+      "ctaDisabled": "Ajouter une URL (bientôt)",
+      "emptyTitle": "Aucun lien enregistré",
+      "emptyDescription": "Vous pourrez bientôt stocker ici les URL pertinentes, avec un résumé du contenu et leur statut d'indexation.",
+      "listTitle": "Liens enregistrés",
+      "openLink": "Ouvrir le lien dans un nouvel onglet",
+      "missingUrl": "URL non renseignée — complétez ces informations pour faciliter l'accès.",
+      "entryDate": "Ajouté le {date} · {time}",
+      "untitled": "Lien sans titre"
+    },
+    "chat": {
+      "title": "Assistant IA",
+      "description": "Discutez avec l'IA à propos de la base #{id}. L'interface finale sera connectée à Open WebUI.",
+      "status": "L'intégration du chat est en cours. Vous pourrez bientôt poser des questions et obtenir des réponses contextualisées.",
+      "label": "Message",
+      "placeholder": "Posez une question sur cette base de connaissance…",
+      "submit": "Envoyer (bientôt)"
+    }
+  }
 }

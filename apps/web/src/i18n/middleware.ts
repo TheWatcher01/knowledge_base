@@ -1,9 +1,4 @@
 import createIntMiddleware from "next-intl/middleware";
-import { defaultLocale, localePrefix, locales } from "./config";
+import { routing } from "./routing";
 
-export const handleI18nRouting = createIntMiddleware({
-    locales,
-    defaultLocale,
-    localePrefix,
-    localeDetection: true
-});
+export const handleI18nRouting = createIntMiddleware(routing);

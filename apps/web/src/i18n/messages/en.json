@@ -1,32 +1,164 @@
 {
-    "common": {
-        "brand": {
-            "short": "KB",
-            "name": "Knowledge Base"
-        },
-        "cta": {
-            "login": "Login",
-            "signup": "Sign up",
-            "logout": "Logout"
-        },
-        "nav": {
-            "dashboard": "Dashboard",
-            "kbs": "Knowledge Bases"
-        },
-        "status": {
-            "loading": "Loading...",
-            "saving": "Saving...",
-            "creating": "Creating..."
-        }
+  "common": {
+    "brand": {
+      "short": "KB",
+      "name": "Knowledge Base"
     },
-    "landing": {
-        "headline": "Centralize your knowledge, collaborate with ease.",
-        "subheadline": "Knowledge Base helps you organize notes, files, links, and conversations with a clear and secure interface.",
-        "heroLogin": "Log in",
-        "heroSignup": "Sign up",
-        "footer": {
-            "copyright": "© {year} Knowledge Base",
-            "tagline": "Designed for your teams."
-        }
+    "cta": {
+      "login": "Login",
+      "signup": "Sign up",
+      "logout": "Logout"
+    },
+    "nav": {
+      "dashboard": "Dashboard",
+      "kbs": "Knowledge Bases"
+    },
+    "status": {
+      "loading": "Loading...",
+      "saving": "Saving...",
+      "creating": "Creating...",
+      "deleting": "Deleting..."
+    },
+    "form": {
+      "email": "Email",
+      "password": "Password",
+      "optionalHint": "(optional)"
     }
+  },
+  "landing": {
+    "headline": "Centralize your knowledge, collaborate with ease.",
+    "subheadline": "Knowledge Base helps you organize notes, files, links, and conversations with a clear and secure interface.",
+    "heroLogin": "Log in",
+    "heroSignup": "Sign up",
+    "footer": {
+      "copyright": "© {year} Knowledge Base",
+      "tagline": "Designed for your teams."
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "Your dashboard will appear here."
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "submit": "Login",
+      "submitting": "Loading...",
+      "error": "Failed to login",
+      "prompt": "Do not have an account? Please contact the administrator.",
+      "register": "Register"
+    },
+    "register": {
+      "title": "Register",
+      "submit": "Register",
+      "submitting": "Registering...",
+      "success": "Registration successful! You can now log in.",
+      "error": "Failed to register"
+    }
+  },
+  "kb": {
+    "list": {
+      "title": "Knowledge Bases",
+      "subtitle": "Create, manage, and open your knowledge bases.",
+      "empty": "No knowledge base yet. Create one to get started.",
+      "open": "Open"
+    },
+    "createForm": {
+      "namePlaceholder": "Knowledge Base Name",
+      "descriptionPlaceholder": "Description (optional)",
+      "submit": "Create",
+      "submitting": "Creating...",
+      "error": "Failed to create knowledge base"
+    },
+    "delete": {
+      "confirm": "Delete this knowledge base?",
+      "submit": "Delete",
+      "submitting": "Deleting...",
+      "error": "Failed to delete."
+    },
+    "layout": {
+      "missingDescription": "Add a description to provide context for this knowledge base.",
+      "createdOn": "Created on",
+      "documents": "Documents"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "notes": "Notes",
+      "files": "Files",
+      "urls": "URLs",
+      "chat": "Chat"
+    },
+    "overview": {
+      "stats": {
+        "note": {
+          "label": "Notes",
+          "description": "Ideas, meeting minutes, and contextual information."
+        },
+        "file": {
+          "label": "Files",
+          "description": "Documents imported to enrich the knowledge base."
+        },
+        "url": {
+          "label": "URLs",
+          "description": "External links used as references."
+        }
+      },
+      "nextSteps": {
+        "title": "Next steps",
+        "description": "Plan upcoming actions to enrich this knowledge base.",
+        "items": {
+          "files": "Add key files and check their ingestion.",
+          "urls": "Enter reference URLs to keep the context up to date.",
+          "questions": "Prepare sample questions for the future chat interface."
+        }
+      },
+      "latestNotes": {
+        "title": "Latest notes",
+        "empty": "No notes yet. Add your first note from the \"Notes\" tab."
+      }
+    },
+    "notes": {
+      "empty": "No notes yet."
+    },
+    "noteForm": {
+      "titlePlaceholder": "Title",
+      "contentPlaceholder": "Note content",
+      "submit": "Add note",
+      "submitting": "Saving...",
+      "error": "Couldn't save the note."
+    },
+    "files": {
+      "title": "Imported files",
+      "description": "Centralize here the documents (PDF, DOCX, etc.) that enrich this knowledge base.",
+      "ctaTitle": "Import a document",
+      "ctaDescription": "Upload and content extraction will be available in the next iteration.",
+      "ctaDisabled": "Add a file (soon)",
+      "emptyTitle": "No files yet",
+      "emptyDescription": "When you add files, they will appear here with their import date and indexing status.",
+      "historyTitle": "Import history",
+      "entryDate": "Imported on {date} · {time}"
+    },
+    "urls": {
+      "title": "Online resources",
+      "description": "List reference web pages for this knowledge base and keep them easily accessible.",
+      "ctaTitle": "Add a link",
+      "ctaDescription": "The enrichment form will be available soon (validation, normalization, and indexing).",
+      "ctaDisabled": "Add a URL (coming soon)",
+      "emptyTitle": "No link saved",
+      "emptyDescription": "Soon you will be able to store relevant URLs here, with a summary of the content and their indexing status.",
+      "listTitle": "Saved links",
+      "openLink": "Open link in new tab",
+      "missingUrl": "URL not provided — please complete to facilitate access.",
+      "entryDate": "Added on {date} · {time}",
+      "untitled": "Untitled link"
+    },
+    "chat": {
+      "title": "AI Assistant",
+      "description": "Chat with the AI about knowledge base #{id}. The final interface will be connected to Open WebUI.",
+      "status": "Chat integration is in progress. Soon you’ll be able to ask questions and get contextual answers.",
+      "label": "Message",
+      "placeholder": "Ask a question about this knowledge base…",
+      "submit": "Send (coming soon)"
+    }
+  }
 }

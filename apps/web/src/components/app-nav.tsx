@@ -1,22 +1,29 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
+import { useParams } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { defaultLocale } from "@/i18n/config";
+import { useTranslations } from "next-intl";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/kb", label: "Knowledge Bases" },
+const NAV_ITEMS = [
+  { href: "/dashboard", labelKey: "dashboard" as const },
+  { href: "/kb", labelKey: "kbs" as const },
 ];
 
 export function AppNav({ userEmail }: { userEmail?: string | null }) {
   const pathname = usePathname();
+  const params = useParams<{ locale: string }>();
+  const locale = params?.locale ?? defaultLocale;
+  const localeLogin = `/${locale}/login`;
+  const tNav = useTranslations("common.nav");
+  const tCta = useTranslations("common.cta");
 
   return (
     <header className="border-b bg-card">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-4">
         <nav className="flex items-center gap-4 text-sm font-medium">
-          {navItems.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const active =
               pathname === item.href ||
               (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -31,7 +38,7 @@ export function AppNav({ userEmail }: { userEmail?: string | null }) {
                 }`}
                 aria-current={active ? "page" : undefined}
               >
-                {item.label}
+                {tNav(item.labelKey)}
               </Link>
             );
           })}
@@ -40,10 +47,10 @@ export function AppNav({ userEmail }: { userEmail?: string | null }) {
         <div className="flex items-center gap-3 text-sm">
           <span className="text-muted-foreground">{userEmail}</span>
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => signOut({ callbackUrl: localeLogin })}
             className="rounded-md border px-3 py-1.5 text-xs font-semibold transition hover:bg-muted"
           >
-            Sign out
+            {tCta("logout")}
           </button>
         </div>
       </div>

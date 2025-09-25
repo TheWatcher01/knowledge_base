@@ -1,0 +1,66 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+
+export function CreateKbForm() {
+    const router = useRouter();
+    const [name, setName] = useState("");
+    const [description, setDescription] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const t = useTranslations("kb.createForm");
+
+    async function onSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+
+        const res = await fetch("/api/kb", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, description }),
+        });
+
+        if (!res.ok) {
+            const payload = await res.json().catch(() => ({}));
+            setError(payload?.error ?? t("error"));
+            setIsLoading(false);
+            return;
+        }
+
+        setName("");
+        setDescription("");
+        setIsLoading(false);
+        router.refresh();
+    }
+
+    return (
+        <form onSubmit={onSubmit} className="w-full max-w-xl space-y-2">
+            <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[1.4fr_1fr_auto]">
+                <input
+                    className="w-full rounded-md border px-3 py-2 text-sm"
+                    placeholder={t("namePlaceholder")}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                />
+                <input
+                    className="w-full rounded-md border px-3 py-2 text-sm"
+                    placeholder={t("descriptionPlaceholder")}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                />
+            </div>
+            <button
+                type="submit"
+                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                disabled={isLoading}
+            >
+                {isLoading ? t("submitting") : t("submit")}
+            </button>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+        </form>
+    );
+}
