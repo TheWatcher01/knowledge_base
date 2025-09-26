@@ -51,6 +51,17 @@ model Document {
   type      String // 'note' | 'file' | 'url'
   source    String?
   createdAt DateTime      @default(now())
+  fileAsset FileAsset?
+}
+
+model FileAsset {
+  id         String   @id @default(uuid())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String   @unique
+  data       Bytes
+  mimeType   String
+  size       Int
+  createdAt  DateTime @default(now())
 }
 
 model UsageLog {
