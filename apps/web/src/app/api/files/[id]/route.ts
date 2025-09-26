@@ -181,7 +181,7 @@ export async function PATCH(
     let buffer: Buffer | null = null;
     let mimeType = existing.fileAsset.mimeType;
     let size = existing.fileAsset.size;
-    let originalName = existing.source && `${existing.title}.bin`;
+    let originalName = existing.source ?? existing.title;
 
     if (hasFile) {
         const file = maybeFile as File;

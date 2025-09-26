@@ -65,6 +65,11 @@ export async function POST(request: Request) {
                 type: "file",
                 source: originalName,
             },
+            select: {
+                id: true,
+                title: true,
+                source: true,
+            },
         });
 
         await tx.fileAsset.create({
@@ -87,7 +92,7 @@ export async function POST(request: Request) {
                 title: document.title,
                 mimeType,
                 size,
-                originalName,
+                originalName: document.source ?? originalName,
             },
         },
         { status: 201 }

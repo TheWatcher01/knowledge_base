@@ -11,9 +11,15 @@ type Props = {
     children: ReactNode;
 };
 
+const DEFAULT_TIME_ZONE = process.env.NEXT_PUBLIC_DEFAULT_TIME_ZONE ?? "Europe/Paris";
+
 export function I18nProvider({ locale, messages, children }: Props) {
     return (
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        <NextIntlClientProvider
+            locale={locale}
+            messages={messages}
+            timeZone={DEFAULT_TIME_ZONE}
+        >
             {children}
         </NextIntlClientProvider>
     );
