@@ -125,14 +125,16 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: "URL not found" }, { status: 404 });
   }
 
+  const existingEntry = document.urlEntry;
+
   const nextUrl = parsedBody.data.url ?? document.urlEntry.url;
-  const urlChanged = parsedBody.data.url !== undefined && parsedBody.data.url !== document.urlEntry.url;
+  const urlChanged = parsedBody.data.url !== undefined && parsedBody.data.url !== existingEntry.url;
   const nextTitle = parsedBody.data.title ?? document.title;
   const descriptionProvided = parsedBody.data.description !== undefined;
-  const nextDescription = descriptionProvided ? parsedBody.data.description : document.urlEntry.description;
-  const nextStatus = parsedBody.data.status ?? (urlChanged ? UrlStatus.draft : document.urlEntry.status);
+  const nextDescription = descriptionProvided ? parsedBody.data.description : existingEntry.description;
+  const nextStatus = parsedBody.data.status ?? (urlChanged ? UrlStatus.draft : existingEntry.status);
 
-  let externalId = document.urlEntry.externalId ?? null;
+  let externalId = existingEntry.externalId ?? null;
   if (urlChanged) {
     const created = await createUrlContentPlaceholder({ url: nextUrl, status: nextStatus }).catch(() => null);
     externalId = created ?? null;
@@ -159,7 +161,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         ...(urlChanged ? { url: nextUrl } : {}),
         ...(descriptionProvided ? { description: nextDescription } : {}),
         status: nextStatus,
-        ...(externalId !== document.urlEntry.externalId ? { externalId } : {}),
+        ...(externalId !== existingEntry.externalId ? { externalId } : {}),
       },
       select: {
         url: true,
@@ -173,9 +175,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return { document: updatedDocument, entry: updatedEntry };
   });
 
-  if (parsedBody.data.status && record.entry.externalId) {
-    await updateUrlContentStatus({ externalId: record.entry.externalId, status: record.entry.status });
-  } else if (urlChanged && record.entry.externalId) {
+  if ((parsedBody.data.status || urlChanged) && record.entry.externalId) {
     await updateUrlContentStatus({ externalId: record.entry.externalId, status: record.entry.status });
   }
 
@@ -225,8 +225,12 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     return NextResponse.json({ error: "URL not found" }, { status: 404 });
   }
 
+  const { urlEntry } = document;
+
   await prisma.$transaction(async (tx) => {
-    await tx.urlEntry.delete({ where: { id: document.urlEntry!.id } });
+    if (urlEntry) {
+      await tx.urlEntry.delete({ where: { id: urlEntry.id } });
+    }
     await tx.document.delete({ where: { id: document.id } });
   });
 

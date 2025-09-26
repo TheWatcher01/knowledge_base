@@ -34,6 +34,7 @@ export async function createUrlContentPlaceholder(params: {
       { url: params.url },
       {
         $setOnInsert: {
+          url: params.url,
           html: null,
           text: null,
           lastFetched: null,
@@ -47,7 +48,21 @@ export async function createUrlContentPlaceholder(params: {
       { upsert: true, returnDocument: "after" },
     );
 
-    return result.value?._id instanceof ObjectId ? result.value._id.toHexString() : null;
+    if (!result) {
+      return null;
+    }
+
+    const candidate = (result as { value?: unknown }).value ?? result;
+    if (!candidate || typeof candidate !== "object" || !("_id" in candidate)) {
+      return null;
+    }
+
+    const stored = candidate as { _id: unknown };
+    if (!(stored._id instanceof ObjectId)) {
+      return null;
+    }
+
+    return stored._id.toHexString();
   } catch (error) {
     console.warn("[url-content] Unable to create placeholder", error);
     return null;
@@ -69,8 +84,16 @@ export async function updateUrlContentStatus(params: {
   try {
     const db = await getDb();
     const collection = db.collection<UrlContentDocument>(COLLECTION);
+
+    let objectId: ObjectId;
+    try {
+      objectId = new ObjectId(params.externalId);
+    } catch {
+      return;
+    }
+
     await collection.updateOne(
-      { _id: new ObjectId(params.externalId) },
+      { _id: objectId },
       { $set: { status: params.status, updatedAt: new Date() } },
     );
   } catch (error) {
