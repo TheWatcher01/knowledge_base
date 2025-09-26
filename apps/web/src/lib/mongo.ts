@@ -18,6 +18,10 @@ export async function getDb(): Promise<Db> {
       .createIndex({ ts: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 30 });
     await database.collection("searx_cache")
       .createIndex({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 7 });
+    await database.collection("url_contents")
+      .createIndex({ url: 1 }, { unique: true });
+    await database.collection("url_contents")
+      .createIndex({ status: 1 });
   }
   return database!;
 }

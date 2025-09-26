@@ -1,0 +1,234 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { z } from "zod";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { UrlStatus } from "@prisma/client";
+import { createUrlContentPlaceholder, updateUrlContentStatus } from "@/lib/url-content";
+
+const ParamsSchema = z.object({
+  id: z.string().uuid(),
+});
+
+const OptionalTitle = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed.length === 0 ? undefined : trimmed;
+  },
+  z.string().max(120).optional(),
+);
+
+const OptionalDescription = z.preprocess(
+  (value) => {
+    if (value === null) {
+      return null;
+    }
+    if (typeof value !== "string") {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed.length === 0 ? null : trimmed;
+  },
+  z.string().max(500).nullable().optional(),
+);
+
+const OptionalUrl = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+
+    try {
+      return new URL(trimmed).toString();
+    } catch {
+      try {
+        return new URL(`https://${trimmed}`).toString();
+      } catch {
+        return trimmed;
+      }
+    }
+  },
+  z.string().max(2048).url().optional(),
+);
+
+const UpdateSchema = z
+  .object({
+    title: OptionalTitle,
+    url: OptionalUrl,
+    description: OptionalDescription,
+    status: z.nativeEnum(UrlStatus).optional(),
+  })
+  .refine((value) => Object.values(value).some((item) => item !== undefined), {
+    message: "No changes provided",
+  });
+
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let parsedParams;
+  try {
+    parsedParams = ParamsSchema.parse(await context.params);
+  } catch {
+    return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
+  }
+
+  let payload: unknown;
+  try {
+    payload = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+  }
+
+  const parsedBody = UpdateSchema.safeParse(payload);
+  if (!parsedBody.success) {
+    return NextResponse.json({ error: "Invalid payload", details: parsedBody.error.flatten() }, { status: 400 });
+  }
+
+  const document = await prisma.document.findFirst({
+    where: {
+      id: parsedParams.id,
+      type: "url",
+      kb: { ownerId: userId },
+    },
+    select: {
+      id: true,
+      kbId: true,
+      title: true,
+      source: true,
+      urlEntry: {
+        select: {
+          id: true,
+          url: true,
+          description: true,
+          status: true,
+          externalId: true,
+          updatedAt: true,
+        },
+      },
+      createdAt: true,
+    },
+  });
+
+  if (!document || !document.urlEntry) {
+    return NextResponse.json({ error: "URL not found" }, { status: 404 });
+  }
+
+  const nextUrl = parsedBody.data.url ?? document.urlEntry.url;
+  const urlChanged = parsedBody.data.url !== undefined && parsedBody.data.url !== document.urlEntry.url;
+  const nextTitle = parsedBody.data.title ?? document.title;
+  const descriptionProvided = parsedBody.data.description !== undefined;
+  const nextDescription = descriptionProvided ? parsedBody.data.description : document.urlEntry.description;
+  const nextStatus = parsedBody.data.status ?? (urlChanged ? UrlStatus.draft : document.urlEntry.status);
+
+  let externalId = document.urlEntry.externalId ?? null;
+  if (urlChanged) {
+    const created = await createUrlContentPlaceholder({ url: nextUrl, status: nextStatus }).catch(() => null);
+    externalId = created ?? null;
+  }
+
+  const record = await prisma.$transaction(async (tx) => {
+    const updatedDocument = await tx.document.update({
+      where: { id: document.id },
+      data: {
+        ...(parsedBody.data.title !== undefined ? { title: nextTitle } : {}),
+        ...(urlChanged ? { source: nextUrl } : {}),
+      },
+      select: {
+        id: true,
+        kbId: true,
+        title: true,
+        createdAt: true,
+      },
+    });
+
+    const updatedEntry = await tx.urlEntry.update({
+      where: { documentId: document.id },
+      data: {
+        ...(urlChanged ? { url: nextUrl } : {}),
+        ...(descriptionProvided ? { description: nextDescription } : {}),
+        status: nextStatus,
+        ...(externalId !== document.urlEntry.externalId ? { externalId } : {}),
+      },
+      select: {
+        url: true,
+        description: true,
+        status: true,
+        externalId: true,
+        updatedAt: true,
+      },
+    });
+
+    return { document: updatedDocument, entry: updatedEntry };
+  });
+
+  if (parsedBody.data.status && record.entry.externalId) {
+    await updateUrlContentStatus({ externalId: record.entry.externalId, status: record.entry.status });
+  } else if (urlChanged && record.entry.externalId) {
+    await updateUrlContentStatus({ externalId: record.entry.externalId, status: record.entry.status });
+  }
+
+  return NextResponse.json({
+    url: {
+      id: record.document.id,
+      kbId: record.document.kbId,
+      title: record.document.title,
+      url: record.entry.url,
+      description: record.entry.description,
+      status: record.entry.status,
+      externalId: record.entry.externalId,
+      createdAt: record.document.createdAt.toISOString(),
+      updatedAt: record.entry.updatedAt.toISOString(),
+    },
+  });
+}
+
+export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let parsedParams;
+  try {
+    parsedParams = ParamsSchema.parse(await context.params);
+  } catch {
+    return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
+  }
+
+  const document = await prisma.document.findFirst({
+    where: {
+      id: parsedParams.id,
+      type: "url",
+      kb: { ownerId: userId },
+    },
+    select: {
+      id: true,
+      urlEntry: { select: { id: true } },
+    },
+  });
+
+  if (!document || !document.urlEntry) {
+    return NextResponse.json({ error: "URL not found" }, { status: 404 });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.urlEntry.delete({ where: { id: document.urlEntry!.id } });
+    await tx.document.delete({ where: { id: document.id } });
+  });
+
+  return NextResponse.json({ ok: true });
+}
