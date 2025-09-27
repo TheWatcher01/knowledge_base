@@ -23,9 +23,12 @@ export function CreateUrlForm({ kbId }: CreateUrlFormProps) {
   const [status, setStatus] = useState<UrlStatus>("draft");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    setInfo(null);
 
     const trimmedUrl = url.trim();
     if (!trimmedUrl) {
@@ -75,6 +78,22 @@ export function CreateUrlForm({ kbId }: CreateUrlFormProps) {
       setError(data?.error ?? tForm("genericError"));
       setSubmitting(false);
       return;
+    }
+
+    const data = (await response.json().catch(() => ({}))) as {
+      url?: { status?: string; ingestionError?: string };
+    };
+
+    if (data.url?.ingestionError) {
+      if (data.url.ingestionError === "Open WebUI integration is disabled.") {
+        setInfo(tForm("ingestionDisabled"));
+      } else {
+        setInfo(tForm("ingestionError", { error: data.url.ingestionError }));
+      }
+    } else if (data.url?.status === "queued") {
+      setInfo(tForm("ingestionQueued"));
+    } else {
+      setInfo(null);
     }
 
     setTitle("");
@@ -157,7 +176,8 @@ export function CreateUrlForm({ kbId }: CreateUrlFormProps) {
             {submitting ? tForm("submitting") : tForm("submit")}
           </button>
 
-          {error && <span className="text-sm text-red-600">{error}</span>}
+          {info && <span className="text-xs text-[var(--kb-text-muted)]">{info}</span>}
+
         </div>
       </form>
     </section>

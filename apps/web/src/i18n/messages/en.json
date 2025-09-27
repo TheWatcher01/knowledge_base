@@ -204,7 +204,10 @@
       "statusLabel": "Status",
       "submit": "Add link",
       "submitting": "Saving...",
-      "genericError": "Unable to create the link."
+      "genericError": "Unable to create the link.",
+      "ingestionQueued": "Link sent for ingestion. Status will update to “Synced” once indexing finishes.",
+      "ingestionDisabled": "Automatic ingestion is disabled. You can rerun it later.",
+      "ingestionError": "Ingestion failed: {error}"
     },
     "urlActions": {
       "open": "Open",
@@ -216,7 +219,9 @@
       "deleting": "Deleting...",
       "deleteConfirm": "Delete the link \"{title}\"?",
       "deleteError": "Couldn't delete the link.",
-      "updateError": "Couldn't update the link."
+      "updateError": "Couldn't update the link.",
+      "queuedTooltip": "Ingestion in progress. Refresh later or edit the link if needed.",
+      "errorTooltip": "Ingestion failed. Check the URL then use “Edit” to retry."
     },
     "urlStatuses": {
       "draft": "Draft",

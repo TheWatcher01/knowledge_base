@@ -4,7 +4,8 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UrlStatus } from "@prisma/client";
-import { createUrlContentPlaceholder } from "@/lib/url-content";
+import { createUrlContentPlaceholder, updateUrlContentStatus } from "@/lib/url-content";
+import { OWUI_DISABLED_MESSAGE, triggerWebIngestion } from "@/lib/owui";
 
 const OptionalTitle = z.preprocess(
   (value) => {
@@ -116,6 +117,7 @@ export async function POST(request: Request) {
         externalId,
       },
       select: {
+        id: true,
         url: true,
         description: true,
         status: true,
@@ -128,18 +130,54 @@ export async function POST(request: Request) {
     return { document, entry };
   });
 
+  let entry = record.entry;
+  let finalStatus = status;
+  let ingestionError: string | undefined;
+
+  const ingestion = await triggerWebIngestion({ kbId: record.document.kbId, url: record.entry.url });
+
+  if (ingestion.ok) {
+    finalStatus = UrlStatus.queued;
+  } else {
+    ingestionError = ingestion.error;
+    if (ingestion.error !== OWUI_DISABLED_MESSAGE) {
+      finalStatus = UrlStatus.error;
+    }
+  }
+
+  if (finalStatus !== record.entry.status) {
+    entry = await prisma.urlEntry.update({
+      where: { id: record.entry.id },
+      data: { status: finalStatus },
+      select: {
+        id: true,
+        url: true,
+        description: true,
+        status: true,
+        externalId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  if (entry.externalId) {
+    await updateUrlContentStatus({ externalId: entry.externalId, status: entry.status });
+  }
+
   return NextResponse.json(
     {
       url: {
         id: record.document.id,
         kbId: record.document.kbId,
         title: record.document.title,
-        url: record.entry.url,
-        description: record.entry.description,
-        status: record.entry.status,
-        externalId: record.entry.externalId,
+        url: entry.url,
+        description: entry.description,
+        status: entry.status,
+        externalId: entry.externalId,
         createdAt: record.document.createdAt.toISOString(),
-        updatedAt: record.entry.updatedAt.toISOString(),
+        updatedAt: entry.updatedAt.toISOString(),
+        ingestionError,
       },
     },
     { status: 201 },

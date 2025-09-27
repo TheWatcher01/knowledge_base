@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UrlStatus } from "@prisma/client";
 import { createUrlContentPlaceholder, updateUrlContentStatus } from "@/lib/url-content";
+import { OWUI_DISABLED_MESSAGE, deleteFromCollection, triggerWebIngestion } from "@/lib/owui";
 
 const ParamsSchema = z.object({
   id: z.string().uuid(),
@@ -175,8 +176,41 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return { document: updatedDocument, entry: updatedEntry };
   });
 
-  if ((parsedBody.data.status || urlChanged) && record.entry.externalId) {
-    await updateUrlContentStatus({ externalId: record.entry.externalId, status: record.entry.status });
+  let entry = record.entry;
+  let ingestionError: string | undefined;
+
+  const shouldTriggerIngestion = urlChanged || parsedBody.data.status === UrlStatus.queued;
+
+  if (shouldTriggerIngestion) {
+    const ingestion = await triggerWebIngestion({ kbId: record.document.kbId, url: record.entry.url });
+
+    let finalStatus = record.entry.status;
+    if (ingestion.ok) {
+      finalStatus = UrlStatus.queued;
+    } else {
+      ingestionError = ingestion.error;
+      if (ingestion.error !== OWUI_DISABLED_MESSAGE) {
+        finalStatus = UrlStatus.error;
+      }
+    }
+
+    if (finalStatus !== record.entry.status) {
+      entry = await prisma.urlEntry.update({
+        where: { documentId: record.document.id },
+        data: { status: finalStatus },
+        select: {
+          url: true,
+          description: true,
+          status: true,
+          externalId: true,
+          updatedAt: true,
+        },
+      });
+    }
+  }
+
+  if (entry.externalId) {
+    await updateUrlContentStatus({ externalId: entry.externalId, status: entry.status });
   }
 
   return NextResponse.json({
@@ -184,12 +218,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       id: record.document.id,
       kbId: record.document.kbId,
       title: record.document.title,
-      url: record.entry.url,
-      description: record.entry.description,
-      status: record.entry.status,
-      externalId: record.entry.externalId,
+      url: entry.url,
+      description: entry.description,
+      status: entry.status,
+      externalId: entry.externalId,
       createdAt: record.document.createdAt.toISOString(),
-      updatedAt: record.entry.updatedAt.toISOString(),
+      updatedAt: entry.updatedAt.toISOString(),
+      ingestionError,
     },
   });
 }
@@ -217,6 +252,7 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     },
     select: {
       id: true,
+      kbId: true,
       urlEntry: { select: { id: true } },
     },
   });
@@ -233,6 +269,8 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     }
     await tx.document.delete({ where: { id: document.id } });
   });
+
+  await deleteFromCollection({ kbId: document.kbId, documentId: document.id });
 
   return NextResponse.json({ ok: true });
 }

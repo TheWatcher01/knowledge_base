@@ -204,7 +204,10 @@
       "statusLabel": "Statut",
       "submit": "Ajouter le lien",
       "submitting": "Enregistrement...",
-      "genericError": "Impossible de créer le lien."
+      "genericError": "Impossible de créer le lien.",
+      "ingestionQueued": "Lien envoyé à l’ingestion. Le statut passera automatiquement à « Synchronisé » une fois l’indexation terminée.",
+      "ingestionDisabled": "L’ingestion automatique est désactivée. Vous pourrez relancer l’indexation plus tard.",
+      "ingestionError": "L’ingestion a échoué : {error}"
     },
     "urlActions": {
       "open": "Ouvrir",
@@ -216,7 +219,9 @@
       "deleting": "Suppression...",
       "deleteConfirm": "Supprimer le lien \"{title}\" ?",
       "deleteError": "Impossible de supprimer le lien.",
-      "updateError": "Impossible de mettre à jour le lien."
+      "updateError": "Impossible de mettre à jour le lien.",
+      "queuedTooltip": "En cours d’ingestion. Actualisez plus tard ou modifiez le lien si besoin.",
+      "errorTooltip": "Échec de l’ingestion. Vérifiez l’URL puis utilisez «Modifier» pour relancer."
     },
     "urlStatuses": {
       "draft": "Brouillon",

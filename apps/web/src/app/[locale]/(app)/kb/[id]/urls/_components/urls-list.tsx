@@ -71,12 +71,14 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
   const [status, setStatus] = useState<UrlStatus>(url.status);
   const [busy, setBusy] = useState<"save" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ingestionMessage, setIngestionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setTitle(url.title ?? "");
     setCurrentUrl(url.url);
     setDescription(url.description ?? "");
     setStatus(url.status);
+    setIngestionMessage(null);
   }, [url.id, url.title, url.url, url.description, url.status]);
 
   function resetForm() {
@@ -89,6 +91,7 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setIngestionMessage(null);
 
     const trimmedTitle = title.trim();
     const trimmedUrl = currentUrl.trim();
@@ -149,6 +152,22 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
       return;
     }
 
+    const data = (await response.json().catch(() => ({}))) as {
+      url?: { status?: string; ingestionError?: string };
+    };
+
+    if (data.url?.ingestionError) {
+      if (data.url.ingestionError === "Open WebUI integration is disabled.") {
+        setIngestionMessage(tForm("ingestionDisabled"));
+      } else {
+        setIngestionMessage(tForm("ingestionError", { error: data.url.ingestionError }));
+      }
+    } else if (data.url?.status === "queued") {
+      setIngestionMessage(tForm("ingestionQueued"));
+    } else {
+      setIngestionMessage(null);
+    }
+
     setBusy(null);
     setIsEditing(false);
     router.refresh();
@@ -193,7 +212,7 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
             {tUrls("entryDate", { date: url.createdDateLabel, time: url.createdTimeLabel })}
           </p>
         </div>
-        <StatusBadge status={isEditing ? status : url.status} label={tStatuses(isEditing ? status : url.status)} />
+        <StatusBadge status={isEditing ? status : url.status} label={tStatuses(isEditing ? status : url.status)} onQueued={tActions("queuedTooltip")} onError={tActions("errorTooltip")} />
       </div>
 
       {isEditing ? (
@@ -263,6 +282,7 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
                 setIsEditing(false);
                 resetForm();
                 setError(null);
+                setIngestionMessage(null);
               }}
               disabled={busy === "save"}
             >
@@ -291,6 +311,10 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
             <p className="text-xs italic text-[var(--kb-text-muted)]">{tUrls("missingDescription")}</p>
           )}
         </div>
+      )}
+
+      {ingestionMessage && (
+        <p className="text-xs text-[var(--kb-text-muted)]">{ingestionMessage}</p>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
@@ -324,7 +348,17 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
   );
 }
 
-function StatusBadge({ status, label }: { status: UrlStatus; label: string }) {
+function StatusBadge({
+  status,
+  label,
+  onQueued,
+  onError,
+}: {
+  status: UrlStatus;
+  label: string;
+  onQueued: string;
+  onError: string;
+}) {
   const palette: Record<UrlStatus, string> = {
     draft: "bg-slate-200 text-slate-800",
     queued: "bg-amber-100 text-amber-800",
@@ -332,8 +366,18 @@ function StatusBadge({ status, label }: { status: UrlStatus; label: string }) {
     error: "bg-red-100 text-red-700",
   };
 
+  const tooltip: Record<UrlStatus, string> = {
+    draft: "",
+    queued: onQueued,
+    synced: "",
+    error: onError,
+  };
+
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${palette[status]}`}>
+    <span
+      title={tooltip[status]}
+      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${palette[status]}`}
+    >
       {label}
     </span>
   );
