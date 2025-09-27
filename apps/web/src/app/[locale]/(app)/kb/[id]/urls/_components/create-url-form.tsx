@@ -127,13 +127,12 @@ export function CreateUrlForm({ kbId }: CreateUrlFormProps) {
 
           <label className="flex flex-col gap-2 text-sm text-[var(--kb-text-subtle)]">
             <span className="font-medium text-[var(--kb-text)]">{tForm("urlLabel")}</span>
-            <input
+          <input
               className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-2 text-sm text-[var(--kb-text)] focus:border-[var(--kb-highlight)] focus:outline-none"
               placeholder={tForm("urlPlaceholder")}
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               disabled={submitting}
-              required
             />
             <span className="text-xs text-[var(--kb-text-muted)]">{tForm("urlHint")}</span>
           </label>
@@ -176,6 +175,7 @@ export function CreateUrlForm({ kbId }: CreateUrlFormProps) {
             {submitting ? tForm("submitting") : tForm("submit")}
           </button>
 
+          {error && <span className="text-sm text-red-600">{error}</span>}
           {info && <span className="text-xs text-[var(--kb-text-muted)]">{info}</span>}
 
         </div>

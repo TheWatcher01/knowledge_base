@@ -1,6 +1,5 @@
 import { OWUI_BASE, OWUI_TOKEN, collectionName } from "./config";
 
-
 export const OWUI_DISABLED_MESSAGE = "Open WebUI integration is disabled.";
 
 export type OwuiActionResult =
