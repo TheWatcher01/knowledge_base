@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     let docs: RetrievedDoc[] = [];
 
     try {
-        const response = (await owuiJson("/retrieval/query/doc", {
+        const response = (await owuiJson("/api/v1/retrieval/query/doc", {
             method: "POST",
             body: JSON.stringify({
                 query: question,

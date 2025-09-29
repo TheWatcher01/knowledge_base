@@ -3,7 +3,7 @@ import { owuiJson } from "@/lib/owui";
 
 export async function GET() {
     try {
-        const payload = await owuiJson("/api/v1/models");
+        const payload = await owuiJson("/api/v1/models?refresh=true");
         let models: unknown = [];
 
         if (Array.isArray(payload)) {
