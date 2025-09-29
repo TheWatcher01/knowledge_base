@@ -72,6 +72,7 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
   const [busy, setBusy] = useState<"save" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ingestionMessage, setIngestionMessage] = useState<string | null>(null);
+  const canResync = !isEditing && url.status === "error";
 
   useEffect(() => {
     setTitle(url.title ?? "");
@@ -170,6 +171,46 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
 
     setBusy(null);
     setIsEditing(false);
+    router.refresh();
+  }
+
+  async function handleResync() {
+    if (busy) return;
+
+    setBusy("save");
+    setError(null);
+    setIngestionMessage(null);
+
+    const response = await fetch(`/api/urls/${url.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "queued" }),
+    });
+
+    if (!response.ok) {
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+      setError(data?.error ?? tActions("updateError"));
+      setBusy(null);
+      return;
+    }
+
+    const data = (await response.json().catch(() => ({}))) as {
+      url?: { status?: string; ingestionError?: string };
+    };
+
+    if (data.url?.ingestionError) {
+      if (data.url.ingestionError === "Open WebUI integration is disabled.") {
+        setIngestionMessage(tForm("ingestionDisabled"));
+      } else {
+        setIngestionMessage(tForm("ingestionError", { error: data.url.ingestionError }));
+      }
+    } else if (data.url?.status === "queued") {
+      setIngestionMessage(tForm("ingestionQueued"));
+    } else {
+      setIngestionMessage(null);
+    }
+
+    setBusy(null);
     router.refresh();
   }
 
@@ -339,6 +380,16 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
             >
               {busy === "delete" ? tActions("deleting") : tActions("delete")}
             </button>
+            {canResync && (
+              <button
+                type="button"
+                className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-[var(--kb-text)] hover:border-[var(--kb-highlight)]"
+                onClick={handleResync}
+                disabled={busy !== null}
+              >
+                {busy === "save" ? tActions("saving") : tActions("resync")}
+              </button>
+            )}
           </>
         ) : null}
       </div>
