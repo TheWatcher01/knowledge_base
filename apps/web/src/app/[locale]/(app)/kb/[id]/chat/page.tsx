@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -53,9 +53,25 @@ export default function ChatPage() {
                 const normalized = normalizeModels(data.models);
                 if (!cancelled) {
                     setModels(normalized);
-                    if (!DEFAULT_MODEL && normalized.length > 0) {
-                        setSelectedModel(normalized[0].id);
+                    if (normalized.length === 0) {
+                        setSelectedModel("");
+                        return;
                     }
+
+                    setSelectedModel((current) => {
+                        if (current && normalized.some((option) => option.id === current)) {
+                            return current;
+                        }
+
+                        if (
+                            DEFAULT_MODEL &&
+                            normalized.some((option) => option.id === DEFAULT_MODEL)
+                        ) {
+                            return DEFAULT_MODEL;
+                        }
+
+                        return normalized[0]?.id ?? "";
+                    });
                 }
             } catch (error) {
                 console.warn("[chat] Failed to load models", error);
@@ -81,9 +97,12 @@ export default function ChatPage() {
         scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    const canSend = useMemo(() => {
-        return !isStreaming && input.trim().length > 0 && kbId.length > 0;
-    }, [input, isStreaming, kbId.length]);
+    const trimmedInput = input.trim();
+    const canSend =
+        !isStreaming &&
+        trimmedInput.length > 0 &&
+        kbId.length > 0 &&
+        selectedModel.trim().length > 0;
 
     function handleStop() {
         abortControllerRef.current?.abort();

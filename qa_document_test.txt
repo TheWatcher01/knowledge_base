@@ -1,0 +1,2 @@
+Doc3: Contenu du fichier Document test destiné aux vérifications QA.
+Il détaille les attentes pour le chat.
