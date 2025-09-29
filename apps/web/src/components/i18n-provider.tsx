@@ -13,7 +13,11 @@ type Props = {
 
 export function I18nProvider({ locale, messages, children }: Props) {
     return (
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        <NextIntlClientProvider
+            locale={locale}
+            messages={messages}
+            timeZone="Europe/Paris"
+        >
             {children}
         </NextIntlClientProvider>
     );

@@ -154,11 +154,24 @@
     },
     "chat": {
       "title": "AI Assistant",
-      "description": "Chat with the AI about knowledge base #{id}. The final interface will be connected to Open WebUI.",
-      "status": "Chat integration is in progress. Soon you’ll be able to ask questions and get contextual answers.",
+      "description": "Chat with the AI about knowledge base #{id}. Answers are generated via Open WebUI.",
+      "modelsLabel": "Model",
+      "modelsPlaceholder": "e.g. llama3.1:8b",
+      "modelsLoading": "Loading available models…",
+      "modelsError": "Unable to load the models list. Enter a model identifier manually.",
+      "status": "Pick a model and start chatting with your knowledge base.",
       "label": "Message",
       "placeholder": "Ask a question about this knowledge base…",
-      "submit": "Send (coming soon)"
+      "submit": "Send",
+      "loading": "Sending…",
+      "stop": "Stop",
+      "historyTitle": "Conversation",
+      "empty": "No messages yet.",
+      "messageStreaming": "Assistant is responding…",
+      "messageEmpty": "No answer was returned.",
+      "errorGeneric": "The assistant could not answer. Please try again.",
+      "errorModelRequired": "Select a model before asking a question.",
+      "errorAborted": "Generation cancelled."
     }
   }
 }
