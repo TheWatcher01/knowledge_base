@@ -14,10 +14,13 @@ export default async function NotesPage({ params }: PageProps) {
     const { id, locale } = resolvedParams;
 
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) redirect({ href: "/login", locale });
+    if (!session?.user?.id) {
+        redirect({ href: "/login", locale });
+    }
+    const userId = (session as typeof session & { user: { id: string } }).user.id;
 
     const kb = await prisma.knowledgeBase.findFirst({
-        where: { id, ownerId: session.user.id },
+        where: { id, ownerId: userId },
     });
     if (!kb) redirect({ href: "/kb", locale });
 
@@ -26,8 +29,8 @@ export default async function NotesPage({ params }: PageProps) {
             where: { kbId: id, type: "note" },
             orderBy: { createdAt: "desc" },
         }),
-        getTranslations({ namespace: "kb.notes" }),
-        getFormatter(),
+        getTranslations({ locale, namespace: "kb.notes" }),
+        getFormatter({ locale }),
     ]);
 
     return (

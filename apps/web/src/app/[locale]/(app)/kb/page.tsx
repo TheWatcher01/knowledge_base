@@ -13,14 +13,17 @@ type PageProps = {
 export default async function KnowledgeBasesPage({ params }: PageProps) {
     const { locale } = await params;
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) redirect({ href: "/login", locale });
+    if (!session || !session.user?.id) {
+        redirect({ href: "/login", locale });
+    }
+    const userId = (session as typeof session & { user: { id: string } }).user.id;
 
     const knowledgeBases = await prisma.knowledgeBase.findMany({
-        where: { ownerId: session.user.id },
+        where: { ownerId: userId },
         orderBy: { createdAt: "desc" },
     });
 
-    const t = await getTranslations({ namespace: "kb.list" });
+    const t = await getTranslations({ locale, namespace: "kb.list" });
 
     return (
         <section className="space-y-6 w-full">

@@ -15,8 +15,7 @@ export function generateStaticParams() {
 }
 
 export default async function LocaleLayout({ children, params }: Props) {
-  const resolvedParams = await params;
-  const locale = resolvedParams.locale;
+  const { locale } = await params;
 
   if (!locales.includes(locale as Locale)) {
     notFound();

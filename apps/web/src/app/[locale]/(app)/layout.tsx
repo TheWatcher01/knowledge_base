@@ -15,19 +15,20 @@ type LayoutProps = {
 };
 
 export default async function AppLayout({ children, params }: LayoutProps) {
-  const resolvedParams = await params;
-  const locale = resolvedParams.locale;
+  const { locale } = await params;
 
   const session = await getServerSession(authOptions);
 
-  if (!session) {
-    redirect({ href: "/login", locale }); // Le helper ajoute automatiquement la locale courante
+  if (!session?.user?.id) {
+    redirect({ href: "/login", locale });
   }
 
+  const ensuredSession = session as NonNullable<typeof session>;
+
   return (
-    <AuthSessionProvider session={session}>
+    <AuthSessionProvider session={ensuredSession}>
       <div key={locale} className="flex min-h-screen flex-col bg-background text-foreground">
-        <AppNav userEmail={session.user?.email} />
+        <AppNav userEmail={ensuredSession.user?.email ?? null} />
         <main className="mx-auto flex w-full max-w-5xl flex-1 px-6 py-8">
           {children}
         </main>

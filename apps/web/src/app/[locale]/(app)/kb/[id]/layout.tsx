@@ -19,9 +19,10 @@ export default async function KnowledgeBaseLayout({ children, params }: LayoutPr
     if (!session?.user?.id) {
         redirect({ href: "/login", locale });
     }
+    const userId = (session as typeof session & { user: { id: string } }).user.id;
 
     const kb = await prisma.knowledgeBase.findFirst({
-        where: { id, ownerId: session.user.id },
+        where: { id, ownerId: userId },
         include: { _count: { select: { documents: true } } },
     });
 
@@ -30,8 +31,8 @@ export default async function KnowledgeBaseLayout({ children, params }: LayoutPr
     }
 
     const [t, formatter] = await Promise.all([
-        getTranslations({ namespace: "kb.layout" }),
-        getFormatter(),
+        getTranslations({ locale, namespace: "kb.layout" }),
+        getFormatter({ locale }),
     ]);
     const createdAt = formatter.dateTime(kb.createdAt, { dateStyle: "medium" });
 

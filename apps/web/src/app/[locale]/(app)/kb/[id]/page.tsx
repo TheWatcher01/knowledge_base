@@ -2,12 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { getFormatter, getTranslations } from "next-intl/server";
 
 type PageProps = {
-    params: Promise<{ id: string }>;
+    params: Promise<{ locale: string; id: string }>;
 };
 
 export default async function KnowledgeBaseOverviewPage({ params }: PageProps) {
     const resolvedParams = await params;
-    const { id } = resolvedParams;
+    const { id, locale } = resolvedParams;
 
     const [groupedCounts, recentNotes, t, formatter] = await Promise.all([
         prisma.document.groupBy({
@@ -20,8 +20,8 @@ export default async function KnowledgeBaseOverviewPage({ params }: PageProps) {
             orderBy: { createdAt: "desc" },
             take: 3,
         }),
-        getTranslations({ namespace: "kb.overview" }),
-        getFormatter(),
+        getTranslations({ locale, namespace: "kb.overview" }),
+        getFormatter({ locale }),
     ]);
 
     const stats = { note: 0, file: 0, url: 0 } as Record<"note" | "file" | "url", number>;

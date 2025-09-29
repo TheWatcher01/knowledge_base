@@ -1,7 +1,12 @@
 import { getTranslations } from "next-intl/server";
 
-export default async function DashboardPage() {
-    const t = await getTranslations({ namespace: "dashboard" });
+type PageProps = {
+    params: Promise<{ locale: string }>;
+};
+
+export default async function DashboardPage({ params }: PageProps) {
+    const { locale } = await params;
+    const t = await getTranslations({ locale, namespace: "dashboard" });
 
     return (
         <section className="space-y-4">

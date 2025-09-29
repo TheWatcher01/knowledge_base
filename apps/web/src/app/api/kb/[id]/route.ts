@@ -1,23 +1,25 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { OWUI_BASE, collectionName } from "@/lib/config";
 import { owuiJson } from "@/lib/owui";
 
 export async function DELETE(
-    _request: Request,
+    _request: NextRequest,
     { params }: { params: Promise<{ id: string }> },
 ) {
     const { id } = await params;
 
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session || !session.user?.id) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userId = session.user!.id;
 
     const kb = await prisma.knowledgeBase.findFirst({
-        where: { id, ownerId: session.user.id },
+        where: { id, ownerId: userId },
         include: { documents: true },
     });
     if (!kb) {

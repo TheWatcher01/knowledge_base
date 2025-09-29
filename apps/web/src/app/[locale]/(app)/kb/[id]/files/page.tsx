@@ -2,20 +2,20 @@ import { prisma } from "@/lib/prisma";
 import { getFormatter, getTranslations } from "next-intl/server";
 
 type PageProps = {
-    params: Promise<{ id: string }>;
+    params: Promise<{ locale: string; id: string }>;
 };
 
 export default async function KnowledgeBaseFilesPage({ params }: PageProps) {
     const resolvedParams = await params;
-    const { id } = resolvedParams;
+    const { id, locale } = resolvedParams;
 
     const [files, t, formatter] = await Promise.all([
         prisma.document.findMany({
             where: { kbId: id, type: "file" },
             orderBy: { createdAt: "desc" },
         }),
-        getTranslations({ namespace: "kb.files" }),
-        getFormatter(),
+        getTranslations({ locale, namespace: "kb.files" }),
+        getFormatter({ locale }),
     ]);
 
     return (

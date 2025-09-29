@@ -13,8 +13,8 @@ export default async function Home({ params }: PageProps) {
   if (session) redirect({ href: "/dashboard", locale });
 
   const [tLanding, tCommon] = await Promise.all([
-    getTranslations({ namespace: "landing" }),
-    getTranslations({ namespace: "common" }),
+    getTranslations({ locale, namespace: "landing" }),
+    getTranslations({ locale, namespace: "common" }),
   ]);
   const currentYear = new Date().getFullYear();
 
