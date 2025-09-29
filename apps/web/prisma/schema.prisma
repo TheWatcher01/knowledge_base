@@ -15,6 +15,14 @@ enum Role {
   ADMIN
 }
 
+// MODIF: Ajout de l'enum UrlStatus
+enum UrlStatus {
+  draft
+  queued
+  synced
+  error
+}
+
 model User {
   id            String    @id @default(uuid())
   email         String    @unique
@@ -51,6 +59,30 @@ model Document {
   type      String // 'note' | 'file' | 'url'
   source    String?
   createdAt DateTime      @default(now())
+  fileAsset FileAsset?
+  urlEntry  UrlEntry?
+}
+
+model FileAsset {
+  id         String   @id @default(uuid())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String   @unique
+  data       Bytes
+  mimeType   String
+  size       Int
+  createdAt  DateTime @default(now())
+}
+
+model UrlEntry {
+  id          String    @id @default(uuid())
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId  String    @unique
+  url         String
+  description String?
+  status      UrlStatus @default(draft)
+  externalId  String? // id Mongo/NoSQL
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model UsageLog {

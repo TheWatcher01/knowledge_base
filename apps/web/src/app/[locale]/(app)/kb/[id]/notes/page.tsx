@@ -3,6 +3,7 @@ import { redirect } from "@/i18n/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CreateNoteForm } from "./_components/create-note-form";
+import { NoteActions } from "./_components/note-actions";
 import { getFormatter, getTranslations } from "next-intl/server";
 
 type PageProps = {
@@ -10,14 +11,11 @@ type PageProps = {
 };
 
 export default async function NotesPage({ params }: PageProps) {
-    const resolvedParams = await params;
-    const { id, locale } = resolvedParams;
+    const { id, locale } = await params;
 
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        redirect({ href: "/login", locale });
-    }
-    const userId = (session as typeof session & { user: { id: string } }).user.id;
+    const userId = session?.user?.id;
+    if (!userId) redirect({ href: "/login", locale });
 
     const kb = await prisma.knowledgeBase.findFirst({
         where: { id, ownerId: userId },
@@ -41,19 +39,33 @@ export default async function NotesPage({ params }: PageProps) {
                 <p className="text-muted-foreground">{t("empty")}</p>
             ) : (
                 <ul className="space-y-3">
-                    {notes.map((note) => (
-                        <li key={note.id} className="rounded border p-4">
-                            <h3 className="text-lg font-medium">{note.title}</h3>
-                            {note.source && (
-                                <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
-                                    {note.source}
-                                </p>
-                            )}
-                            <p className="mt-3 text-xs text-muted-foreground">
-                                {formatter.dateTime(note.createdAt, { dateStyle: "medium", timeStyle: "short" })}
-                            </p>
-                        </li>
-                    ))}
+                    {notes.map((note) => {
+                        const formatted = formatter.dateTime(note.createdAt, {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                        });
+
+                        const content = note.source ?? "";
+
+                        return (
+                            <li key={note.id} className="rounded border p-4">
+                                <h3 className="text-lg font-medium">{note.title}</h3>
+
+                                {content && (
+                                    <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">
+                                        {content}
+                                    </p>
+                                )}
+                                <p className="mt-3 text-xs text-muted-foreground">{formatted}</p>
+
+                                <NoteActions
+                                    noteId={note.id}
+                                    initialTitle={note.title}
+                                    initialContent={content}
+                                />
+                            </li>
+                        );
+                    })}
                 </ul>
             )}
         </section>
