@@ -231,11 +231,23 @@
     },
     "chat": {
       "title": "Assistant IA",
-      "description": "Discutez avec l'IA à propos de la base #{id}. L'interface finale sera connectée à Open WebUI.",
-      "status": "L'intégration du chat est en cours. Vous pourrez bientôt poser des questions et obtenir des réponses contextualisées.",
+      "description": "Discutez avec l'IA à propos de la base #{id}. Les réponses sont générées via Open WebUI.",
+      "modelsLabel": "Modèle",
+      "modelsPlaceholder": "Ex : llama3.1:8b",
+      "modelsLoading": "Chargement des modèles disponibles…",
+      "modelsError": "Impossible de récupérer les modèles. Saisissez manuellement un identifiant de modèle.",
       "label": "Message",
       "placeholder": "Posez une question sur cette base de connaissance…",
-      "submit": "Envoyer (bientôt)"
+      "submit": "Envoyer",
+      "loading": "Envoi…",
+      "stop": "Arrêter",
+      "historyTitle": "Conversation",
+      "empty": "Aucun échange pour le moment.",
+      "messageStreaming": "Réponse en cours…",
+      "messageEmpty": "Aucune réponse n’a été générée.",
+      "errorGeneric": "L’assistant n’a pas pu répondre. Réessayez dans un instant.",
+      "errorModelRequired": "Sélectionnez un modèle avant d’envoyer une question.",
+      "errorAborted": "Génération interrompue."
     }
   }
 }

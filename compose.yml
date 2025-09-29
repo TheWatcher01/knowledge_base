@@ -1,6 +1,8 @@
 services:
   openwebui:
     image: ghcr.io/open-webui/open-webui:cuda
+    depends_on:
+      - ollama
     ports:
       - "3000:8080"
     environment:
@@ -26,6 +28,16 @@ services:
             - driver: nvidia
               count: all
               capabilities: [ gpu ]
+    networks: [ kbnet ]
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    restart: unless-stopped
     networks: [ kbnet ]
 
   searxng:
@@ -71,6 +83,7 @@ volumes:
   open-webui: {}
   pg_data: {}
   mongo_data: {}
+  ollama: {}
 
 networks:
   kbnet: {}
