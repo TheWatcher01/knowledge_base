@@ -19,6 +19,7 @@ export default async function AdminUsersPage({ params, searchParams }: PageProps
 
     const locale = resolvedParams.locale;
     const pageParam = resolvedSearch?.page;
+    const searchParam = resolvedSearch?.search ?? "";
     const session = await getServerSession(authOptions);
 
     if (!session || session.user?.role !== "ADMIN") {
@@ -42,7 +43,13 @@ export default async function AdminUsersPage({ params, searchParams }: PageProps
             </div>
 
             <Suspense fallback={<p>Chargement des utilisateurs...</p>}>
-                <UserTable initialUsers={initialUsers} total={total} initialPage={page} pageSize={20} />
+                <UserTable
+                    initialUsers={initialUsers}
+                    total={total}
+                    initialPage={page}
+                    pageSize={20}
+                    initialSearch={searchParam}
+                />
             </Suspense>
         </div>
     );

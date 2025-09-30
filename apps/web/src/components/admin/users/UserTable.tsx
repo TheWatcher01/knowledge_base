@@ -1,17 +1,24 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import CreateUserForm, { CreatedUser } from "@/components/admin/users/CreateUserForm";
+
+const SEARCH_DEBOUNCE_MS = 400;
+
+type Role = "VIEWER" | "EDITOR" | "ADMIN";
 
 type UserRow = {
     id: string;
     email: string;
     name: string | null;
-    role: "VIEWER" | "EDITOR" | "ADMIN";
+    role: Role;
     disabled: boolean;
     createdAt: string;
 };
@@ -21,31 +28,88 @@ type UserTableProps = {
     total: number;
     initialPage: number;
     pageSize: number;
+    initialSearch: string;
 };
 
-export default function UserTable({ initialUsers, total, initialPage, pageSize }: UserTableProps) {
+export default function UserTable({ initialUsers, total, initialPage, pageSize, initialSearch }: UserTableProps) {
+    const router = useRouter();
+    const pathname = usePathname();
+
     const [users, setUsers] = useState<UserRow[]>(initialUsers);
     const [page, setPage] = useState(initialPage);
-    const [loading, setLoading] = useState(false);
     const [totalCount, setTotalCount] = useState(total);
+    const [loading, setLoading] = useState(false);
+
+    const [searchTerm, setSearchTerm] = useState(initialSearch ?? "");
+    const [debouncedSearch, setDebouncedSearch] = useState(initialSearch ?? "");
 
     const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [nextRole, setNextRole] = useState<UserRow["role"]>("VIEWER");
+    const [nextRole, setNextRole] = useState<Role>("VIEWER");
     const [nextDisabled, setNextDisabled] = useState(false);
 
-    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
 
-    async function fetchPage(nextPage: number) {
+    const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / pageSize)), [totalCount, pageSize]);
+
+    const isFirstSearch = useRef(true);
+
+    useEffect(() => {
+        setUsers(initialUsers);
+        setTotalCount(total);
+        setPage(initialPage);
+    }, [initialUsers, total, initialPage]);
+
+    useEffect(() => {
+        setSearchTerm(initialSearch ?? "");
+        setDebouncedSearch((initialSearch ?? "").trim());
+        isFirstSearch.current = true;
+    }, [initialSearch]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm.trim());
+        }, SEARCH_DEBOUNCE_MS);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        if (isFirstSearch.current) {
+            isFirstSearch.current = false;
+            return;
+        }
+        void fetchUsers(1, debouncedSearch);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [debouncedSearch]);
+
+    function updateUrl(nextPage: number, nextSearch: string) {
+        const params = new URLSearchParams();
+        params.set("page", String(nextPage));
+        if (nextSearch) {
+            params.set("search", nextSearch);
+        }
+        const query = params.toString();
+        router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    }
+
+    async function fetchUsers(nextPage: number, search = debouncedSearch) {
         setLoading(true);
         try {
-            const res = await fetch(`/api/users?page=${nextPage}`);
-            if (!res.ok) throw new Error("Unable to fetch users");
+            updateUrl(nextPage, search);
+            const query = new URLSearchParams();
+            query.set("page", String(nextPage));
+            if (search) query.set("search", search);
+
+            const res = await fetch(`/api/users?${query.toString()}`, { cache: "no-store" });
+            if (!res.ok) throw new Error(await res.text());
+
             const data = (await res.json()) as { users: UserRow[]; total: number };
             const normalized = data.users.map((user) => ({
                 ...user,
                 createdAt: new Date(user.createdAt).toISOString(),
             }));
+
             setUsers(normalized);
             setPage(nextPage);
             setTotalCount(data.total);
@@ -57,7 +121,7 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize }
         }
     }
 
-    function openDialog(user: UserRow) {
+    function openEditionDialog(user: UserRow) {
         setSelectedUser(user);
         setNextRole(user.role);
         setNextDisabled(user.disabled);
@@ -79,23 +143,26 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize }
             setUsers((prev) =>
                 prev.map((row) => (row.id === user.id ? { ...row, role: user.role, disabled: user.disabled } : row)),
             );
-            toast.success("Utilisateur mis à jour");
+            toast.success(`${user.email} mis à jour`);
             setDialogOpen(false);
         } catch (error) {
             console.error(error);
             toast.error("Impossible de mettre à jour l'utilisateur");
         } finally {
             setLoading(false);
-
         }
     }
 
-    async function handleDelete(userId: string) {
-        if (!window.confirm("Supprimer cet utilisateur ?")) return;
+    function openDeleteDialog(user: UserRow) {
+        setDeleteTarget(user);
+        setDeleteDialogOpen(true);
+    }
+
+    async function confirmDelete() {
+        if (!deleteTarget) return;
         setLoading(true);
         try {
-            const currentCount = users.length;
-            const res = await fetch(`/api/users/${userId}`, {
+            const res = await fetch(`/api/users/${deleteTarget.id}`, {
                 method: "DELETE",
             });
 
@@ -104,34 +171,61 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize }
                 throw new Error(payload?.message || "Suppression impossible");
             }
 
-            setUsers((prev) => prev.filter((row) => row.id !== userId));
+            const { user } = (await res.json()) as { user: { id: string; email: string } };
+            const remainingBeforeDelete = users.length;
+            setUsers((prev) => prev.filter((row) => row.id !== user.id));
             setTotalCount((prev) => Math.max(0, prev - 1));
-            toast.success("Utilisateur supprimé");
+            toast.success(`${user.email} supprimé`);
+            setDeleteDialogOpen(false);
 
-            if (currentCount === 1 && page > 1) {
-                await fetchPage(page - 1);
+            if (remainingBeforeDelete === 1 && page > 1) {
+                await fetchUsers(page - 1, debouncedSearch);
             }
         } catch (error) {
             console.error(error);
             toast.error(error instanceof Error ? error.message : "Suppression impossible");
+            setDeleteDialogOpen(false);
         } finally {
             setLoading(false);
+            setDeleteTarget(null);
         }
     }
 
     function handleUserCreated(user: CreatedUser) {
-        setUsers((prev) => [
-            { ...user, name: null },
-            ...prev,
-        ].slice(0, pageSize));
+        const normalized: UserRow = {
+            ...user,
+            name: null,
+            createdAt: new Date(user.createdAt).toISOString(),
+        };
+
+        if (page === 1) {
+            setUsers((prev) => [normalized, ...prev].slice(0, pageSize));
+        } else {
+            void fetchUsers(1, debouncedSearch);
+        }
+        setPage(1);
+        updateUrl(1, debouncedSearch);
         setTotalCount((prev) => prev + 1);
     }
 
+    const canGoPrevious = page > 1 && !loading;
+    const canGoNext = page < totalPages && !loading;
+
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-end">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                    <Input
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        placeholder="Rechercher par e-mail ou nom"
+                        className="w-full sm:w-80"
+                    />
+                    {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                </div>
                 <CreateUserForm onSuccess={handleUserCreated} />
             </div>
+
             <div className="rounded-md border">
                 <Table>
                     <TableHeader>
@@ -147,27 +241,42 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize }
                     <TableBody>
                         {users.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                                     Aucun utilisateur trouvé.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             users.map((user) => (
                                 <TableRow key={user.id}>
-                                    <TableCell><div className="font-medium">{user.email}</div></TableCell>
+                                    <TableCell>
+                                        <div className="font-medium">{user.email}</div>
+                                        <div className="text-xs text-muted-foreground">
+                                            Ajouté le {new Date(user.createdAt).toLocaleDateString()}
+                                        </div>
+                                    </TableCell>
                                     <TableCell>{user.name ?? "-"}</TableCell>
-                                    <TableCell>{user.role}</TableCell>
-                                    <TableCell>{user.disabled ? "Désactivé" : "Actif"}</TableCell>
+                                    <TableCell className="uppercase text-xs font-semibold">{user.role}</TableCell>
+                                    <TableCell>
+                                        {user.disabled ? (
+                                            <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+                                                Désactivé
+                                            </span>
+                                        ) : (
+                                            <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800">
+                                                Actif
+                                            </span>
+                                        )}
+                                    </TableCell>
                                     <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-                                    <TableCell className="text-right space-x-2">
-                                        <Button variant="outline" size="sm" onClick={() => openDialog(user)}>
+                                    <TableCell className="space-x-2 text-right">
+                                        <Button variant="outline" size="sm" disabled={loading} onClick={() => openEditionDialog(user)}>
                                             Modifier
                                         </Button>
                                         <Button
                                             variant="destructive"
                                             size="sm"
                                             disabled={loading}
-                                            onClick={() => handleDelete(user.id)}
+                                            onClick={() => openDeleteDialog(user)}
                                         >
                                             Supprimer
                                         </Button>
@@ -178,53 +287,46 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize }
                     </TableBody>
                 </Table>
 
-                <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
-                        Page {page} sur {totalPages}
-                    </p>
+                <div className="flex flex-col gap-3 border-t p-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                    <span>
+                        Total&nbsp;: <strong>{totalCount}</strong>
+                    </span>
                     <div className="space-x-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={page <= 1 || loading} onClick={() => fetchPage(page - 1)}>
+                        <Button variant="outline" size="sm" disabled={!canGoPrevious} onClick={() => void fetchUsers(page - 1)}>
+                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Précédent
                         </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={page >= totalPages || loading}
-                            onClick={() => fetchPage(page + 1)}
-                        >
+                        <Button variant="outline" size="sm" disabled={!canGoNext} onClick={() => void fetchUsers(page + 1)}>
+                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Suivant
                         </Button>
                     </div>
                 </div>
             </div>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>
-                        Modifier l&apos;utilisateur {selectedUser?.email}
-                    </DialogTitle>
-                    <DialogDescription>
-                        Ajustez le rôle et le statut d’activation avant de sauvegarder.
-                    </DialogDescription>
-                </DialogHeader>
 
-                <div className="grid gap-4 py-4">
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Modifier l&apos;utilisateur {selectedUser?.email}</DialogTitle>
+                        <DialogDescription>
+                            Ajustez le rôle et le statut d’activation avant de sauvegarder.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid gap-4 py-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Rôle</label>
                             <select
                                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm"
                                 value={nextRole}
                                 onChange={(event: ChangeEvent<HTMLSelectElement>) =>
-                                    setNextRole(event.target.value as UserRow["role"])
+                                    setNextRole(event.target.value as Role)
                                 }
                                 disabled={loading}
                             >
-                                <option value="VIEWER">VIEWER</option>
-                                <option value="EDITOR">EDITOR</option>
-                                <option value="ADMIN">ADMIN</option>
+                                <option value="VIEWER">Viewer</option>
+                                <option value="EDITOR">Editor</option>
+                                <option value="ADMIN">Admin</option>
                             </select>
                         </div>
 
@@ -243,9 +345,33 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize }
                     </div>
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setDialogOpen(false)} >Annuler</Button>
+                        <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                            Annuler
+                        </Button>
                         <Button onClick={handleSave} disabled={loading}>
+                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Enregistrer
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Supprimer l&apos;utilisateur</DialogTitle>
+                        <DialogDescription>
+                            Cette action supprimera également les bases de connaissance associées à cet utilisateur.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <p className="text-sm">Confirmez la suppression de {deleteTarget?.email}.</p>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={loading}>
+                            Annuler
+                        </Button>
+                        <Button variant="destructive" onClick={() => void confirmDelete()} disabled={loading}>
+                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Supprimer
                         </Button>
                     </DialogFooter>
                 </DialogContent>
