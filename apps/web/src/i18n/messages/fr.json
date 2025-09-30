@@ -121,6 +121,9 @@
     "notes": {
       "empty": "Aucune note pour le moment."
     },
+    "permissions": {
+      "viewOnlyMessage": "Vous êtes en lecture seule. Demandez à un éditeur ou un administrateur d'accorder des droits de modification."
+    },
     "noteForm": {
       "titlePlaceholder": "Titre",
       "contentPlaceholder": "Contenu de la note",

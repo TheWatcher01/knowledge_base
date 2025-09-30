@@ -121,6 +121,9 @@
     "notes": {
       "empty": "No notes yet."
     },
+    "permissions": {
+      "viewOnlyMessage": "You have view-only access. Ask an editor or admin for edit permissions to make changes."
+    },
     "noteForm": {
       "titlePlaceholder": "Title",
       "contentPlaceholder": "Note content",
