@@ -3,6 +3,41 @@ import { owuiJson } from "@/lib/owui";
 import { OWUI_BASE, OWUI_TOKEN, collectionName } from "@/lib/config";
 
 type RetrievedDoc = { text: string };
+type RetrievalResponse = {
+    docs?: RetrievedDoc[];
+    documents?: unknown;
+};
+
+function collectDocumentTexts(payload: RetrievalResponse): string[] {
+    const texts: string[] = [];
+
+    if (Array.isArray(payload.docs)) {
+        for (const doc of payload.docs) {
+            if (doc && typeof doc.text === "string") {
+                texts.push(doc.text);
+            }
+        }
+    }
+
+    const enqueue = (value: unknown) => {
+        if (typeof value === "string") {
+            texts.push(value);
+            return;
+        }
+
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                enqueue(item);
+            }
+        }
+    };
+
+    if (payload.documents !== undefined) {
+        enqueue(payload.documents);
+    }
+
+    return texts;
+}
 
 // Edge runtime
 export const runtime = "edge";
@@ -37,9 +72,11 @@ export async function POST(req: NextRequest) {
                 collection_name: collectionName(kbId),
                 k: 5,
             }),
-        })) as { docs?: RetrievedDoc[] };
+        })) as RetrievalResponse;
 
-        docs = response.docs ?? [];
+        const normalized = collectDocumentTexts(response);
+
+        docs = normalized.map((text) => ({ text }));
     } catch (error) {
         console.warn("[api/chat] Retrieval failed", error);
         docs = [];

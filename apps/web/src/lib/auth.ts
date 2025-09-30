@@ -20,10 +20,16 @@ export const authOptions: AuthOptions = {
                 if (!email || !password) return null;
 
                 const user = await prisma.user.findUnique({ where: { email } });
-                if (!user) return null;
+                if (!user) {
+                    console.warn("[auth] Credentials login failed: user not found", email);
+                    return null;
+                }
 
                 const ok = await bcrypt.compare(password, user.passwordHash);
-                if (!ok) return null;
+                if (!ok) {
+                    console.warn("[auth] Credentials login failed: invalid password", email);
+                    return null;
+                }
 
                 return { id: user.id, email: user.email, name: user.name, image: user.image, role: user.role };
             },
