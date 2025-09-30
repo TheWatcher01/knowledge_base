@@ -16,7 +16,7 @@ const Body = z.object({
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const role = assertRole(session, ["EDITOR", "ADMIN"]);
+    assertRole(session, ["EDITOR", "ADMIN"]);
 
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) {
