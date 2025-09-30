@@ -6,12 +6,23 @@ import { signOut } from "next-auth/react";
 import { defaultLocale } from "@/i18n/config";
 import { useTranslations } from "next-intl";
 
-const NAV_ITEMS = [
-  { href: "/dashboard", labelKey: "dashboard" as const },
-  { href: "/kb", labelKey: "kbs" as const },
+type NavItem = {
+  href: string;
+  labelKey: "dashboard" | "kbs" | "adminUsers";
+};
+
+const BASE_NAV_ITEMS: NavItem[] = [
+  { href: "/dashboard", labelKey: "dashboard" },
+  { href: "/kb", labelKey: "kbs" },
 ];
 
-export function AppNav({ userEmail }: { userEmail?: string | null }) {
+export function AppNav({
+  userEmail,
+  userRole,
+}: {
+  userEmail?: string | null;
+  userRole?: "VIEWER" | "EDITOR" | "ADMIN" | null;
+}) {
   const pathname = usePathname();
   const params = useParams<{ locale: string }>();
   const locale = params?.locale ?? defaultLocale;
@@ -19,11 +30,16 @@ export function AppNav({ userEmail }: { userEmail?: string | null }) {
   const tNav = useTranslations("common.nav");
   const tCta = useTranslations("common.cta");
 
+  const navItems: NavItem[] = [...BASE_NAV_ITEMS];
+  if (userRole === "ADMIN") {
+    navItems.push({ href: "/admin/users", labelKey: "adminUsers" });
+  }
+
   return (
     <header className="border-b bg-card">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-4">
         <nav className="flex items-center gap-4 text-sm font-medium">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active =
               pathname === item.href ||
               (item.href !== "/dashboard" && pathname.startsWith(item.href));

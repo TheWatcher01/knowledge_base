@@ -11,7 +11,8 @@
     },
     "nav": {
       "dashboard": "Tableau de bord",
-      "kbs": "Bases de connaissance"
+      "kbs": "Bases de connaissance",
+      "adminUsers": "Utilisateurs"
     },
     "status": {
       "loading": "Chargement...",
