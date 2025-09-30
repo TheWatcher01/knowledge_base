@@ -9,13 +9,15 @@ type UrlStatus = (typeof STATUSES)[number];
 
 type CreateUrlFormProps = {
   kbId: string;
+  canEdit: boolean;
 };
 
-export function CreateUrlForm({ kbId }: CreateUrlFormProps) {
+export function CreateUrlForm({ kbId, canEdit }: CreateUrlFormProps) {
   const router = useRouter();
   const tForm = useTranslations("kb.urlForm");
   const tStatuses = useTranslations("kb.urlStatuses");
   const tUrls = useTranslations("kb.urls");
+  const tPermissions = useTranslations("kb.permissions");
 
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
@@ -27,6 +29,9 @@ export function CreateUrlForm({ kbId }: CreateUrlFormProps) {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canEdit || submitting) {
+      return;
+    }
 
     setInfo(null);
 
@@ -120,7 +125,7 @@ export function CreateUrlForm({ kbId }: CreateUrlFormProps) {
               placeholder={tForm("titlePlaceholder")}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              disabled={submitting}
+              disabled={submitting || !canEdit}
             />
             <span className="text-xs text-[var(--kb-text-muted)]">{tForm("titleHint")}</span>
           </label>
@@ -132,7 +137,7 @@ export function CreateUrlForm({ kbId }: CreateUrlFormProps) {
               placeholder={tForm("urlPlaceholder")}
               value={url}
               onChange={(event) => setUrl(event.target.value)}
-              disabled={submitting}
+              disabled={submitting || !canEdit}
             />
             <span className="text-xs text-[var(--kb-text-muted)]">{tForm("urlHint")}</span>
           </label>
@@ -145,7 +150,7 @@ export function CreateUrlForm({ kbId }: CreateUrlFormProps) {
             placeholder={tForm("descriptionPlaceholder")}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
-            disabled={submitting}
+            disabled={submitting || !canEdit}
           />
           <span className="text-xs text-[var(--kb-text-muted)]">{tForm("descriptionHint")}</span>
         </label>
@@ -157,7 +162,7 @@ export function CreateUrlForm({ kbId }: CreateUrlFormProps) {
               className="w-[200px] rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] bg-[color-mix(in_srgb,var(--kb-surface)_96%,black_4%)] px-3 py-2 text-sm text-[var(--kb-text)] focus:border-[var(--kb-highlight)] focus:outline-none"
               value={status}
               onChange={(event) => setStatus(event.target.value as UrlStatus)}
-              disabled={submitting}
+              disabled={submitting || !canEdit}
             >
               {STATUSES.map((item) => (
                 <option key={item} value={item}>
@@ -170,7 +175,7 @@ export function CreateUrlForm({ kbId }: CreateUrlFormProps) {
           <button
             type="submit"
             className="rounded bg-[var(--kb-highlight)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-            disabled={submitting}
+            disabled={submitting || !canEdit}
           >
             {submitting ? tForm("submitting") : tForm("submit")}
           </button>
@@ -179,6 +184,7 @@ export function CreateUrlForm({ kbId }: CreateUrlFormProps) {
           {info && <span className="text-xs text-[var(--kb-text-muted)]">{info}</span>}
 
         </div>
+        {!canEdit && <p className="text-sm text-[var(--kb-text-muted)]">{tPermissions("viewOnlyMessage")}</p>}
       </form>
     </section>
   );

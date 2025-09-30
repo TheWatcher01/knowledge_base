@@ -24,8 +24,9 @@ type UrlWithLabels = UrlListEntry & {
   updatedTimeLabel: string;
 };
 
-export function UrlsList({ urls }: { urls: UrlListEntry[] }) {
+export function UrlsList({ urls, canEdit }: { urls: UrlListEntry[]; canEdit: boolean }) {
   const formatter = useFormatter();
+  const tPermissions = useTranslations("kb.permissions");
   const labeled = urls.map<UrlWithLabels>((entry) => {
     const createdDate = new Date(entry.createdAt);
     const updatedDate = new Date(entry.updatedAt);
@@ -44,20 +45,23 @@ export function UrlsList({ urls }: { urls: UrlListEntry[] }) {
   });
 
   return (
-    <ul className="space-y-3">
-      {labeled.map((entry) => (
-        <li
-          key={entry.id}
-          className="rounded-xl border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] bg-[color-mix(in_srgb,var(--kb-surface)_90%,black_10%)] px-5 py-4 shadow-[0_18px_30px_-26px_rgba(0,0,0,0.55)]"
-        >
-          <UrlRow url={entry} />
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-3">
+      {!canEdit && <p className="text-sm text-[var(--kb-text-muted)]">{tPermissions("viewOnlyMessage")}</p>}
+      <ul className="space-y-3">
+        {labeled.map((entry) => (
+          <li
+            key={entry.id}
+            className="rounded-xl border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] bg-[color-mix(in_srgb,var(--kb-surface)_90%,black_10%)] px-5 py-4 shadow-[0_18px_30px_-26px_rgba(0,0,0,0.55)]"
+          >
+            <UrlRow url={entry} canEdit={canEdit} />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
-function UrlRow({ url }: { url: UrlWithLabels }) {
+function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
   const router = useRouter();
   const tUrls = useTranslations("kb.urls");
   const tForm = useTranslations("kb.urlForm");
@@ -72,7 +76,7 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
   const [busy, setBusy] = useState<"save" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ingestionMessage, setIngestionMessage] = useState<string | null>(null);
-  const canResync = !isEditing && url.status === "error";
+  const canResync = canEdit && !isEditing && url.status === "error";
 
   useEffect(() => {
     setTitle(url.title ?? "");
@@ -91,6 +95,9 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
 
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canEdit) {
+      return;
+    }
     setError(null);
     setIngestionMessage(null);
 
@@ -175,6 +182,7 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
   }
 
   async function handleResync() {
+    if (!canEdit) return;
     if (busy) return;
 
     setBusy("save");
@@ -215,6 +223,9 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
   }
 
   async function handleDelete() {
+    if (!canEdit) {
+      return;
+    }
     if (busy) {
       return;
     }
@@ -266,7 +277,7 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
                 placeholder={tForm("titlePlaceholder")}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                disabled={busy === "save"}
+                disabled={!canEdit || busy === "save"}
               />
             </label>
 
@@ -276,7 +287,7 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
                 className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-2 text-sm text-[var(--kb-text)] focus:border-[var(--kb-highlight)] focus:outline-none"
                 value={currentUrl}
                 onChange={(event) => setCurrentUrl(event.target.value)}
-                disabled={busy === "save"}
+                disabled={!canEdit || busy === "save"}
                 required
               />
             </label>
@@ -284,12 +295,12 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
 
           <label className="flex flex-col gap-2 text-sm text-[var(--kb-text-subtle)]">
             <span className="font-medium text-[var(--kb-text)]">{tForm("descriptionLabel")}</span>
-            <textarea
-              className="min-h-[90px] rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-2 text-sm text-[var(--kb-text)] focus:border-[var(--kb-highlight)] focus:outline-none"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              disabled={busy === "save"}
-            />
+          <textarea
+            className="min-h-[90px] rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-2 text-sm text-[var(--kb-text)] focus:border-[var(--kb-highlight)] focus:outline-none"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            disabled={!canEdit || busy === "save"}
+          />
           </label>
 
           <label className="flex flex-col gap-2 text-sm text-[var(--kb-text-subtle)]">
@@ -298,7 +309,7 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
               className="w-full rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] bg-[color-mix(in_srgb,var(--kb-surface)_96%,black_4%)] px-3 py-2 text-sm text-[var(--kb-text)] focus:border-[var(--kb-highlight)] focus:outline-none"
               value={status}
               onChange={(event) => setStatus(event.target.value as UrlStatus)}
-              disabled={busy === "save"}
+              disabled={!canEdit || busy === "save"}
             >
               {STATUSES.map((item) => (
                 <option key={item} value={item}>
@@ -312,7 +323,7 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
             <button
               type="submit"
               className="rounded bg-[var(--kb-highlight)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
-              disabled={busy === "save"}
+              disabled={!canEdit || busy === "save"}
             >
               {busy === "save" ? tActions("saving") : tActions("save")}
             </button>
@@ -365,10 +376,13 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
               type="button"
               className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-[var(--kb-text)] hover:border-[var(--kb-highlight)]"
               onClick={() => {
+                if (!canEdit) {
+                  return;
+                }
                 setIsEditing(true);
                 setError(null);
               }}
-              disabled={busy !== null}
+              disabled={!canEdit || busy !== null}
             >
               {tActions("edit")}
             </button>
@@ -376,7 +390,7 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
               type="button"
               className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-red-600 hover:border-red-500"
               onClick={handleDelete}
-              disabled={busy !== null}
+              disabled={!canEdit || busy !== null}
             >
               {busy === "delete" ? tActions("deleting") : tActions("delete")}
             </button>
@@ -385,7 +399,7 @@ function UrlRow({ url }: { url: UrlWithLabels }) {
                 type="button"
                 className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-[var(--kb-text)] hover:border-[var(--kb-highlight)]"
                 onClick={handleResync}
-                disabled={busy !== null}
+                disabled={!canEdit || busy !== null}
               >
                 {busy === "save" ? tActions("saving") : tActions("resync")}
               </button>
