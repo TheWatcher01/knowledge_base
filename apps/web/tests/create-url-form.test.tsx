@@ -27,7 +27,7 @@ afterEach(() => {
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue(fetchResponse));
         const { CreateUrlForm } = await import("@/app/[locale]/(app)/kb/[id]/urls/_components/create-url-form");
         const user = userEvent.setup();
-        render(<CreateUrlForm kbId="kb-test" />);
+        render(<CreateUrlForm kbId="kb-test" canEdit />);
 
         await user.type(screen.getByPlaceholderText("kb.urlForm.titlePlaceholder"), "Titre");
         await user.type(screen.getByPlaceholderText("kb.urlForm.urlPlaceholder"), "https://example.com");
@@ -66,7 +66,7 @@ afterEach(() => {
         }));
         const { CreateUrlForm } = await import("@/app/[locale]/(app)/kb/[id]/urls/_components/create-url-form");
         const user = userEvent.setup();
-        render(<CreateUrlForm kbId="kb-test" />);
+        render(<CreateUrlForm kbId="kb-test" canEdit />);
 
         await user.type(screen.getByPlaceholderText("kb.urlForm.titlePlaceholder"), "Titre");
         await user.type(screen.getByPlaceholderText("kb.urlForm.urlPlaceholder"), "https://example.com");
@@ -81,7 +81,7 @@ afterEach(() => {
     test("valide la présence de l'URL", async () => {
         const { CreateUrlForm } = await import("@/app/[locale]/(app)/kb/[id]/urls/_components/create-url-form");
         const user = userEvent.setup();
-        render(<CreateUrlForm kbId="kb-test" />);
+        render(<CreateUrlForm kbId="kb-test" canEdit />);
 
         await user.click(screen.getByRole("button", { name: "kb.urlForm.submit" }));
 

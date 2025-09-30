@@ -28,6 +28,7 @@ describe("UrlRow", () => {
         const { UrlsList } = await import("@/app/[locale]/(app)/kb/[id]/urls/_components/urls-list");
         render(
             <UrlsList
+                canEdit
                 urls={[
                     {
                         id: "doc-1",
