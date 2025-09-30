@@ -7,7 +7,8 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest"
+    "test": "vitest",
+    "seed:authz-fixtures": "node scripts/seed-authz-sample.js"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
