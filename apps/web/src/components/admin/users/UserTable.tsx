@@ -39,9 +39,10 @@ type UserTableProps = {
     initialPage: number;
     pageSize: number;
     initialSearch: string;
+    locale: string;
 };
 
-export default function UserTable({ initialUsers, total, initialPage, pageSize, initialSearch }: UserTableProps) {
+export default function UserTable({ initialUsers, total, initialPage, pageSize, initialSearch, locale }: UserTableProps) {
     const router = useRouter();
     const pathname = usePathname();
 
@@ -65,15 +66,19 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
 
     const dateFormatter = useMemo(
         () =>
-            new Intl.DateTimeFormat(undefined, {
+            new Intl.DateTimeFormat(locale || undefined, {
                 year: "numeric",
                 month: "2-digit",
                 day: "2-digit",
+                timeZone: "UTC",
             }),
-        [],
+        [locale],
     );
 
-    const numberFormatter = useMemo(() => new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }), []);
+    const numberFormatter = useMemo(
+        () => new Intl.NumberFormat(locale || undefined, { maximumFractionDigits: 0 }),
+        [locale],
+    );
 
     const summary = useMemo(() => {
         const active = users.filter((user) => !user.disabled).length;
@@ -242,36 +247,44 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
     const canGoNext = page < totalPages && !loading;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             <div className="grid gap-4 md:grid-cols-4">
                 <SummaryTile
                     label="Total utilisateurs"
                     value={numberFormatter.format(totalCount)}
                     helper={`Page ${page} / ${totalPages}`}
-                    accent="bg-blue-500"
+                    accentDot="bg-blue-400"
+                    accentGlow="from-blue-500/40 via-blue-500/10 to-transparent"
                 />
                 <SummaryTile
                     label="Actifs"
                     value={numberFormatter.format(summary.active)}
                     helper="Utilisateurs actifs sur cette page"
-                    accent="bg-emerald-500"
+                    accentDot="bg-emerald-400"
+                    accentGlow="from-emerald-500/40 via-emerald-500/10 to-transparent"
                 />
                 <SummaryTile
                     label="Désactivés"
                     value={numberFormatter.format(summary.disabled)}
                     helper="Utilisateurs inactifs sur cette page"
-                    accent="bg-amber-500"
+                    accentDot="bg-amber-400"
+                    accentGlow="from-amber-500/40 via-amber-500/10 to-transparent"
                 />
                 <SummaryTile
                     label="Admins & éditeurs"
                     value={numberFormatter.format(summary.admins + summary.editors)}
                     helper={`${numberFormatter.format(summary.admins)} admin${summary.admins > 1 ? "s" : ""} · ${numberFormatter.format(summary.editors)} éditeur${summary.editors > 1 ? "s" : ""}`}
-                    accent="bg-purple-500"
+                    accentDot="bg-purple-400"
+                    accentGlow="from-purple-500/40 via-purple-500/10 to-transparent"
                 />
             </div>
 
-            <Card className="border-border/60 bg-card/60 shadow-lg backdrop-blur">
-                <CardHeader className="gap-4 md:flex md:flex-row md:items-center md:justify-between">
+            <Card className="relative overflow-hidden border border-border/50 bg-slate-950/70 shadow-[0_32px_120px_-60px_rgba(8,47,73,0.9)] backdrop-blur">
+                <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-50 transition-opacity duration-700 group-hover:opacity-70"
+                />
+                <CardHeader className="relative gap-4 md:flex md:flex-row md:items-center md:justify-between">
                     <div className="space-y-1">
                         <CardTitle className="text-xl font-semibold">Liste des utilisateurs</CardTitle>
                         <p className="text-sm text-muted-foreground">
@@ -280,15 +293,17 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
                     </div>
 
                     <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
-                        <div className="relative md:w-72">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                value={searchTerm}
-                                onChange={(event) => setSearchTerm(event.target.value)}
+                <div className="relative md:w-72">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Rechercher un utilisateur"
                                 className="w-full pl-9"
                             />
-                            {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                            {loading && (
+                                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary/70" />
+                            )}
                         </div>
                         <div className="md:w-auto">
                             <CreateUserForm onSuccess={handleUserCreated} />
@@ -300,7 +315,7 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
                     <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
-                                <TableRow className="bg-muted/40">
+                                <TableRow className="bg-slate-900/60">
                                     <TableHead>Email</TableHead>
                                     <TableHead>Nom</TableHead>
                                     <TableHead>Rôle</TableHead>
@@ -318,7 +333,16 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
                                     </TableRow>
                                 ) : (
                                     users.map((user) => (
-                                        <TableRow key={user.id} className="group transition-colors hover:bg-muted/40">
+                                        <TableRow
+                                            key={user.id}
+                                            className={cn(
+                                                "group border-border/30 transition-all duration-200",
+                                                "even:bg-slate-950/40",
+                                                user.disabled
+                                                    ? "hover:-translate-y-[1px] hover:border-amber-400/60 hover:bg-amber-500/10"
+                                                    : "hover:-translate-y-[1px] hover:border-primary/60 hover:bg-primary/10",
+                                            )}
+                                        >
                                             <TableCell className="align-top">
                                                 <div className="font-medium text-foreground">{user.email}</div>
                                                 <div className="text-xs text-muted-foreground">
@@ -349,7 +373,7 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
                                                         variant="ghost"
                                                         size="sm"
                                                         disabled={loading}
-                                                        className="gap-1 text-foreground"
+                                                        className="gap-1 text-foreground transition-transform duration-200 hover:-translate-y-[1px]"
                                                         onClick={() => openEditionDialog(user)}
                                                     >
                                                         <PenLine className="h-4 w-4" />
@@ -359,7 +383,7 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
                                                         variant="ghost"
                                                         size="sm"
                                                         disabled={loading}
-                                                        className="gap-1 text-destructive hover:text-destructive"
+                                                        className="gap-1 text-destructive transition-transform duration-200 hover:-translate-y-[1px] hover:text-destructive"
                                                         onClick={() => openDeleteDialog(user)}
                                                     >
                                                         <Trash2 className="h-4 w-4" />
@@ -473,18 +497,28 @@ type SummaryTileProps = {
     label: string;
     value: string;
     helper?: string;
-    accent: string;
+    accentDot: string;
+    accentGlow: string;
 };
 
-function SummaryTile({ label, value, helper, accent }: SummaryTileProps) {
+function SummaryTile({ label, value, helper, accentDot, accentGlow }: SummaryTileProps) {
     return (
-        <div className="rounded-2xl border border-border/40 bg-card/50 p-4 shadow-sm backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-            <div className="mt-3 flex items-center gap-3">
-                <span className="text-2xl font-semibold text-foreground">{value}</span>
-                <span className={cn("h-2 w-2 rounded-full", accent)} aria-hidden />
+        <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-slate-950/40 p-4 shadow-lg backdrop-blur transition-transform duration-300 hover:-translate-y-1 hover:border-border/60">
+            <div
+                aria-hidden
+                className={cn(
+                    "pointer-events-none absolute inset-0 bg-gradient-to-br opacity-60 blur-2xl transition-opacity duration-500 group-hover:opacity-80",
+                    accentGlow,
+                )}
+            />
+            <div className="relative">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+                <div className="mt-3 flex items-center gap-3">
+                    <span className="text-2xl font-semibold text-foreground">{value}</span>
+                    <span className={cn("h-2 w-2 rounded-full", accentDot)} aria-hidden />
+                </div>
+                {helper ? <p className="mt-2 text-sm text-muted-foreground">{helper}</p> : null}
             </div>
-            {helper ? <p className="mt-2 text-sm text-muted-foreground">{helper}</p> : null}
         </div>
     );
 }
