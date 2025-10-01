@@ -44,25 +44,26 @@
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   --radius: 0.625rem;
 
-  /* Palette from your VS Code theme */
-  --kb-background: #002451;
-  --kb-surface: #001c40;
-  --kb-surface-muted: #001733;
-  --kb-border: #404f7d;
-  --kb-ring: #bbdaff;
-  --kb-text: #ffffff;
-  --kb-text-muted: #bbdaff;
-  --kb-text-subtle: #80a3d1;
-  --kb-selection: #003f8e;
-  --kb-highlight: #00346e;
-  --kb-accent: #bbdaff;
-  --kb-accent-strong: #80baff;
-  --kb-error: #a92049;
+  --kb-background: #f6f8ff;
+  --kb-surface: #ffffff;
+  --kb-surface-muted: #eef2ff;
+  --kb-border: #ccd6f5;
+  --kb-ring: #4f83ff;
+  --kb-text: #0b1533;
+  --kb-text-muted: #43578c;
+  --kb-text-subtle: #6679ab;
+  --kb-selection: #d6e4ff;
+  --kb-highlight: #eaefff;
+  --kb-accent: #3f7dff;
+  --kb-accent-strong: #1d4ed8;
+  --kb-error: #d64545;
+  --kb-background-gradient: radial-gradient(circle at 0% 0%, rgba(63, 125, 255, 0.12), transparent 45%),
+    radial-gradient(circle at 85% 0%, rgba(29, 78, 216, 0.12), transparent 40%),
+    linear-gradient(180deg, #f8faff 0%, #edf3ff 50%, #e6eeff 100%);
 
-  /* Design tokens mapping */
   --background: var(--kb-background);
   --foreground: var(--kb-text);
   --card: var(--kb-surface);
@@ -70,7 +71,7 @@
   --popover: var(--kb-surface);
   --popover-foreground: var(--kb-text);
   --primary: var(--kb-accent);
-  --primary-foreground: var(--kb-background);
+  --primary-foreground: #f8fbff;
   --secondary: var(--kb-surface-muted);
   --secondary-foreground: var(--kb-text-muted);
   --muted: var(--kb-surface-muted);
@@ -79,17 +80,17 @@
   --accent-foreground: var(--kb-text);
   --destructive: var(--kb-error);
   --border: var(--kb-border);
-  --input: #001f44;
+  --input: #e2e8ff;
   --ring: var(--kb-ring);
-  --chart-1: #80baff;
-  --chart-2: #99ffff;
-  --chart-3: #ffe580;
-  --chart-4: #ff9da4;
-  --chart-5: #ebbbff;
+  --chart-1: #4f83ff;
+  --chart-2: #22a5ff;
+  --chart-3: #f2b75c;
+  --chart-4: #ef7b9b;
+  --chart-5: #a98cff;
   --sidebar: var(--kb-surface);
   --sidebar-foreground: var(--kb-text);
   --sidebar-primary: var(--kb-accent);
-  --sidebar-primary-foreground: var(--kb-background);
+  --sidebar-primary-foreground: #f8fbff;
   --sidebar-accent: var(--kb-highlight);
   --sidebar-accent-foreground: var(--kb-text);
   --sidebar-border: var(--kb-border);
@@ -98,6 +99,23 @@
 
 .dark {
   color-scheme: dark;
+  --kb-background: #020817;
+  --kb-surface: #071324;
+  --kb-surface-muted: #0e203b;
+  --kb-border: #1f2f55;
+  --kb-ring: #4f83ff;
+  --kb-text: #e5edff;
+  --kb-text-muted: #9fb6ff;
+  --kb-text-subtle: #7387c4;
+  --kb-selection: #244d92;
+  --kb-highlight: #13284d;
+  --kb-accent: #4f83ff;
+  --kb-accent-strong: #82b4ff;
+  --kb-error: #f87171;
+  --kb-background-gradient: radial-gradient(circle at 0% 0%, rgba(79, 131, 255, 0.16), transparent 45%),
+    radial-gradient(circle at 80% 0%, rgba(24, 119, 242, 0.14), transparent 40%),
+    linear-gradient(180deg, #041027 0%, #061736 55%, #021024 100%);
+
   --background: var(--kb-background);
   --foreground: var(--kb-text);
   --card: var(--kb-surface);
@@ -105,7 +123,7 @@
   --popover: var(--kb-surface);
   --popover-foreground: var(--kb-text);
   --primary: var(--kb-accent);
-  --primary-foreground: var(--kb-background);
+  --primary-foreground: #020817;
   --secondary: var(--kb-surface-muted);
   --secondary-foreground: var(--kb-text-muted);
   --muted: var(--kb-surface-muted);
@@ -114,23 +132,22 @@
   --accent-foreground: var(--kb-text);
   --destructive: var(--kb-error);
   --border: var(--kb-border);
-  --input: #001f44;
+  --input: #0d1c38;
   --ring: var(--kb-ring);
-  --chart-1: #80baff;
-  --chart-2: #99ffff;
-  --chart-3: #ffe580;
-  --chart-4: #ff9da4;
-  --chart-5: #ebbbff;
+  --chart-1: #4f83ff;
+  --chart-2: #22a5ff;
+  --chart-3: #fcbf58;
+  --chart-4: #ef7b9b;
+  --chart-5: #a98cff;
   --sidebar: var(--kb-surface);
   --sidebar-foreground: var(--kb-text);
   --sidebar-primary: var(--kb-accent);
-  --sidebar-primary-foreground: var(--kb-background);
+  --sidebar-primary-foreground: #020817;
   --sidebar-accent: var(--kb-highlight);
   --sidebar-accent-foreground: var(--kb-text);
   --sidebar-border: var(--kb-border);
   --sidebar-ring: var(--kb-ring);
 }
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -138,9 +155,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    background-image: radial-gradient(circle at 0% 0%, rgba(187, 218, 255, 0.05), transparent 45%),
-      radial-gradient(circle at 100% 0%, rgba(0, 63, 142, 0.15), transparent 35%),
-      linear-gradient(180deg, #001733 0%, #002451 55%, #001126 100%);
+    background-image: var(--kb-background-gradient);
   }
 
   ::selection {

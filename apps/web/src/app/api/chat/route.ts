@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { owuiJson } from "@/lib/owui";
 import { OWUI_BASE, OWUI_TOKEN, collectionName } from "@/lib/config";
+import { prisma } from "@/lib/prisma";
 
 type RetrievedDoc = { text: string };
 type RetrievalResponse = {
@@ -43,8 +44,45 @@ function collectDocumentTexts(payload: RetrievalResponse | null | undefined): st
     return texts;
 }
 
-// Edge runtime
-export const runtime = "edge";
+export const runtime = "nodejs";
+
+async function loadFallbackDocuments(kbId: string): Promise<RetrievedDoc[]> {
+    const documents = await prisma.document.findMany({
+        where: { kbId },
+        include: {
+            fileAsset: true,
+            urlEntry: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 6,
+    });
+
+    const fallback: RetrievedDoc[] = [];
+
+    for (const doc of documents) {
+        if (doc.type === "note") {
+            const text = [doc.title, doc.source ?? ""].filter(Boolean).join("\n\n").trim();
+            if (text) fallback.push({ text });
+            continue;
+        }
+
+        if (doc.type === "file" && doc.fileAsset?.data) {
+            const text = [doc.title, doc.fileAsset.data.toString("utf8")].filter(Boolean).join("\n\n").trim();
+            if (text) fallback.push({ text });
+            continue;
+        }
+
+        if (doc.type === "url") {
+            const summary = doc.urlEntry?.description ?? "";
+            const source = doc.source ?? doc.urlEntry?.url ?? "";
+            const text = [doc.title, source, summary].filter(Boolean).join("\n\n").trim();
+            if (text) fallback.push({ text });
+            continue;
+        }
+    }
+
+    return fallback;
+}
 
 // POST /api/chat
 export async function POST(req: NextRequest) {
@@ -84,6 +122,14 @@ export async function POST(req: NextRequest) {
     } catch (error) {
         console.warn("[api/chat] Retrieval failed", error);
         docs = [];
+    }
+
+    if (docs.length === 0) {
+        try {
+            docs = await loadFallbackDocuments(kbId);
+        } catch (error) {
+            console.warn("[api/chat] Fallback document load failed", error);
+        }
     }
 
     const ctx = docs

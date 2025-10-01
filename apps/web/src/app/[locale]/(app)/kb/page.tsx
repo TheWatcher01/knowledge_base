@@ -52,8 +52,8 @@ export default async function KnowledgeBasesPage({ params }: PageProps) {
 
     return (
         <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 py-6">
-            <Card className="relative overflow-hidden border border-border/40 bg-slate-950/50 px-8 py-8 shadow-[0_28px_90px_-60px_rgba(15,23,42,0.75)] backdrop-blur">
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-50" />
+            <Card className="relative overflow-hidden border border-border/40 bg-card/95 px-8 py-8 shadow-[0_28px_110px_-64px_rgba(22,29,60,0.55)] backdrop-blur dark:bg-slate-950/55">
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/12 via-white/60 to-transparent opacity-80 dark:via-transparent" />
                 <div className="relative space-y-3">
                     <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/70">Knowledge Base</p>
                     <h1 className="text-3xl font-semibold text-foreground">{tList("title")}</h1>
@@ -67,26 +67,26 @@ export default async function KnowledgeBasesPage({ params }: PageProps) {
                     label={tList("summary.total.label")}
                     value={new Intl.NumberFormat(locale).format(totalKb)}
                     helper={tList("summary.total.helper", { page: 1, pages: 1 })}
-                    accent="from-blue-500/40 via-blue-500/10 to-transparent"
+                    accent="from-blue-500/20 via-blue-500/5 to-transparent dark:from-blue-400/50 dark:via-blue-400/15 dark:to-transparent"
                 />
                 <SummaryTile
                     icon={CalendarClock}
                     label={tList("summary.recent.label")}
                     value={newestKb ? newestKb.name : tList("summary.empty")}
                     helper={recentHelper}
-                    accent="from-purple-500/40 via-purple-500/10 to-transparent"
+                    accent="from-purple-500/20 via-purple-500/5 to-transparent dark:from-purple-400/50 dark:via-purple-400/15 dark:to-transparent"
                 />
                 <SummaryTile
                     icon={FilesIcon}
                     label={tList("summary.documents.label")}
                     value={new Intl.NumberFormat(locale).format(totalDocuments)}
                     helper={tList("summary.documents.helper", { count: totalDocuments })}
-                    accent="from-emerald-500/40 via-emerald-500/10 to-transparent"
+                    accent="from-emerald-500/20 via-emerald-500/5 to-transparent dark:from-emerald-400/50 dark:via-emerald-400/15 dark:to-transparent"
                 />
             </div>
 
-            <Card className="relative overflow-hidden border border-border/50 bg-slate-950/70 shadow-[0_32px_120px_-60px_rgba(8,47,73,0.9)] backdrop-blur">
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-50" />
+            <Card className="relative overflow-hidden border border-border/40 bg-card shadow-[0_36px_140px_-70px_rgba(22,29,60,0.45)] backdrop-blur dark:bg-slate-950/60">
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/12 via-white/50 to-transparent opacity-75 transition-opacity duration-500 dark:via-transparent" />
                 <CardHeader className="relative flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="space-y-1">
                         <CardTitle className="text-xl font-semibold">{tList("title")}</CardTitle>
@@ -107,9 +107,9 @@ export default async function KnowledgeBasesPage({ params }: PageProps) {
                             {knowledgeBases.map((kb) => (
                                 <article
                                     key={kb.id}
-                                    className="group relative overflow-hidden rounded-2xl border border-border/40 bg-slate-950/50 p-6 shadow-lg transition-all duration-200 hover:-translate-y-1 hover:border-border/60"
+                                    className="group relative overflow-hidden rounded-2xl border border-border/30 bg-card/95 p-6 shadow-lg transition-all duration-200 hover:-translate-y-1 hover:border-primary/60 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/30 dark:bg-slate-950/55"
                                 >
-                                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-60 transition-opacity duration-500 group-hover:opacity-80" />
+                                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/15 via-white/45 to-transparent opacity-65 transition-opacity duration-500 group-hover:opacity-90 dark:via-transparent" />
                                     <div className="relative flex h-full flex-col gap-5">
                                         <header className="space-y-2">
                                             <h2 className="text-lg font-semibold text-foreground">{kb.name}</h2>
@@ -157,7 +157,7 @@ type SummaryTileProps = {
 
 function SummaryTile({ icon: Icon, label, value, helper, accent }: SummaryTileProps) {
     return (
-        <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-slate-950/40 p-5 shadow-lg backdrop-blur transition-transform duration-300 hover:-translate-y-1 hover:border-border/60">
+        <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-card/95 p-5 shadow-lg backdrop-blur transition-transform duration-300 hover:-translate-y-1 hover:border-primary/50 dark:bg-slate-950/45">
             <div
                 aria-hidden
                 className={cn(

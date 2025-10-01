@@ -1,6 +1,7 @@
 "use client";
 
 import { Link, usePathname } from "@/i18n/navigation";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { defaultLocale } from "@/i18n/config";
@@ -61,6 +62,7 @@ export function AppNav({
         </nav>
 
         <div className="flex items-center gap-3 text-sm">
+          <ThemeToggle />
           <span className="text-muted-foreground">{userEmail}</span>
           <button
             onClick={() => signOut({ callbackUrl: localeLogin })}
