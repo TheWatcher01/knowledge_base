@@ -11,7 +11,8 @@
     },
     "nav": {
       "dashboard": "Dashboard",
-      "kbs": "Knowledge Bases"
+      "kbs": "Knowledge Bases",
+      "adminUsers": "Users"
     },
     "status": {
       "loading": "Loading...",
@@ -119,6 +120,9 @@
     },
     "notes": {
       "empty": "No notes yet."
+    },
+    "permissions": {
+      "viewOnlyMessage": "You have view-only access. Ask an editor or admin for edit permissions to make changes."
     },
     "noteForm": {
       "titlePlaceholder": "Title",

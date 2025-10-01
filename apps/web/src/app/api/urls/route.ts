@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { UrlStatus } from "@prisma/client";
 import { createUrlContentPlaceholder, updateUrlContentStatus } from "@/lib/url-content";
 import { OWUI_DISABLED_MESSAGE, triggerWebIngestion } from "@/lib/owui";
+import { assertRole, handleAuthError } from "@/lib/authz";
 
 const OptionalTitle = z.preprocess(
   (value) => {
@@ -57,131 +58,132 @@ const CreateUrlSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
-
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  let payload: unknown;
   try {
-    payload = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
-  }
+    const session = await getServerSession(authOptions);
+    assertRole(session, ["EDITOR", "ADMIN"]);
+    const userId = session!.user.id;
 
-  const parsed = CreateUrlSchema.safeParse(payload);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
-  }
-
-  const kb = await prisma.knowledgeBase.findFirst({
-    where: { id: parsed.data.kbId, ownerId: userId },
-    select: { id: true },
-  });
-
-  if (!kb) {
-    return NextResponse.json({ error: "Knowledge base not found" }, { status: 404 });
-  }
-
-  const normalizedUrl = normalizeUrl(parsed.data.url);
-  const status = parsed.data.status ?? UrlStatus.draft;
-  const title = parsed.data.title ?? deriveTitleFromUrl(normalizedUrl);
-  const description = parsed.data.description ?? null;
-
-  const externalId = await createUrlContentPlaceholder({ url: normalizedUrl, status }).catch(() => null);
-
-  const record = await prisma.$transaction(async (tx) => {
-    const document = await tx.document.create({
-      data: {
-        kbId: parsed.data.kbId,
-        title,
-        type: "url",
-        source: normalizedUrl,
-      },
-      select: {
-        id: true,
-        title: true,
-        kbId: true,
-        createdAt: true,
-      },
-    });
-
-    const entry = await tx.urlEntry.create({
-      data: {
-        documentId: document.id,
-        url: normalizedUrl,
-        description,
-        status,
-        externalId,
-      },
-      select: {
-        id: true,
-        url: true,
-        description: true,
-        status: true,
-        externalId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-
-    return { document, entry };
-  });
-
-  let entry = record.entry;
-  let finalStatus = status;
-  let ingestionError: string | undefined;
-
-  const ingestion = await triggerWebIngestion({ kbId: record.document.kbId, url: record.entry.url });
-
-  if (ingestion.ok) {
-    finalStatus = UrlStatus.queued;
-  } else {
-    ingestionError = ingestion.error;
-    if (ingestion.error !== OWUI_DISABLED_MESSAGE) {
-      finalStatus = UrlStatus.error;
+    let payload: unknown;
+    try {
+      payload = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
     }
-  }
 
-  if (finalStatus !== record.entry.status) {
-    entry = await prisma.urlEntry.update({
-      where: { id: record.entry.id },
-      data: { status: finalStatus },
-      select: {
-        id: true,
-        url: true,
-        description: true,
-        status: true,
-        externalId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+    const parsed = CreateUrlSchema.safeParse(payload);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
+    }
+
+    const kb = await prisma.knowledgeBase.findFirst({
+      where: { id: parsed.data.kbId, ownerId: userId },
+      select: { id: true },
     });
-  }
 
-  if (entry.externalId) {
-    await updateUrlContentStatus({ externalId: entry.externalId, status: entry.status });
-  }
+    if (!kb) {
+      return NextResponse.json({ error: "Knowledge base not found" }, { status: 404 });
+    }
 
-  return NextResponse.json(
-    {
-      url: {
-        id: record.document.id,
-        kbId: record.document.kbId,
-        title: record.document.title,
-        url: entry.url,
-        description: entry.description,
-        status: entry.status,
-        externalId: entry.externalId,
-        createdAt: record.document.createdAt.toISOString(),
-        updatedAt: entry.updatedAt.toISOString(),
-        ingestionError,
+    const normalizedUrl = normalizeUrl(parsed.data.url);
+    const status = parsed.data.status ?? UrlStatus.draft;
+    const title = parsed.data.title ?? deriveTitleFromUrl(normalizedUrl);
+    const description = parsed.data.description ?? null;
+
+    const externalId = await createUrlContentPlaceholder({ url: normalizedUrl, status }).catch(() => null);
+
+    const record = await prisma.$transaction(async (tx) => {
+      const document = await tx.document.create({
+        data: {
+          kbId: parsed.data.kbId,
+          title,
+          type: "url",
+          source: normalizedUrl,
+        },
+        select: {
+          id: true,
+          title: true,
+          kbId: true,
+          createdAt: true,
+        },
+      });
+
+      const entry = await tx.urlEntry.create({
+        data: {
+          documentId: document.id,
+          url: normalizedUrl,
+          description,
+          status,
+          externalId,
+        },
+        select: {
+          id: true,
+          url: true,
+          description: true,
+          status: true,
+          externalId: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return { document, entry };
+    });
+
+    let entry = record.entry;
+    let finalStatus = status;
+    let ingestionError: string | undefined;
+
+    const ingestion = await triggerWebIngestion({ kbId: record.document.kbId, url: record.entry.url });
+
+    if (ingestion.ok) {
+      finalStatus = UrlStatus.queued;
+    } else {
+      ingestionError = ingestion.error;
+      if (ingestion.error !== OWUI_DISABLED_MESSAGE) {
+        finalStatus = UrlStatus.error;
+      }
+    }
+
+    if (finalStatus !== record.entry.status) {
+      entry = await prisma.urlEntry.update({
+        where: { id: record.entry.id },
+        data: { status: finalStatus },
+        select: {
+          id: true,
+          url: true,
+          description: true,
+          status: true,
+          externalId: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+    }
+
+    if (entry.externalId) {
+      await updateUrlContentStatus({ externalId: entry.externalId, status: entry.status });
+    }
+
+    return NextResponse.json(
+      {
+        url: {
+          id: record.document.id,
+          kbId: record.document.kbId,
+          title: record.document.title,
+          url: entry.url,
+          description: entry.description,
+          status: entry.status,
+          externalId: entry.externalId,
+          createdAt: record.document.createdAt.toISOString(),
+          updatedAt: entry.updatedAt.toISOString(),
+          ingestionError,
+        },
       },
-    },
-    { status: 201 },
-  );
+      { status: 201 },
+    );
+  } catch (error) {
+    return handleAuthError(error);
+  }
 }
 
 function normalizeUrl(value: string) {

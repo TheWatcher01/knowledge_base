@@ -6,12 +6,14 @@ import { useTranslations } from "next-intl";
 
 type FileUploadFormProps = {
     kbId: string;
+    canEdit: boolean;
 };
 
-export function FileUploadForm({ kbId }: FileUploadFormProps) {
+export function FileUploadForm({ kbId, canEdit }: FileUploadFormProps) {
     const router = useRouter();
     const tForm = useTranslations("kb.fileForm");
     const tFiles = useTranslations("kb.files");
+    const tPermissions = useTranslations("kb.permissions");
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [title, setTitle] = useState("");
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -20,6 +22,9 @@ export function FileUploadForm({ kbId }: FileUploadFormProps) {
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
+        if (!canEdit || loading) {
+            return;
+        }
         const trimmedTitle = title.trim();
 
         if (!trimmedTitle) {
@@ -77,7 +82,7 @@ export function FileUploadForm({ kbId }: FileUploadFormProps) {
                             placeholder={tForm("titlePlaceholder")}
                             value={title}
                             onChange={(event) => setTitle(event.target.value)}
-                            disabled={loading}
+                            disabled={loading || !canEdit}
                             required
                         />
                     </label>
@@ -91,7 +96,7 @@ export function FileUploadForm({ kbId }: FileUploadFormProps) {
                             onChange={(event) => {
                                 setSelectedFile(event.target.files?.[0] ?? null);
                             }}
-                            disabled={loading}
+                            disabled={loading || !canEdit}
                             required
                         />
                         <span className="text-xs text-[var(--kb-text-muted)]">{tForm("filePlaceholder")}</span>
@@ -102,7 +107,7 @@ export function FileUploadForm({ kbId }: FileUploadFormProps) {
                     <button
                         type="submit"
                         className="rounded bg-[var(--kb-highlight)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                        disabled={loading}
+                        disabled={loading || !canEdit}
                     >
                         {loading ? tForm("submitting") : tForm("submit")}
                     </button>
@@ -111,6 +116,7 @@ export function FileUploadForm({ kbId }: FileUploadFormProps) {
                     )}
                     {error && <span className="text-sm text-red-600">{error}</span>}
                 </div>
+                {!canEdit && <p className="text-sm text-[var(--kb-text-muted)]">{tPermissions("viewOnlyMessage")}</p>}
             </form>
         </section>
     );

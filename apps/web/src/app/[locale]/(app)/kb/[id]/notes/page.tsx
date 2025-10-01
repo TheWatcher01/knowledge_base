@@ -16,6 +16,8 @@ export default async function NotesPage({ params }: PageProps) {
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;
     if (!userId) redirect({ href: "/login", locale });
+    const role = (session?.user?.role ?? "VIEWER") as "VIEWER" | "EDITOR" | "ADMIN";
+    const canEdit = role !== "VIEWER";
 
     const kb = await prisma.knowledgeBase.findFirst({
         where: { id, ownerId: userId },
@@ -33,7 +35,7 @@ export default async function NotesPage({ params }: PageProps) {
 
     return (
         <section className="space-y-6">
-            <CreateNoteForm kbId={id} />
+            <CreateNoteForm kbId={id} canEdit={canEdit} />
 
             {notes.length === 0 ? (
                 <p className="text-muted-foreground">{t("empty")}</p>
@@ -62,6 +64,7 @@ export default async function NotesPage({ params }: PageProps) {
                                     noteId={note.id}
                                     initialTitle={note.title}
                                     initialContent={content}
+                                    canEdit={canEdit}
                                 />
                             </li>
                         );

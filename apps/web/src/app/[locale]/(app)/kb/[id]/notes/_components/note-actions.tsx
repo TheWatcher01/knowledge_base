@@ -4,18 +4,18 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-
 type NoteActionsProps = {
     noteId: string;
     initialTitle: string;
     initialContent: string;
+    canEdit: boolean;
 };
 
-export function NoteActions({ noteId, initialTitle, initialContent }: NoteActionsProps) {
-
-    // 1 - Hooks and local state
+export function NoteActions({ noteId, initialTitle, initialContent, canEdit }: NoteActionsProps) {
+    // Hooks and local state
     const router = useRouter();
     const t = useTranslations("kb.noteActions");
+    const tPermissions = useTranslations("kb.permissions");
 
     const [isEditing, setIsEditing] = useState(false);
     const [title, setTitle] = useState(initialTitle);
@@ -24,7 +24,7 @@ export function NoteActions({ noteId, initialTitle, initialContent }: NoteAction
     const [deleting, setDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // 2 - Effects to sync props with state
+    // Sync initial values when props change
     useEffect(() => {
         if (!isEditing) {
             setTitle(initialTitle);
@@ -32,8 +32,8 @@ export function NoteActions({ noteId, initialTitle, initialContent }: NoteAction
         }
     }, [initialTitle, initialContent, isEditing]);
 
-    // 3 - Handling I/O to edit mode
     function startEditing() {
+        if (!canEdit) return;
         setError(null);
         setIsEditing(true);
     }
@@ -45,9 +45,10 @@ export function NoteActions({ noteId, initialTitle, initialContent }: NoteAction
         setIsEditing(false);
     }
 
-    // 4 - Edition submit (PATCH)
     async function submitEdition(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
+        if (!canEdit) return;
+
         setUpdating(true);
         setError(null);
 
@@ -69,8 +70,9 @@ export function NoteActions({ noteId, initialTitle, initialContent }: NoteAction
         router.refresh();
     }
 
-    // 5 - Delete note (DELETE)
     async function deleteNote() {
+        if (!canEdit) return;
+
         if (!window.confirm(t("deleteConfirm"))) {
             return;
         }
@@ -91,10 +93,10 @@ export function NoteActions({ noteId, initialTitle, initialContent }: NoteAction
         setDeleting(false);
     }
 
-    // 6 - Conditional rendering (display/edition)
     return (
         <div className="mt-4 space-y-3">
             {error && <p className="text-sm text-red-600">{error}</p>}
+            {!canEdit && <p className="text-sm text-muted-foreground">{tPermissions("viewOnlyMessage")}</p>}
 
             {isEditing ? (
                 <form onSubmit={submitEdition} className="space-y-2">
@@ -102,21 +104,21 @@ export function NoteActions({ noteId, initialTitle, initialContent }: NoteAction
                         className="w-full rounded border px-3 py-2 text-sm"
                         value={title}
                         onChange={(event) => setTitle(event.target.value)}
-                        disabled={updating}
+                        disabled={updating || !canEdit}
                         required
                     />
                     <textarea
                         className="min-h-[120px] w-full rounded border px-3 py-2 text-sm"
                         value={content}
                         onChange={(event) => setContent(event.target.value)}
-                        disabled={updating}
+                        disabled={updating || !canEdit}
                         required
                     />
                     <div className="flex gap-2">
                         <button
                             type="submit"
                             className="rounded bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-                            disabled={updating}
+                            disabled={updating || !canEdit}
                         >
                             {updating ? t("saveLoading") : t("save")}
                         </button>
@@ -136,7 +138,7 @@ export function NoteActions({ noteId, initialTitle, initialContent }: NoteAction
                         type="button"
                         className="rounded border px-3 py-2 text-sm disabled:opacity-50"
                         onClick={startEditing}
-                        disabled={deleting}
+                        disabled={deleting || !canEdit}
                     >
                         {t("edit")}
                     </button>
@@ -144,7 +146,7 @@ export function NoteActions({ noteId, initialTitle, initialContent }: NoteAction
                         type="button"
                         className="rounded bg-destructive px-3 py-2 text-sm font-semibold text-destructive-foreground disabled:opacity-50"
                         onClick={deleteNote}
-                        disabled={deleting}
+                        disabled={deleting || !canEdit}
                     >
                         {deleting ? t("deleteLoading") : t("delete")}
                     </button>
@@ -152,4 +154,4 @@ export function NoteActions({ noteId, initialTitle, initialContent }: NoteAction
             )}
         </div>
     );
-};
+}

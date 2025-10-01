@@ -15,35 +15,40 @@ type FileEntry = {
 
 type RowProps = {
     file: FileEntry & { createdLabel: string };
+    canEdit: boolean;
 };
 
 type BusyState = "rename" | "replace" | "delete" | null;
 
-export function FilesList({ files }: { files: FileEntry[] }) {
+export function FilesList({ files, canEdit }: { files: FileEntry[]; canEdit: boolean }) {
     const formatter = useFormatter();
     const tFiles = useTranslations("kb.files");
+    const tPermissions = useTranslations("kb.permissions");
 
     return (
-        <ul className="space-y-3">
-            {files.map((file) => {
-                const createdDate = formatter.dateTime(new Date(file.createdAt), { dateStyle: "medium" });
-                const createdTime = formatter.dateTime(new Date(file.createdAt), { timeStyle: "short" });
-                const createdLabel = tFiles("entryDate", { date: createdDate, time: createdTime });
+        <div className="space-y-3">
+            {!canEdit && <p className="text-sm text-[var(--kb-text-muted)]">{tPermissions("viewOnlyMessage")}</p>}
+            <ul className="space-y-3">
+                {files.map((file) => {
+                    const createdDate = formatter.dateTime(new Date(file.createdAt), { dateStyle: "medium" });
+                    const createdTime = formatter.dateTime(new Date(file.createdAt), { timeStyle: "short" });
+                    const createdLabel = tFiles("entryDate", { date: createdDate, time: createdTime });
 
-                return (
-                    <li
-                        key={file.id}
-                        className="rounded-xl border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] bg-[color-mix(in_srgb,var(--kb-surface)_90%,black_10%)] px-5 py-4 shadow-[0_18px_30px_-26px_rgba(0,0,0,0.55)]"
-                    >
-                        <FileRow file={{ ...file, createdLabel }} />
-                    </li>
-                );
-            })}
-        </ul>
+                    return (
+                        <li
+                            key={file.id}
+                            className="rounded-xl border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] bg-[color-mix(in_srgb,var(--kb-surface)_90%,black_10%)] px-5 py-4 shadow-[0_18px_30px_-26px_rgba(0,0,0,0.55)]"
+                        >
+                            <FileRow file={{ ...file, createdLabel }} canEdit={canEdit} />
+                        </li>
+                    );
+                })}
+            </ul>
+        </div>
     );
 }
 
-function FileRow({ file }: RowProps) {
+function FileRow({ file, canEdit }: RowProps) {
     const router = useRouter();
     const tActions = useTranslations("kb.fileActions");
     const tForm = useTranslations("kb.fileForm");
@@ -59,6 +64,9 @@ function FileRow({ file }: RowProps) {
 
     async function handleRename(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
+        if (!canEdit) {
+            return;
+        }
         const trimmedTitle = title.trim();
 
         if (!trimmedTitle) {
@@ -95,6 +103,9 @@ function FileRow({ file }: RowProps) {
     }
 
     async function handleDelete() {
+        if (!canEdit) {
+            return;
+        }
         if (!window.confirm(tActions("deleteConfirm", { title: file.title }))) {
             return;
         }
@@ -118,6 +129,11 @@ function FileRow({ file }: RowProps) {
     }
 
     async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+        if (!canEdit) {
+            event.target.value = "";
+            return;
+        }
+
         const nextFile = event.target.files?.[0];
         event.target.value = "";
 
@@ -148,6 +164,9 @@ function FileRow({ file }: RowProps) {
     }
 
     function handleReplaceClick() {
+        if (!canEdit) {
+            return;
+        }
         fileInputRef.current?.click();
     }
 
@@ -164,13 +183,13 @@ function FileRow({ file }: RowProps) {
                             placeholder={tForm("titlePlaceholder")}
                             value={title}
                             onChange={(event) => setTitle(event.target.value)}
-                            disabled={busy === "rename"}
+                            disabled={!canEdit || busy === "rename"}
                         />
                         <div className="flex flex-wrap gap-2">
                             <button
                                 type="submit"
                                 className="rounded bg-[var(--kb-highlight)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
-                                disabled={busy === "rename"}
+                                disabled={!canEdit || busy === "rename"}
                             >
                                 {busy === "rename" ? tActions("renaming") : tActions("renameSave")}
                             </button>
@@ -182,7 +201,7 @@ function FileRow({ file }: RowProps) {
                                     setTitle(file.title);
                                     setError(null);
                                 }}
-                                disabled={busy === "rename"}
+                                disabled={!canEdit || busy === "rename"}
                             >
                                 {tActions("renameCancel")}
                             </button>
@@ -210,10 +229,13 @@ function FileRow({ file }: RowProps) {
                     type="button"
                     className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-[var(--kb-text)] hover:border-[var(--kb-highlight)]"
                     onClick={() => {
+                        if (!canEdit) {
+                            return;
+                        }
                         setIsRenaming(true);
                         setError(null);
                     }}
-                    disabled={busy !== null || isRenaming}
+                    disabled={!canEdit || busy !== null || isRenaming}
                 >
                     {tActions("rename")}
                 </button>
@@ -221,7 +243,7 @@ function FileRow({ file }: RowProps) {
                     type="button"
                     className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-[var(--kb-text)] hover:border-[var(--kb-highlight)]"
                     onClick={handleReplaceClick}
-                    disabled={busy !== null || isRenaming}
+                    disabled={!canEdit || busy !== null || isRenaming}
                 >
                     {busy === "replace" ? tActions("replacing") : tActions("replace")}
                 </button>
@@ -230,12 +252,13 @@ function FileRow({ file }: RowProps) {
                     type="file"
                     className="hidden"
                     onChange={handleFileChange}
+                    disabled={!canEdit}
                 />
                 <button
                     type="button"
                     className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-red-600 hover:border-red-500"
                     onClick={handleDelete}
-                    disabled={busy !== null || isRenaming}
+                    disabled={!canEdit || busy !== null || isRenaming}
                 >
                     {busy === "delete" ? tActions("deleting") : tActions("delete")}
                 </button>

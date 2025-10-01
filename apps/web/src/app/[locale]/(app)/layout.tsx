@@ -28,7 +28,10 @@ export default async function AppLayout({ children, params }: LayoutProps) {
   return (
     <AuthSessionProvider session={ensuredSession}>
       <div key={locale} className="flex min-h-screen flex-col bg-background text-foreground">
-        <AppNav userEmail={ensuredSession.user?.email ?? null} />
+        <AppNav
+          userEmail={ensuredSession.user?.email ?? null}
+          userRole={(ensuredSession.user?.role as "VIEWER" | "EDITOR" | "ADMIN" | null) ?? null}
+        />
         <main className="mx-auto flex w-full max-w-5xl flex-1 px-6 py-8">
           {children}
         </main>

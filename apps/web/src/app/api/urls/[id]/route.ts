@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { UrlStatus } from "@prisma/client";
 import { createUrlContentPlaceholder, updateUrlContentStatus } from "@/lib/url-content";
 import { OWUI_DISABLED_MESSAGE, deleteFromCollection, triggerWebIngestion } from "@/lib/owui";
+import { assertRole, handleAuthError } from "@/lib/authz";
 
 const ParamsSchema = z.object({
   id: z.string().uuid(),
@@ -70,134 +71,150 @@ const UpdateSchema = z
     message: "No changes provided",
   });
 
-export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
-
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  let parsedParams;
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    parsedParams = ParamsSchema.parse(await context.params);
-  } catch {
-    return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
-  }
+    const session = await getServerSession(authOptions);
+    assertRole(session, ["VIEWER", "EDITOR", "ADMIN"]);
+    const userId = session!.user.id;
 
-  let payload: unknown;
-  try {
-    payload = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
-  }
+    const resolvedParams = await context.params;
+    const parsedParams = ParamsSchema.safeParse(resolvedParams);
+    if (!parsedParams.success) {
+      return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
+    }
 
-  const parsedBody = UpdateSchema.safeParse(payload);
-  if (!parsedBody.success) {
-    return NextResponse.json({ error: "Invalid payload", details: parsedBody.error.flatten() }, { status: 400 });
-  }
-
-  const document = await prisma.document.findFirst({
-    where: {
-      id: parsedParams.id,
-      type: "url",
-      kb: { ownerId: userId },
-    },
-    select: {
-      id: true,
-      kbId: true,
-      title: true,
-      source: true,
-      urlEntry: {
-        select: {
-          id: true,
-          url: true,
-          description: true,
-          status: true,
-          externalId: true,
-          updatedAt: true,
+    const document = await prisma.document.findFirst({
+      where: { id: parsedParams.data.id, type: "url", kb: { ownerId: userId } },
+      select: {
+        id: true,
+        title: true,
+        source: true,
+        createdAt: true,
+        urlEntry: {
+          select: {
+            id: true,
+            url: true,
+            description: true,
+            status: true,
+            externalId: true,
+            createdAt: true,
+            updatedAt: true,
+          },
         },
       },
-      createdAt: true,
-    },
-  });
+    });
 
-  if (!document || !document.urlEntry) {
-    return NextResponse.json({ error: "URL not found" }, { status: 404 });
+    if (!document || !document.urlEntry) {
+      return NextResponse.json({ error: "URL not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      url: {
+        id: document.id,
+        title: document.title,
+        url: document.urlEntry.url,
+        description: document.urlEntry.description,
+        status: document.urlEntry.status,
+        externalId: document.urlEntry.externalId,
+        createdAt: document.createdAt.toISOString(),
+        updatedAt: document.urlEntry.updatedAt.toISOString(),
+      },
+    });
+  } catch (error) {
+    return handleAuthError(error);
   }
+}
 
-  const existingEntry = document.urlEntry;
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await getServerSession(authOptions);
+    assertRole(session, ["EDITOR", "ADMIN"]);
+    const userId = session!.user.id;
 
-  const nextUrl = parsedBody.data.url ?? document.urlEntry.url;
-  const urlChanged = parsedBody.data.url !== undefined && parsedBody.data.url !== existingEntry.url;
-  const nextTitle = parsedBody.data.title ?? document.title;
-  const descriptionProvided = parsedBody.data.description !== undefined;
-  const nextDescription = descriptionProvided ? parsedBody.data.description : existingEntry.description;
-  const nextStatus = parsedBody.data.status ?? (urlChanged ? UrlStatus.draft : existingEntry.status);
+    const parsedParams = ParamsSchema.safeParse(await context.params);
+    if (!parsedParams.success) {
+      return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
+    }
 
-  let externalId = existingEntry.externalId ?? null;
-  if (urlChanged) {
-    const created = await createUrlContentPlaceholder({ url: nextUrl, status: nextStatus }).catch(() => null);
-    externalId = created ?? null;
-  }
+    let payload: unknown;
+    try {
+      payload = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    }
 
-  const record = await prisma.$transaction(async (tx) => {
-    const updatedDocument = await tx.document.update({
-      where: { id: document.id },
-      data: {
-        ...(parsedBody.data.title !== undefined ? { title: nextTitle } : {}),
-        ...(urlChanged ? { source: nextUrl } : {}),
+    const parsedBody = UpdateSchema.safeParse(payload);
+    if (!parsedBody.success) {
+      return NextResponse.json({ error: "Invalid payload", details: parsedBody.error.flatten() }, { status: 400 });
+    }
+
+    const document = await prisma.document.findFirst({
+      where: {
+        id: parsedParams.data.id,
+        type: "url",
+        kb: { ownerId: userId },
       },
       select: {
         id: true,
         kbId: true,
         title: true,
+        source: true,
+        urlEntry: {
+          select: {
+            id: true,
+            url: true,
+            description: true,
+            status: true,
+            externalId: true,
+            updatedAt: true,
+          },
+        },
         createdAt: true,
       },
     });
 
-    const updatedEntry = await tx.urlEntry.update({
-      where: { documentId: document.id },
-      data: {
-        ...(urlChanged ? { url: nextUrl } : {}),
-        ...(descriptionProvided ? { description: nextDescription } : {}),
-        status: nextStatus,
-        ...(externalId !== existingEntry.externalId ? { externalId } : {}),
-      },
-      select: {
-        url: true,
-        description: true,
-        status: true,
-        externalId: true,
-        updatedAt: true,
-      },
-    });
-
-    return { document: updatedDocument, entry: updatedEntry };
-  });
-
-  let entry = record.entry;
-  let ingestionError: string | undefined;
-
-  const shouldTriggerIngestion = urlChanged || parsedBody.data.status === UrlStatus.queued;
-
-  if (shouldTriggerIngestion) {
-    const ingestion = await triggerWebIngestion({ kbId: record.document.kbId, url: record.entry.url });
-
-    let finalStatus = record.entry.status;
-    if (ingestion.ok) {
-      finalStatus = UrlStatus.queued;
-    } else {
-      ingestionError = ingestion.error;
-      if (ingestion.error !== OWUI_DISABLED_MESSAGE) {
-        finalStatus = UrlStatus.error;
-      }
+    if (!document || !document.urlEntry) {
+      return NextResponse.json({ error: "URL not found" }, { status: 404 });
     }
 
-    if (finalStatus !== record.entry.status) {
-      entry = await prisma.urlEntry.update({
-        where: { documentId: record.document.id },
-        data: { status: finalStatus },
+    const existingEntry = document.urlEntry;
+
+    const nextUrl = parsedBody.data.url ?? document.urlEntry.url;
+    const urlChanged = parsedBody.data.url !== undefined && parsedBody.data.url !== existingEntry.url;
+    const nextTitle = parsedBody.data.title ?? document.title;
+    const descriptionProvided = parsedBody.data.description !== undefined;
+    const nextDescription = descriptionProvided ? parsedBody.data.description : existingEntry.description;
+    const nextStatus = parsedBody.data.status ?? (urlChanged ? UrlStatus.draft : existingEntry.status);
+
+    let externalId = existingEntry.externalId ?? null;
+    if (urlChanged) {
+      const created = await createUrlContentPlaceholder({ url: nextUrl, status: nextStatus }).catch(() => null);
+      externalId = created ?? null;
+    }
+
+    const record = await prisma.$transaction(async (tx) => {
+      const updatedDocument = await tx.document.update({
+        where: { id: document.id },
+        data: {
+          ...(parsedBody.data.title !== undefined ? { title: nextTitle } : {}),
+          ...(urlChanged ? { source: nextUrl } : {}),
+        },
+        select: {
+          id: true,
+          kbId: true,
+          title: true,
+          createdAt: true,
+        },
+      });
+
+      const updatedEntry = await tx.urlEntry.update({
+        where: { documentId: document.id },
+        data: {
+          ...(urlChanged ? { url: nextUrl } : {}),
+          ...(descriptionProvided ? { description: nextDescription } : {}),
+          status: nextStatus,
+          ...(externalId !== existingEntry.externalId ? { externalId } : {}),
+        },
         select: {
           url: true,
           description: true,
@@ -206,71 +223,104 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
           updatedAt: true,
         },
       });
+
+      return { document: updatedDocument, entry: updatedEntry };
+    });
+
+    let entry = record.entry;
+    let ingestionError: string | undefined;
+
+    const shouldTriggerIngestion = urlChanged || parsedBody.data.status === UrlStatus.queued;
+
+    if (shouldTriggerIngestion) {
+      const ingestion = await triggerWebIngestion({ kbId: record.document.kbId, url: record.entry.url });
+
+      let finalStatus = record.entry.status;
+      if (ingestion.ok) {
+        finalStatus = UrlStatus.queued;
+      } else {
+        ingestionError = ingestion.error;
+        if (ingestion.error !== OWUI_DISABLED_MESSAGE) {
+          finalStatus = UrlStatus.error;
+        }
+      }
+
+      if (finalStatus !== record.entry.status) {
+        entry = await prisma.urlEntry.update({
+          where: { documentId: record.document.id },
+          data: { status: finalStatus },
+          select: {
+            url: true,
+            description: true,
+            status: true,
+            externalId: true,
+            updatedAt: true,
+          },
+        });
+      }
     }
-  }
 
-  if (entry.externalId) {
-    await updateUrlContentStatus({ externalId: entry.externalId, status: entry.status });
-  }
+    if (entry.externalId) {
+      await updateUrlContentStatus({ externalId: entry.externalId, status: entry.status });
+    }
 
-  return NextResponse.json({
-    url: {
-      id: record.document.id,
-      kbId: record.document.kbId,
-      title: record.document.title,
-      url: entry.url,
-      description: entry.description,
-      status: entry.status,
-      externalId: entry.externalId,
-      createdAt: record.document.createdAt.toISOString(),
-      updatedAt: entry.updatedAt.toISOString(),
-      ingestionError,
-    },
-  });
+    return NextResponse.json(
+      {
+        url: {
+          id: record.document.id,
+          kbId: record.document.kbId,
+          title: record.document.title,
+          url: entry.url,
+          description: entry.description,
+          status: entry.status,
+          externalId: entry.externalId,
+          createdAt: record.document.createdAt.toISOString(),
+          updatedAt: entry.updatedAt.toISOString(),
+          ingestionError,
+        },
+      },
+    );
+  } catch (error) {
+    return handleAuthError(error);
+  }
 }
 
-export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
-
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  let parsedParams;
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    parsedParams = ParamsSchema.parse(await context.params);
-  } catch {
-    return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
-  }
+    const session = await getServerSession(authOptions);
+    assertRole(session, ["EDITOR", "ADMIN"]);
+    const userId = session!.user.id;
 
-  const document = await prisma.document.findFirst({
-    where: {
-      id: parsedParams.id,
-      type: "url",
-      kb: { ownerId: userId },
-    },
-    select: {
-      id: true,
-      kbId: true,
-      urlEntry: { select: { id: true } },
-    },
-  });
-
-  if (!document || !document.urlEntry) {
-    return NextResponse.json({ error: "URL not found" }, { status: 404 });
-  }
-
-  const { urlEntry } = document;
-
-  await prisma.$transaction(async (tx) => {
-    if (urlEntry) {
-      await tx.urlEntry.delete({ where: { id: urlEntry.id } });
+    const parsedParams = ParamsSchema.safeParse(await context.params);
+    if (!parsedParams.success) {
+      return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
     }
-    await tx.document.delete({ where: { id: document.id } });
-  });
 
-  await deleteFromCollection({ kbId: document.kbId, documentId: document.id });
+    const document = await prisma.document.findFirst({
+      where: {
+        id: parsedParams.data.id,
+        type: "url",
+        kb: { ownerId: userId },
+      },
+      select: { id: true, kbId: true, source: true, urlEntry: true },
+    });
 
-  return NextResponse.json({ ok: true });
+    if (!document || !document.urlEntry) {
+      return NextResponse.json({ error: "URL not found" }, { status: 404 });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.urlEntry.delete({ where: { documentId: document.id } });
+      await tx.document.delete({ where: { id: document.id } });
+    });
+
+    if (document.urlEntry.externalId) {
+      await deleteFromCollection({ kbId: document.kbId, documentId: document.id });
+      await updateUrlContentStatus({ externalId: document.urlEntry.externalId, status: UrlStatus.error });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return handleAuthError(error);
+  }
 }

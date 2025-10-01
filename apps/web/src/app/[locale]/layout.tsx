@@ -22,7 +22,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   }
 
   const typedLocale = locale as Locale;
-  applyRequestLocale(typedLocale); // Coupe-circuit pour les Server Components
+  applyRequestLocale(typedLocale); // Set the locale for the current request context
   const { messages } = await getMessages(typedLocale);
 
   return (

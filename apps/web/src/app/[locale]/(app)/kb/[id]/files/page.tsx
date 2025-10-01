@@ -1,3 +1,6 @@
+import { getServerSession } from "next-auth";
+import { redirect } from "@/i18n/navigation";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTranslations } from "next-intl/server";
 import { FileUploadForm } from "./_components/file-upload-form";
@@ -9,6 +12,12 @@ type PageProps = {
 
 export default async function KnowledgeBaseFilesPage({ params }: PageProps) {
     const { id, locale } = await params;
+
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
+    if (!userId) redirect({ href: "/login", locale });
+    const role = (session?.user?.role ?? "VIEWER") as "VIEWER" | "EDITOR" | "ADMIN";
+    const canEdit = role !== "VIEWER";
 
     const [files, t] = await Promise.all([
         prisma.document.findMany({
@@ -46,7 +55,7 @@ export default async function KnowledgeBaseFilesPage({ params }: PageProps) {
                 <p className="text-sm text-[var(--kb-text-subtle)]">{t("description")}</p>
             </header>
 
-            <FileUploadForm kbId={id} />
+            <FileUploadForm kbId={id} canEdit={canEdit} />
 
             {entries.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-[color-mix(in_srgb,var(--kb-border)_60%,transparent_40%)] bg-[color-mix(in_srgb,var(--kb-surface)_96%,black_4%)] px-6 py-10 text-center shadow-[0_16px_28px_-26px_rgba(0,0,0,0.55)]">
@@ -56,7 +65,7 @@ export default async function KnowledgeBaseFilesPage({ params }: PageProps) {
             ) : (
                 <section className="space-y-3">
                     <h3 className="text-base font-semibold text-[var(--kb-text)]">{t("historyTitle")}</h3>
-                    <FilesList files={entries} />
+                    <FilesList files={entries} canEdit={canEdit} />
                 </section>
             )}
         </>
