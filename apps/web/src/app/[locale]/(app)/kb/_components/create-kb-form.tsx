@@ -3,20 +3,36 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+import { Loader2, Plus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 export function CreateKbForm() {
     const router = useRouter();
+    const [open, setOpen] = useState(false);
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const t = useTranslations("kb.createForm");
+    const tForm = useTranslations("kb.createForm");
+    const tList = useTranslations("kb.list");
 
-    async function onSubmit(e: React.FormEvent) {
-        e.preventDefault();
+    async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        if (isLoading) return;
+
         setIsLoading(true);
-        setError(null);
-
         const res = await fetch("/api/kb", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -25,42 +41,71 @@ export function CreateKbForm() {
 
         if (!res.ok) {
             const payload = await res.json().catch(() => ({}));
-            setError(payload?.error ?? t("error"));
+            toast.error(payload?.error ?? tForm("error"));
             setIsLoading(false);
             return;
         }
 
+        toast.success(tForm("success"));
         setName("");
         setDescription("");
         setIsLoading(false);
+        setOpen(false);
         router.refresh();
     }
 
     return (
-        <form onSubmit={onSubmit} className="w-full max-w-xl space-y-2">
-            <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[1.4fr_1fr_auto]">
-                <input
-                    className="w-full rounded-md border px-3 py-2 text-sm"
-                    placeholder={t("namePlaceholder")}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                />
-                <input
-                    className="w-full rounded-md border px-3 py-2 text-sm"
-                    placeholder={t("descriptionPlaceholder")}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                />
-            </div>
-            <button
-                type="submit"
-                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-                disabled={isLoading}
-            >
-                {isLoading ? t("submitting") : t("submit")}
-            </button>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-        </form>
+        <Dialog open={open} onOpenChange={(next) => !isLoading && setOpen(next)}>
+            <DialogTrigger asChild>
+                <Button size="sm" className="gap-2" variant="default">
+                    <Plus className="h-4 w-4" aria-hidden />
+                    {tList("cta")}
+                </Button>
+            </DialogTrigger>
+
+            <DialogContent className="max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>{tList("cta")}</DialogTitle>
+                    <DialogDescription>{tList("subtitle")}</DialogDescription>
+                </DialogHeader>
+
+                <form onSubmit={onSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                        <label htmlFor="kb-name" className="text-sm font-medium">
+                            {tForm("namePlaceholder")}
+                        </label>
+                        <Input
+                            id="kb-name"
+                            autoFocus
+                            required
+                            value={name}
+                            onChange={(event) => setName(event.target.value)}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label htmlFor="kb-description" className="text-sm font-medium">
+                            {tForm("descriptionPlaceholder")}
+                        </label>
+                        <Textarea
+                            id="kb-description"
+                            value={description}
+                            onChange={(event) => setDescription(event.target.value)}
+                            rows={3}
+                        />
+                    </div>
+
+                    <DialogFooter className="gap-2">
+                        <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
+                            {tForm("cancel")}
+                        </Button>
+                        <Button type="submit" disabled={isLoading} className="gap-2">
+                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
+                            {isLoading ? tForm("submitting") : tForm("submit")}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 }
