@@ -62,20 +62,44 @@
       "title": "Knowledge Bases",
       "subtitle": "Create, manage, and open your knowledge bases.",
       "empty": "No knowledge base yet. Create one to get started.",
-      "open": "Open"
+      "open": "Open",
+      "cta": "New knowledge base",
+      "summary": {
+        "total": {
+          "label": "Total bases",
+          "helper": "Page {page} / {pages}"
+        },
+        "recent": {
+          "label": "Latest creation",
+          "helper": "{relative}"
+        },
+        "documents": {
+          "label": "Documents",
+          "helper": "{count, plural, one {# document indexed} other {# documents indexed}}"
+        },
+        "empty": "No knowledge base recorded yet."
+      },
+      "card": {
+        "documents": "{count, plural, one {# document} other {# documents}}",
+        "created": "Created on {date}"
+      }
     },
     "createForm": {
       "namePlaceholder": "Knowledge Base Name",
       "descriptionPlaceholder": "Description (optional)",
       "submit": "Create",
       "submitting": "Creating...",
-      "error": "Failed to create knowledge base"
+      "error": "Failed to create knowledge base",
+      "success": "Knowledge base created.",
+      "cancel": "Cancel"
     },
     "delete": {
       "confirm": "Delete this knowledge base?",
       "submit": "Delete",
       "submitting": "Deleting...",
-      "error": "Failed to delete."
+      "error": "Failed to delete.",
+      "success": "Knowledge base deleted.",
+      "cancel": "Cancel"
     },
     "layout": {
       "missingDescription": "Add a description to provide context for this knowledge base.",

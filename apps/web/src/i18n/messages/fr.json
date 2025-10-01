@@ -62,20 +62,44 @@
       "title": "Bases de connaissance",
       "subtitle": "Créez, gérez et ouvrez vos bases de connaissance.",
       "empty": "Aucune base pour le moment. Créez-en une pour commencer.",
-      "open": "Ouvrir"
+      "open": "Ouvrir",
+      "cta": "Nouvelle base",
+      "summary": {
+        "total": {
+          "label": "Total bases",
+          "helper": "Page {page} / {pages}"
+        },
+        "recent": {
+          "label": "Dernière création",
+          "helper": "{relative}"
+        },
+        "documents": {
+          "label": "Documents",
+          "helper": "{count, plural, one {# document indexé} other {# documents indexés}}"
+        },
+        "empty": "Aucune base n'est encore enregistrée."
+      },
+      "card": {
+        "documents": "{count, plural, one {# document} other {# documents}}",
+        "created": "Créée le {date}"
+      }
     },
     "createForm": {
       "namePlaceholder": "Nom de la base",
       "descriptionPlaceholder": "Description (facultatif)",
       "submit": "Créer",
       "submitting": "Création...",
-      "error": "Impossible de créer la base de connaissance"
+      "error": "Impossible de créer la base de connaissance",
+      "success": "Base de connaissance créée.",
+      "cancel": "Annuler"
     },
     "delete": {
       "confirm": "Supprimer cette base de connaissance ?",
       "submit": "Supprimer",
       "submitting": "Suppression...",
-      "error": "Impossible de supprimer."
+      "error": "Impossible de supprimer.",
+      "success": "Base de connaissance supprimée.",
+      "cancel": "Annuler"
     },
     "layout": {
       "missingDescription": "Ajoutez une description pour contextualiser cette base de connaissance.",

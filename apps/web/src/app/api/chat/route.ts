@@ -8,8 +8,12 @@ type RetrievalResponse = {
     documents?: unknown;
 };
 
-function collectDocumentTexts(payload: RetrievalResponse): string[] {
+function collectDocumentTexts(payload: RetrievalResponse | null | undefined): string[] {
     const texts: string[] = [];
+
+    if (!payload || typeof payload !== "object") {
+        return texts;
+    }
 
     if (Array.isArray(payload.docs)) {
         for (const doc of payload.docs) {
