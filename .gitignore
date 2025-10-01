@@ -93,3 +93,5 @@ next-env.d.ts
 open-webui-doc
 
 *.gitignore
+
+screenshot
