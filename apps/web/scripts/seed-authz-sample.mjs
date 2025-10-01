@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const { PrismaClient, Role, UrlStatus } = require("@prisma/client");
-const bcrypt = require("bcrypt");
+import bcrypt from "bcrypt";
+import { PrismaClient, Role, UrlStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
 

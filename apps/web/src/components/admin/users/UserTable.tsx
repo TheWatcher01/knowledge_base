@@ -2,13 +2,23 @@
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Loader2, PenLine, Search, Trash2 } from "lucide-react";
+
+import CreateUserForm, { CreatedUser } from "@/components/admin/users/CreateUserForm";
 import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-import CreateUserForm, { CreatedUser } from "@/components/admin/users/CreateUserForm";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 400;
 
@@ -52,6 +62,26 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
     const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
 
     const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / pageSize)), [totalCount, pageSize]);
+
+    const dateFormatter = useMemo(
+        () =>
+            new Intl.DateTimeFormat(undefined, {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+            }),
+        [],
+    );
+
+    const numberFormatter = useMemo(() => new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }), []);
+
+    const summary = useMemo(() => {
+        const active = users.filter((user) => !user.disabled).length;
+        const disabledCount = users.length - active;
+        const admins = users.filter((user) => user.role === "ADMIN").length;
+        const editors = users.filter((user) => user.role === "EDITOR").length;
+        return { active, disabled: disabledCount, admins, editors };
+    }, [users]);
 
     const isFirstSearch = useRef(true);
 
@@ -212,86 +242,145 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
     const canGoNext = page < totalPages && !loading;
 
     return (
-        <div className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
-                    <Input
-                        value={searchTerm}
-                        onChange={(event) => setSearchTerm(event.target.value)}
-                        placeholder="Rechercher par e-mail ou nom"
-                        className="w-full sm:w-80"
-                    />
-                    {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                </div>
-                <CreateUserForm onSuccess={handleUserCreated} />
+        <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-4">
+                <SummaryTile
+                    label="Total utilisateurs"
+                    value={numberFormatter.format(totalCount)}
+                    helper={`Page ${page} / ${totalPages}`}
+                    accent="bg-blue-500"
+                />
+                <SummaryTile
+                    label="Actifs"
+                    value={numberFormatter.format(summary.active)}
+                    helper="Utilisateurs actifs sur cette page"
+                    accent="bg-emerald-500"
+                />
+                <SummaryTile
+                    label="Désactivés"
+                    value={numberFormatter.format(summary.disabled)}
+                    helper="Utilisateurs inactifs sur cette page"
+                    accent="bg-amber-500"
+                />
+                <SummaryTile
+                    label="Admins & éditeurs"
+                    value={numberFormatter.format(summary.admins + summary.editors)}
+                    helper={`${numberFormatter.format(summary.admins)} admin${summary.admins > 1 ? "s" : ""} · ${numberFormatter.format(summary.editors)} éditeur${summary.editors > 1 ? "s" : ""}`}
+                    accent="bg-purple-500"
+                />
             </div>
 
-            <div className="rounded-md border">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Nom</TableHead>
-                            <TableHead>Rôle</TableHead>
-                            <TableHead>Statut</TableHead>
-                            <TableHead>Créé le</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {users.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                                    Aucun utilisateur trouvé.
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            users.map((user) => (
-                                <TableRow key={user.id}>
-                                    <TableCell>
-                                        <div className="font-medium">{user.email}</div>
-                                        <div className="text-xs text-muted-foreground">
-                                            Ajouté le {new Date(user.createdAt).toLocaleDateString()}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>{user.name ?? "-"}</TableCell>
-                                    <TableCell className="uppercase text-xs font-semibold">{user.role}</TableCell>
-                                    <TableCell>
-                                        {user.disabled ? (
-                                            <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
-                                                Désactivé
-                                            </span>
-                                        ) : (
-                                            <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800">
-                                                Actif
-                                            </span>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-                                    <TableCell className="space-x-2 text-right">
-                                        <Button variant="outline" size="sm" disabled={loading} onClick={() => openEditionDialog(user)}>
-                                            Modifier
-                                        </Button>
-                                        <Button
-                                            variant="destructive"
-                                            size="sm"
-                                            disabled={loading}
-                                            onClick={() => openDeleteDialog(user)}
-                                        >
-                                            Supprimer
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
+            <Card className="border-border/60 bg-card/60 shadow-lg backdrop-blur">
+                <CardHeader className="gap-4 md:flex md:flex-row md:items-center md:justify-between">
+                    <div className="space-y-1">
+                        <CardTitle className="text-xl font-semibold">Liste des utilisateurs</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                            Filtrez par e-mail ou nom, puis gérez les rôles et statuts.
+                        </p>
+                    </div>
 
-                <div className="flex flex-col gap-3 border-t p-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
+                        <div className="relative md:w-72">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                                placeholder="Rechercher un utilisateur"
+                                className="w-full pl-9"
+                            />
+                            {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                        </div>
+                        <div className="md:w-auto">
+                            <CreateUserForm onSuccess={handleUserCreated} />
+                        </div>
+                    </div>
+                </CardHeader>
+
+                <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="bg-muted/40">
+                                    <TableHead>Email</TableHead>
+                                    <TableHead>Nom</TableHead>
+                                    <TableHead>Rôle</TableHead>
+                                    <TableHead>Statut</TableHead>
+                                    <TableHead>Créé le</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {users.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                                            Aucun utilisateur ne correspond à votre recherche.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    users.map((user) => (
+                                        <TableRow key={user.id} className="group transition-colors hover:bg-muted/40">
+                                            <TableCell className="align-top">
+                                                <div className="font-medium text-foreground">{user.email}</div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    Ajouté le {dateFormatter.format(new Date(user.createdAt))}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="align-top text-foreground">
+                                                {user.name ? (
+                                                    <span className="font-medium">{user.name}</span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">—</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="align-top">
+                                                <RoleBadge role={user.role} />
+                                            </TableCell>
+                                            <TableCell className="align-top">
+                                                <StatusBadge disabled={user.disabled} />
+                                            </TableCell>
+                                            <TableCell className="align-top">
+                                                <span className="text-sm text-muted-foreground">
+                                                    {dateFormatter.format(new Date(user.createdAt))}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="align-top text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        disabled={loading}
+                                                        className="gap-1 text-foreground"
+                                                        onClick={() => openEditionDialog(user)}
+                                                    >
+                                                        <PenLine className="h-4 w-4" />
+                                                        <span className="hidden sm:inline">Modifier</span>
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        disabled={loading}
+                                                        className="gap-1 text-destructive hover:text-destructive"
+                                                        onClick={() => openDeleteDialog(user)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                        <span className="hidden sm:inline">Supprimer</span>
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
+
+                <CardFooter className="flex flex-col gap-3 border-t bg-muted/20 px-6 py-4 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
                     <span>
-                        Total&nbsp;: <strong>{totalCount}</strong>
+                        Affichage de <strong>{numberFormatter.format(users.length)}</strong> utilisateur
+                        {users.length > 1 ? "s" : ""} sur <strong>{numberFormatter.format(totalCount)}</strong>
                     </span>
-                    <div className="space-x-2">
+                    <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" disabled={!canGoPrevious} onClick={() => void fetchUsers(page - 1)}>
                             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Précédent
@@ -301,8 +390,8 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
                             Suivant
                         </Button>
                     </div>
-                </div>
-            </div>
+                </CardFooter>
+            </Card>
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent>
@@ -330,8 +419,8 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
                             </select>
                         </div>
 
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">Désactiver l&apos;utilisateur</span>
+                        <label className="flex items-center justify-between gap-3 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
+                            <span className="font-medium">Désactiver l&apos;utilisateur</span>
                             <input
                                 type="checkbox"
                                 className="h-4 w-4"
@@ -341,7 +430,7 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
                                 }
                                 disabled={loading}
                             />
-                        </div>
+                        </label>
                     </div>
 
                     <DialogFooter>
@@ -377,5 +466,62 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
                 </DialogContent>
             </Dialog>
         </div>
+    );
+}
+
+type SummaryTileProps = {
+    label: string;
+    value: string;
+    helper?: string;
+    accent: string;
+};
+
+function SummaryTile({ label, value, helper, accent }: SummaryTileProps) {
+    return (
+        <div className="rounded-2xl border border-border/40 bg-card/50 p-4 shadow-sm backdrop-blur">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+            <div className="mt-3 flex items-center gap-3">
+                <span className="text-2xl font-semibold text-foreground">{value}</span>
+                <span className={cn("h-2 w-2 rounded-full", accent)} aria-hidden />
+            </div>
+            {helper ? <p className="mt-2 text-sm text-muted-foreground">{helper}</p> : null}
+        </div>
+    );
+}
+
+function RoleBadge({ role }: { role: Role }) {
+    const styles: Record<Role, string> = {
+        ADMIN: "border-purple-500/40 bg-purple-500/10 text-purple-200",
+        EDITOR: "border-sky-500/40 bg-sky-500/10 text-sky-200",
+        VIEWER: "border-zinc-500/40 bg-zinc-500/10 text-zinc-200",
+    };
+
+    return (
+        <span
+            className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-wide",
+                styles[role],
+            )}
+        >
+            {role}
+        </span>
+    );
+}
+
+function StatusBadge({ disabled }: { disabled: boolean }) {
+    if (disabled) {
+        return (
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
+                <span className="h-2 w-2 rounded-full bg-amber-300" aria-hidden />
+                Désactivé
+            </span>
+        );
+    }
+
+    return (
+        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
+            <span className="h-2 w-2 rounded-full bg-emerald-300" aria-hidden />
+            Actif
+        </span>
     );
 }

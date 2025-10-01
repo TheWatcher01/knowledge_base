@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Copy } from "lucide-react";
+import { Loader2, RefreshCw, Copy, UserPlus } from "lucide-react";
 
 const roles = [
     { value: "VIEWER", label: "Viewer" },
@@ -101,7 +101,10 @@ export default function CreateUserForm({ onSuccess }: { onSuccess?: (user: Creat
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button onClick={openDialog}>Nouvel utilisateur</Button>
+                <Button onClick={openDialog} size="sm" className="gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    Nouvel utilisateur
+                </Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
