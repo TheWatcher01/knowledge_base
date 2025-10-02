@@ -8,7 +8,7 @@ import UserTable from "@/components/admin/users/UserTable";
 
 type PageProps = {
     params: Promise<{ locale: string }>;
-    searchParams?: Promise<{ page?: string }>;
+    searchParams?: Promise<{ page?: string; search?: string }>;
 };
 
 export default async function AdminUsersPage({ params, searchParams }: PageProps) {
@@ -33,7 +33,7 @@ export default async function AdminUsersPage({ params, searchParams }: PageProps
 
     return (
         <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 py-6">
-            <div className="rounded-3xl border border-border/40 bg-slate-950/50 px-8 py-8 shadow-[0_28px_90px_-60px_rgba(15,23,42,0.75)] backdrop-blur">
+            <div className="rounded-3xl border border-border/50 bg-card/95 px-8 py-8 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary/70">Administration</p>
                 <h1 className="mt-3 text-3xl font-semibold text-foreground">Gestion des utilisateurs</h1>
                 <p className="mt-2 max-w-2xl text-base text-muted-foreground">

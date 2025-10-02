@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+
 const STATUSES = ["draft", "queued", "synced", "error"] as const;
 type UrlStatus = (typeof STATUSES)[number];
 
@@ -27,31 +31,27 @@ type UrlWithLabels = UrlListEntry & {
 export function UrlsList({ urls, canEdit }: { urls: UrlListEntry[]; canEdit: boolean }) {
   const formatter = useFormatter();
   const tPermissions = useTranslations("kb.permissions");
+
   const labeled = urls.map<UrlWithLabels>((entry) => {
     const createdDate = new Date(entry.createdAt);
     const updatedDate = new Date(entry.updatedAt);
-    const createdDateLabel = formatter.dateTime(createdDate, { dateStyle: "medium" });
-    const createdTimeLabel = formatter.dateTime(createdDate, { timeStyle: "short" });
-    const updatedDateLabel = formatter.dateTime(updatedDate, { dateStyle: "medium" });
-    const updatedTimeLabel = formatter.dateTime(updatedDate, { timeStyle: "short" });
-
     return {
       ...entry,
-      createdDateLabel,
-      createdTimeLabel,
-      updatedDateLabel,
-      updatedTimeLabel,
+      createdDateLabel: formatter.dateTime(createdDate, { dateStyle: "medium" }),
+      createdTimeLabel: formatter.dateTime(createdDate, { timeStyle: "short" }),
+      updatedDateLabel: formatter.dateTime(updatedDate, { dateStyle: "medium" }),
+      updatedTimeLabel: formatter.dateTime(updatedDate, { timeStyle: "short" }),
     };
   });
 
   return (
     <div className="space-y-3">
-      {!canEdit && <p className="text-sm text-[var(--kb-text-muted)]">{tPermissions("viewOnlyMessage")}</p>}
+      {!canEdit ? <p className="text-sm text-muted-foreground">{tPermissions("viewOnlyMessage")}</p> : null}
       <ul className="space-y-3">
         {labeled.map((entry) => (
           <li
             key={entry.id}
-            className="rounded-xl border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] bg-[color-mix(in_srgb,var(--kb-surface)_90%,black_10%)] px-5 py-4 shadow-[0_18px_30px_-26px_rgba(0,0,0,0.55)]"
+            className="rounded-2xl border border-border/30 bg-card/80 px-5 py-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/60"
           >
             <UrlRow url={entry} canEdit={canEdit} />
           </li>
@@ -95,9 +95,8 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
 
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canEdit) {
-      return;
-    }
+    if (!canEdit) return;
+
     setError(null);
     setIngestionMessage(null);
 
@@ -120,21 +119,17 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
     }
 
     const payload: Record<string, unknown> = {};
-
     if (trimmedTitle !== (url.title ?? "")) {
       payload.title = trimmedTitle;
     }
-
     if (normalizedUrl !== url.url) {
       payload.url = normalizedUrl;
     }
-
     if (trimmedDescription !== (url.description ?? "")) {
       payload.description = trimmedDescription;
     } else if (!trimmedDescription && (url.description ?? "") !== "") {
       payload.description = "";
     }
-
     if (status !== url.status) {
       payload.status = status;
     }
@@ -165,7 +160,7 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
     };
 
     if (data.url?.ingestionError) {
-      if (data.url.ingestionError === "Open WebUI integration is disabled.") {
+      if (data.url.ingestionError == "Open WebUI integration is disabled.") {
         setIngestionMessage(tForm("ingestionDisabled"));
       } else {
         setIngestionMessage(tForm("ingestionError", { error: data.url.ingestionError }));
@@ -182,8 +177,7 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
   }
 
   async function handleResync() {
-    if (!canEdit) return;
-    if (busy) return;
+    if (!canEdit || busy) return;
 
     setBusy("save");
     setError(null);
@@ -207,7 +201,7 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
     };
 
     if (data.url?.ingestionError) {
-      if (data.url.ingestionError === "Open WebUI integration is disabled.") {
+      if (data.url.ingestionError == "Open WebUI integration is disabled.") {
         setIngestionMessage(tForm("ingestionDisabled"));
       } else {
         setIngestionMessage(tForm("ingestionError", { error: data.url.ingestionError }));
@@ -223,19 +217,12 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
   }
 
   async function handleDelete() {
-    if (!canEdit) {
-      return;
-    }
-    if (busy) {
-      return;
-    }
+    if (!canEdit || busy) return;
 
     const confirmed = window.confirm(
       tActions("deleteConfirm", { title: url.title ?? tUrls("untitled") }),
     );
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     setBusy("delete");
     setError(null);
@@ -255,58 +242,65 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
     router.refresh();
   }
 
+  const currentStatus = isEditing ? status : url.status;
+
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <p className="text-sm font-medium text-[var(--kb-text)]">{url.title ?? tUrls("untitled")}</p>
-          <p className="text-xs uppercase tracking-wide text-[var(--kb-text-muted)]">
+          <p className="text-sm font-semibold text-foreground">{url.title ?? tUrls("untitled")}</p>
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
             {tUrls("entryDate", { date: url.createdDateLabel, time: url.createdTimeLabel })}
-          </p>
+          </span>
         </div>
-        <StatusBadge status={isEditing ? status : url.status} label={tStatuses(isEditing ? status : url.status)} onQueued={tActions("queuedTooltip")} onError={tActions("errorTooltip")} />
+        <StatusBadge
+          status={currentStatus}
+          label={tStatuses(currentStatus)}
+          onQueued={tActions("queuedTooltip")}
+          onError={tActions("errorTooltip")}
+        />
       </div>
 
       {isEditing ? (
-        <form className="space-y-3" onSubmit={handleSave}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-2 text-sm text-[var(--kb-text-subtle)]">
-              <span className="font-medium text-[var(--kb-text)]">{tForm("titleLabel")}</span>
-              <input
-                className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-2 text-sm text-[var(--kb-text)] focus:border-[var(--kb-highlight)] focus:outline-none"
+        <form className="space-y-4" onSubmit={handleSave}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="flex flex-col gap-2 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{tForm("titleLabel")}</span>
+              <Input
                 placeholder={tForm("titlePlaceholder")}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 disabled={!canEdit || busy === "save"}
+                className="h-11 rounded-2xl border-border/40 bg-background"
               />
             </label>
 
-            <label className="flex flex-col gap-2 text-sm text-[var(--kb-text-subtle)]">
-              <span className="font-medium text-[var(--kb-text)]">{tForm("urlLabel")}</span>
-              <input
-                className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-2 text-sm text-[var(--kb-text)] focus:border-[var(--kb-highlight)] focus:outline-none"
+            <label className="flex flex-col gap-2 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{tForm("urlLabel")}</span>
+              <Input
                 value={currentUrl}
                 onChange={(event) => setCurrentUrl(event.target.value)}
                 disabled={!canEdit || busy === "save"}
                 required
+                className="h-11 rounded-2xl border-border/40 bg-background"
               />
             </label>
           </div>
 
-          <label className="flex flex-col gap-2 text-sm text-[var(--kb-text-subtle)]">
-            <span className="font-medium text-[var(--kb-text)]">{tForm("descriptionLabel")}</span>
-          <textarea
-            className="min-h-[90px] rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-2 text-sm text-[var(--kb-text)] focus:border-[var(--kb-highlight)] focus:outline-none"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            disabled={!canEdit || busy === "save"}
-          />
+          <label className="flex flex-col gap-2 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{tForm("descriptionLabel")}</span>
+            <Textarea
+              className="min-h-[120px] rounded-2xl border-border/40 bg-background px-4 py-3 text-sm"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              disabled={!canEdit || busy === "save"}
+            />
           </label>
 
-          <label className="flex flex-col gap-2 text-sm text-[var(--kb-text-subtle)]">
-            <span className="font-medium text-[var(--kb-text)]">{tForm("statusLabel")}</span>
+          <label className="flex flex-col gap-2 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{tForm("statusLabel")}</span>
             <select
-              className="w-full rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] bg-[color-mix(in_srgb,var(--kb-surface)_96%,black_4%)] px-3 py-2 text-sm text-[var(--kb-text)] focus:border-[var(--kb-highlight)] focus:outline-none"
+              className="w-full rounded-2xl border border-border/40 bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               value={status}
               onChange={(event) => setStatus(event.target.value as UrlStatus)}
               disabled={!canEdit || busy === "save"}
@@ -320,16 +314,19 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
           </label>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
+            <Button
               type="submit"
-              className="rounded bg-[var(--kb-highlight)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+              size="sm"
+              className="rounded-full px-4"
               disabled={!canEdit || busy === "save"}
             >
               {busy === "save" ? tActions("saving") : tActions("save")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-[var(--kb-text)] hover:border-[var(--kb-highlight)]"
+              variant="outline"
+              size="sm"
+              className="rounded-full px-4"
               onClick={() => {
                 setIsEditing(false);
                 resetForm();
@@ -339,76 +336,75 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
               disabled={busy === "save"}
             >
               {tActions("cancel")}
-            </button>
+            </Button>
           </div>
         </form>
       ) : (
-        <div className="space-y-2 text-sm text-[var(--kb-text-subtle)]">
+        <div className="space-y-2 text-sm text-muted-foreground">
           <div className="flex flex-wrap items-center gap-3">
-            <a
-              href={url.url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-sm font-medium text-[var(--kb-accent)] underline underline-offset-4 hover:text-[var(--kb-accent-strong)]"
-            >
-              {tActions("open")}
-            </a>
-            <span className="text-xs text-[var(--kb-text-muted)]">
+            <Button asChild variant="outline" size="sm" className="rounded-full px-4">
+              <a href={url.url} target="_blank" rel="noreferrer">
+                {tActions("open")}
+              </a>
+            </Button>
+            <span className="text-xs text-muted-foreground">
               {tUrls("lastUpdated", { date: url.updatedDateLabel, time: url.updatedTimeLabel })}
             </span>
           </div>
           {url.description ? (
-            <p className="text-sm text-[var(--kb-text)]">{url.description}</p>
+            <p className="text-sm text-foreground">{url.description}</p>
           ) : (
-            <p className="text-xs italic text-[var(--kb-text-muted)]">{tUrls("missingDescription")}</p>
+            <p className="text-xs italic text-muted-foreground">{tUrls("missingDescription")}</p>
           )}
         </div>
       )}
 
-      {ingestionMessage && (
-        <p className="text-xs text-[var(--kb-text-muted)]">{ingestionMessage}</p>
-      )}
+      {ingestionMessage ? <p className="text-xs text-muted-foreground">{ingestionMessage}</p> : null}
 
-      <div className="flex flex-wrap items-center gap-2">
-        {!isEditing ? (
-          <>
-            <button
+      {!isEditing ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-full px-4"
+            onClick={() => {
+              if (!canEdit) {
+                return;
+              }
+              setIsEditing(true);
+              setError(null);
+            }}
+            disabled={!canEdit || busy !== null}
+          >
+            {tActions("edit")}
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            className="rounded-full px-4"
+            onClick={handleDelete}
+            disabled={!canEdit || busy !== null}
+          >
+            {busy === "delete" ? tActions("deleting") : tActions("delete")}
+          </Button>
+          {canResync ? (
+            <Button
               type="button"
-              className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-[var(--kb-text)] hover:border-[var(--kb-highlight)]"
-              onClick={() => {
-                if (!canEdit) {
-                  return;
-                }
-                setIsEditing(true);
-                setError(null);
-              }}
+              variant="outline"
+              size="sm"
+              className="rounded-full px-4"
+              onClick={handleResync}
               disabled={!canEdit || busy !== null}
             >
-              {tActions("edit")}
-            </button>
-            <button
-              type="button"
-              className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-red-600 hover:border-red-500"
-              onClick={handleDelete}
-              disabled={!canEdit || busy !== null}
-            >
-              {busy === "delete" ? tActions("deleting") : tActions("delete")}
-            </button>
-            {canResync && (
-              <button
-                type="button"
-                className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-[var(--kb-text)] hover:border-[var(--kb-highlight)]"
-                onClick={handleResync}
-                disabled={!canEdit || busy !== null}
-              >
-                {busy === "save" ? tActions("saving") : tActions("resync")}
-              </button>
-            )}
-          </>
-        ) : null}
-      </div>
+              {busy === "save" ? tActions("saving") : tActions("resync")}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error ? <p className="text-xs text-red-500">{error}</p> : null}
     </div>
   );
 }
@@ -425,9 +421,9 @@ function StatusBadge({
   onError: string;
 }) {
   const palette: Record<UrlStatus, string> = {
-    draft: "bg-slate-200 text-slate-800",
-    queued: "bg-amber-100 text-amber-800",
-    synced: "bg-emerald-100 text-emerald-800",
+    draft: "bg-muted text-muted-foreground",
+    queued: "bg-amber-100 text-amber-900",
+    synced: "bg-emerald-100 text-emerald-900",
     error: "bg-red-100 text-red-700",
   };
 
