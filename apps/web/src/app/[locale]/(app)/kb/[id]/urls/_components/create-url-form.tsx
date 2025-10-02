@@ -1,10 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
+import { LiveMessage } from "@/components/a11y/live-message";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -21,8 +32,10 @@ export function CreateUrlForm({ kbId, canEdit }: CreateUrlFormProps) {
   const tForm = useTranslations("kb.urlForm");
   const tStatuses = useTranslations("kb.urlStatuses");
   const tUrls = useTranslations("kb.urls");
+  const tActions = useTranslations("kb.urlActions");
   const tPermissions = useTranslations("kb.permissions");
 
+  const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
@@ -30,6 +43,48 @@ export function CreateUrlForm({ kbId, canEdit }: CreateUrlFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  // a11y ids
+  const titleId = useId();
+  const titleHintId = useId();
+  const urlId = useId();
+  const urlHintId = useId();
+  const urlErrorId = useId();
+  const descriptionFieldId = useId();
+  const statusFieldId = useId();
+  const infoId = useId();
+  const urlDescribedBy = [urlHintId, error ? urlErrorId : null, info ? infoId : null]
+    .filter((value): value is string => Boolean(value))
+    .join(" ") || undefined;
+
+  function resetFormFields() {
+    setTitle("");
+    setUrl("");
+    setDescription("");
+    setStatus("draft");
+  }
+
+  function handleDialogOpenChange(next: boolean) {
+    if (!canEdit) {
+      setOpen(false);
+      return;
+    }
+
+    if (!next && submitting) {
+      return;
+    }
+
+    setOpen(next);
+
+    if (next) {
+      setError(null);
+      setInfo(null);
+      return;
+    }
+
+    resetFormFields();
+    setError(null);
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -105,81 +160,158 @@ export function CreateUrlForm({ kbId, canEdit }: CreateUrlFormProps) {
       setInfo(null);
     }
 
-    setTitle("");
-    setUrl("");
-    setDescription("");
-    setStatus("draft");
+    resetFormFields();
     setSubmitting(false);
+    setOpen(false);
     router.refresh();
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-2 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{tForm("titleLabel")}</span>
-          <Input
-            placeholder={tForm("titlePlaceholder")}
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            disabled={submitting || !canEdit}
-            className="h-11 rounded-2xl border-border/40 bg-background"
-          />
-          <span className="text-xs text-muted-foreground/80">{tForm("titleHint")}</span>
-        </label>
-
-        <label className="flex flex-col gap-2 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{tForm("urlLabel")}</span>
-          <Input
-            placeholder={tForm("urlPlaceholder")}
-            value={url}
-            onChange={(event) => setUrl(event.target.value)}
-            disabled={submitting || !canEdit}
-            className="h-11 rounded-2xl border-border/40 bg-background"
-          />
-          <span className="text-xs text-muted-foreground/80">{tForm("urlHint")}</span>
-        </label>
-      </div>
-
-      <label className="flex flex-col gap-2 text-sm text-muted-foreground">
-        <span className="font-medium text-foreground">{tForm("descriptionLabel")}</span>
-        <Textarea
-          className="min-h-[120px] rounded-2xl border-border/40 bg-background px-4 py-3 text-sm"
-          placeholder={tForm("descriptionPlaceholder")}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          disabled={submitting || !canEdit}
-        />
-        <span className="text-xs text-muted-foreground/80">{tForm("descriptionHint")}</span>
-      </label>
-
-      <div className="flex flex-wrap items-center gap-4">
-        <label className="flex flex-col gap-2 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{tForm("statusLabel")}</span>
-          <select
-            className="w-[200px] rounded-2xl border border-border/40 bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-            value={status}
-            onChange={(event) => setStatus(event.target.value as UrlStatus)}
-            disabled={submitting || !canEdit}
+    <div className="flex flex-col items-end gap-2">
+      <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+        <DialogTrigger asChild>
+          <Button
+            type="button"
+            className="rounded-full px-6"
+            disabled={!canEdit}
+            aria-disabled={!canEdit}
           >
-            {STATUSES.map((item) => (
-              <option key={item} value={item}>
-                {tStatuses(item)}
-              </option>
-            ))}
-          </select>
-        </label>
+            {tUrls("ctaTitle")}
+          </Button>
+        </DialogTrigger>
 
-        <Button type="submit" disabled={submitting || !canEdit} className="rounded-full px-6">
-          {submitting ? tForm("submitting") : tForm("submit")}
-        </Button>
+        <DialogContent
+          showCloseButton
+          className="sm:max-w-xl rounded-3xl border border-border/40 bg-card/95 px-6 py-6 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-card/90"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            requestAnimationFrame(() => {
+              const firstField = document.getElementById(titleId);
+              firstField?.focus();
+            });
+          }}
+        >
+          <DialogHeader className="space-y-2 text-left">
+            <DialogTitle className="text-2xl font-semibold text-foreground">
+              {tUrls("ctaTitle")}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              {tUrls("ctaDescription")}
+            </DialogDescription>
+          </DialogHeader>
 
-        {error ? <span className="text-sm text-red-500">{error}</span> : null}
-        {info ? <span className="text-xs text-muted-foreground">{info}</span> : null}
-      </div>
+          <form className="space-y-6" onSubmit={handleSubmit} aria-busy={submitting}>
+            <div className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="flex flex-col gap-2 text-sm text-muted-foreground" htmlFor={titleId}>
+                  <span className="font-medium text-foreground">{tForm("titleLabel")}</span>
+                  <Input
+                    id={titleId}
+                    placeholder={tForm("titlePlaceholder")}
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    disabled={submitting || !canEdit}
+                    className="h-11 rounded-2xl border-border/40 bg-background focus-ring"
+                    aria-describedby={titleHintId}
+                  />
+                  <span id={titleHintId} className="text-xs text-muted-foreground/80">
+                    {tForm("titleHint")}
+                  </span>
+                </label>
+
+                <label className="flex flex-col gap-2 text-sm text-muted-foreground" htmlFor={urlId}>
+                  <span className="font-medium text-foreground">{tForm("urlLabel")}</span>
+                  <Input
+                    id={urlId}
+                    placeholder={tForm("urlPlaceholder")}
+                    value={url}
+                    onChange={(event) => {
+                      setUrl(event.target.value);
+                      if (error) {
+                        setError(null);
+                      }
+                    }}
+                    disabled={submitting || !canEdit}
+                    className="h-11 rounded-2xl border-border/40 bg-background focus-ring"
+                    aria-invalid={!!error}
+                    aria-errormessage={error ? urlErrorId : undefined}
+                    aria-describedby={urlDescribedBy}
+                  />
+                  <span id={urlHintId} className="text-xs text-muted-foreground/80">
+                    {tForm("urlHint")}
+                  </span>
+                </label>
+              </div>
+
+              <label className="flex flex-col gap-2 text-sm text-muted-foreground" htmlFor={descriptionFieldId}>
+                <span className="font-medium text-foreground">{tForm("descriptionLabel")}</span>
+                <Textarea
+                  id={descriptionFieldId}
+                  className="min-h-[120px] rounded-2xl border-border/40 bg-background px-4 py-3 text-sm"
+                  placeholder={tForm("descriptionPlaceholder")}
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  disabled={submitting || !canEdit}
+                />
+                <span className="text-xs text-muted-foreground/80">{tForm("descriptionHint")}</span>
+              </label>
+
+              <label className="flex flex-col gap-2 text-sm text-muted-foreground" htmlFor={statusFieldId}>
+                <span className="font-medium text-foreground">{tForm("statusLabel")}</span>
+                <select
+                  id={statusFieldId}
+                  className="w-full rounded-2xl border border-border/40 bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value as UrlStatus)}
+                  disabled={submitting || !canEdit}
+                >
+                  {STATUSES.map((item) => (
+                    <option key={item} value={item}>
+                      {tStatuses(item)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {error ? (
+              <LiveMessage id={urlErrorId} tone="assertive" className="text-sm text-red-500">
+                {error}
+              </LiveMessage>
+            ) : null}
+            {info && open ? (
+              <LiveMessage id={infoId} className="text-xs text-muted-foreground">
+                {info}
+              </LiveMessage>
+            ) : null}
+
+            <DialogFooter className="gap-3">
+              <DialogClose asChild>
+                <Button type="button" variant="outline" disabled={submitting}>
+                  {tActions("cancel")}
+                </Button>
+              </DialogClose>
+              <Button
+                type="submit"
+                disabled={submitting || !canEdit}
+                aria-disabled={submitting || !canEdit}
+                className="rounded-full px-6"
+              >
+                {submitting ? tForm("submitting") : tForm("submit")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {info && !open ? (
+        <LiveMessage id={infoId} className="max-w-sm text-right text-xs text-muted-foreground">
+          {info}
+        </LiveMessage>
+      ) : null}
 
       {!canEdit ? <p className="text-sm text-muted-foreground">{tPermissions("viewOnlyMessage")}</p> : null}
-    </form>
+    </div>
   );
 }
 

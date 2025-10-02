@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
+import { LiveMessage } from "@/components/a11y/live-message";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -77,6 +78,13 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [ingestionMessage, setIngestionMessage] = useState<string | null>(null);
   const canResync = canEdit && !isEditing && url.status === "error";
+
+  const titleFieldId = useId();
+  const urlFieldId = useId();
+  const descriptionFieldId = useId();
+  const statusFieldId = useId();
+  const errorMessageId = useId();
+  const infoMessageId = useId();
 
   useEffect(() => {
     setTitle(url.title ?? "");
@@ -243,6 +251,9 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
   }
 
   const currentStatus = isEditing ? status : url.status;
+  const urlAriaDescribedBy = [error ? errorMessageId : null, ingestionMessage ? infoMessageId : null]
+    .filter((value): value is string => Boolean(value))
+    .join(" ") || undefined;
 
   return (
     <div className="flex flex-col gap-4">
@@ -264,9 +275,10 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
       {isEditing ? (
         <form className="space-y-4" onSubmit={handleSave}>
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-2 text-sm text-muted-foreground">
+            <label className="flex flex-col gap-2 text-sm text-muted-foreground" htmlFor={titleFieldId}>
               <span className="font-medium text-foreground">{tForm("titleLabel")}</span>
               <Input
+                id={titleFieldId}
                 placeholder={tForm("titlePlaceholder")}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
@@ -275,21 +287,31 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
               />
             </label>
 
-            <label className="flex flex-col gap-2 text-sm text-muted-foreground">
+            <label className="flex flex-col gap-2 text-sm text-muted-foreground" htmlFor={urlFieldId}>
               <span className="font-medium text-foreground">{tForm("urlLabel")}</span>
               <Input
+                id={urlFieldId}
                 value={currentUrl}
-                onChange={(event) => setCurrentUrl(event.target.value)}
+                onChange={(event) => {
+                  setCurrentUrl(event.target.value);
+                  if (error) {
+                    setError(null);
+                  }
+                }}
                 disabled={!canEdit || busy === "save"}
                 required
                 className="h-11 rounded-2xl border-border/40 bg-background"
+                aria-invalid={!!error}
+                aria-errormessage={error ? errorMessageId : undefined}
+                aria-describedby={urlAriaDescribedBy}
               />
             </label>
           </div>
 
-          <label className="flex flex-col gap-2 text-sm text-muted-foreground">
+          <label className="flex flex-col gap-2 text-sm text-muted-foreground" htmlFor={descriptionFieldId}>
             <span className="font-medium text-foreground">{tForm("descriptionLabel")}</span>
             <Textarea
+              id={descriptionFieldId}
               className="min-h-[120px] rounded-2xl border-border/40 bg-background px-4 py-3 text-sm"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
@@ -297,9 +319,10 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
             />
           </label>
 
-          <label className="flex flex-col gap-2 text-sm text-muted-foreground">
+          <label className="flex flex-col gap-2 text-sm text-muted-foreground" htmlFor={statusFieldId}>
             <span className="font-medium text-foreground">{tForm("statusLabel")}</span>
             <select
+              id={statusFieldId}
               className="w-full rounded-2xl border border-border/40 bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               value={status}
               onChange={(event) => setStatus(event.target.value as UrlStatus)}
@@ -359,7 +382,14 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
         </div>
       )}
 
-      {ingestionMessage ? <p className="text-xs text-muted-foreground">{ingestionMessage}</p> : null}
+      {ingestionMessage ? (
+        <LiveMessage
+          id={infoMessageId}
+          className="block text-xs text-muted-foreground"
+        >
+          {ingestionMessage}
+        </LiveMessage>
+      ) : null}
 
       {!isEditing ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -404,7 +434,15 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
         </div>
       ) : null}
 
-      {error ? <p className="text-xs text-red-500">{error}</p> : null}
+      {error ? (
+        <LiveMessage
+          id={errorMessageId}
+          tone="assertive"
+          className="block text-xs text-red-500"
+        >
+          {error}
+        </LiveMessage>
+      ) : null}
     </div>
   );
 }
