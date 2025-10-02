@@ -1,10 +1,21 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
+import { LiveMessage } from "@/components/a11y/live-message";
 import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 type FileUploadFormProps = {
@@ -15,25 +26,59 @@ type FileUploadFormProps = {
 export function FileUploadForm({ kbId, canEdit }: FileUploadFormProps) {
     const router = useRouter();
     const tForm = useTranslations("kb.fileForm");
+    const tFiles = useTranslations("kb.files");
+    const tActions = useTranslations("kb.urlActions");
     const tPermissions = useTranslations("kb.permissions");
+
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+    const [open, setOpen] = useState(false);
     const [title, setTitle] = useState("");
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const titleFieldId = useId();
+    const fileFieldId = useId();
+    const errorMessageId = useId();
+
+    function resetForm() {
+        setTitle("");
+        setSelectedFile(null);
+        setError(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    }
+
+    function handleDialogOpenChange(next: boolean) {
+        if (!canEdit) {
+            setOpen(false);
+            return;
+        }
+
+        if (!next && loading) {
+            return;
+        }
+
+        setOpen(next);
+
+        if (!next) {
+            resetForm();
+        }
+    }
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (!canEdit || loading) {
             return;
         }
-        const trimmedTitle = title.trim();
 
+        const trimmedTitle = title.trim();
         if (!trimmedTitle) {
             setError(tForm("titleRequired"));
             return;
         }
-
         if (!selectedFile) {
             setError(tForm("fileRequired"));
             return;
@@ -59,60 +104,111 @@ export function FileUploadForm({ kbId, canEdit }: FileUploadFormProps) {
             return;
         }
 
-        setTitle("");
-        setSelectedFile(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-        }
+        resetForm();
         setLoading(false);
+        setOpen(false);
         router.refresh();
     }
 
     return (
-        <form className="space-y-5" onSubmit={handleSubmit}>
-            <div className="grid gap-4 sm:grid-cols-2">
-                <label className="flex flex-col gap-2 text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">{tForm("titleLabel")}</span>
-                    <Input
-                        placeholder={tForm("titlePlaceholder")}
-                        value={title}
-                        onChange={(event) => setTitle(event.target.value)}
-                        disabled={loading || !canEdit}
-                        required
-                        className="h-11 rounded-2xl border-border/40 bg-background"
-                    />
-                </label>
+        <div className="flex flex-wrap items-center gap-3">
+            <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+                <DialogTrigger asChild>
+                    <Button
+                        type="button"
+                        className="rounded-full px-6"
+                        disabled={!canEdit}
+                        aria-disabled={!canEdit}
+                    >
+                        {tForm("submit")}
+                    </Button>
+                </DialogTrigger>
 
-                <label className="flex flex-col gap-2 text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">{tForm("fileLabel")}</span>
-                    <Input
-                        ref={fileInputRef}
-                        type="file"
-                        placeholder={tForm("filePlaceholder")}
-                        onChange={(event) => {
-                            setSelectedFile(event.target.files?.[0] ?? null);
-                        }}
-                        disabled={loading || !canEdit}
-                        required
-                        className="rounded-2xl border-border/40 bg-background"
-                    />
-                    <span className="text-xs text-muted-foreground">{tForm("filePlaceholder")}</span>
-                </label>
-            </div>
+                <DialogContent
+                    showCloseButton
+                    className="sm:max-w-xl rounded-3xl border border-border/40 bg-card/95 px-6 py-6 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-card/90"
+                    onOpenAutoFocus={(event) => {
+                        event.preventDefault();
+                        requestAnimationFrame(() => {
+                            const field = document.getElementById(titleFieldId);
+                            field?.focus();
+                        });
+                    }}
+                >
+                    <DialogHeader className="space-y-2 text-left">
+                        <DialogTitle className="text-2xl font-semibold text-foreground">
+                            {tForm("submit")}
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-muted-foreground">
+                            {tFiles("ctaDescription")}
+                        </DialogDescription>
+                    </DialogHeader>
 
-            <div className="flex flex-wrap items-center gap-3">
-                <Button type="submit" disabled={loading || !canEdit} className="rounded-full px-6">
-                    {loading ? tForm("submitting") : tForm("submit")}
-                </Button>
-                {selectedFile ? (
-                    <span className="text-xs text-muted-foreground">{selectedFile.name}</span>
-                ) : null}
-                {error ? <span className="text-sm text-red-500">{error}</span> : null}
-            </div>
+                    <form className="space-y-5" onSubmit={handleSubmit} aria-busy={loading}>
+                        <label className="flex flex-col gap-2 text-sm text-muted-foreground" htmlFor={titleFieldId}>
+                            <span className="font-medium text-foreground">{tForm("titleLabel")}</span>
+                            <Input
+                                id={titleFieldId}
+                                placeholder={tForm("titlePlaceholder")}
+                                value={title}
+                                onChange={(event) => setTitle(event.target.value)}
+                                disabled={loading || !canEdit}
+                                required
+                                className="h-11 rounded-2xl border-border/40 bg-background focus-ring"
+                                aria-invalid={!!error}
+                                aria-errormessage={error ? errorMessageId : undefined}
+                            />
+                        </label>
+
+                        <label className="flex flex-col gap-2 text-sm text-muted-foreground" htmlFor={fileFieldId}>
+                            <span className="font-medium text-foreground">{tForm("fileLabel")}</span>
+                            <Input
+                                id={fileFieldId}
+                                ref={fileInputRef}
+                                type="file"
+                                onChange={(event) => {
+                                    setSelectedFile(event.target.files?.[0] ?? null);
+                                }}
+                                disabled={loading || !canEdit}
+                                required
+                                className="rounded-2xl border-border/40 bg-background"
+                                aria-invalid={!!error}
+                                aria-errormessage={error ? errorMessageId : undefined}
+                            />
+                            <span className="text-xs text-muted-foreground">{tForm("filePlaceholder")}</span>
+                            {selectedFile ? (
+                                <span className="text-xs text-muted-foreground">{selectedFile.name}</span>
+                            ) : null}
+                        </label>
+
+                        {error ? (
+                            <LiveMessage tone="assertive" id={errorMessageId} className="text-sm text-red-500">
+                                {error}
+                            </LiveMessage>
+                        ) : null}
+
+                        <DialogFooter className="gap-3">
+                            <DialogClose asChild>
+                                <Button type="button" variant="outline" disabled={loading}>
+                                    {tActions("cancel")}
+                                </Button>
+                            </DialogClose>
+                            <Button
+                                type="submit"
+                                className="rounded-full px-6"
+                                disabled={loading || !canEdit}
+                                aria-disabled={loading || !canEdit}
+                            >
+                                {loading ? tForm("submitting") : tForm("submit")}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             {!canEdit ? (
                 <p className="text-sm text-muted-foreground">{tPermissions("viewOnlyMessage")}</p>
             ) : null}
-        </form>
+        </div>
     );
 }
