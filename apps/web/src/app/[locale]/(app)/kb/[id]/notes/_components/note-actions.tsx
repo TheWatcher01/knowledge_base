@@ -3,6 +3,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 
 type NoteActionsProps = {
     noteId: string;
@@ -95,61 +98,60 @@ export function NoteActions({ noteId, initialTitle, initialContent, canEdit }: N
 
     return (
         <div className="mt-4 space-y-3">
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-red-500">{error}</p>}
             {!canEdit && <p className="text-sm text-muted-foreground">{tPermissions("viewOnlyMessage")}</p>}
 
             {isEditing ? (
-                <form onSubmit={submitEdition} className="space-y-2">
-                    <input
-                        className="w-full rounded border px-3 py-2 text-sm"
+                <form onSubmit={submitEdition} className="space-y-3">
+                    <Input
                         value={title}
                         onChange={(event) => setTitle(event.target.value)}
                         disabled={updating || !canEdit}
                         required
+                        className="h-11 rounded-2xl border-border/40 bg-background"
                     />
-                    <textarea
-                        className="min-h-[120px] w-full rounded border px-3 py-2 text-sm"
+                    <Textarea
+                        className="min-h-[120px] rounded-2xl border-border/40 bg-background px-4 py-3 text-sm"
                         value={content}
                         onChange={(event) => setContent(event.target.value)}
                         disabled={updating || !canEdit}
                         required
                     />
-                    <div className="flex gap-2">
-                        <button
-                            type="submit"
-                            className="rounded bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-                            disabled={updating || !canEdit}
-                        >
+                    <div className="flex flex-wrap gap-2">
+                        <Button type="submit" disabled={updating || !canEdit} className="rounded-full px-5">
                             {updating ? t("saveLoading") : t("save")}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="button"
-                            className="rounded border px-3 py-2 text-sm disabled:opacity-50"
+                            variant="outline"
                             onClick={cancelEditing}
                             disabled={updating}
+                            className="rounded-full px-5"
                         >
                             {t("cancel")}
-                        </button>
+                        </Button>
                     </div>
                 </form>
             ) : (
-                <div className="flex gap-2">
-                    <button
+                <div className="flex flex-wrap gap-2">
+                    <Button
                         type="button"
-                        className="rounded border px-3 py-2 text-sm disabled:opacity-50"
+                        variant="outline"
                         onClick={startEditing}
                         disabled={deleting || !canEdit}
+                        className="rounded-full px-5"
                     >
                         {t("edit")}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
-                        className="rounded bg-destructive px-3 py-2 text-sm font-semibold text-destructive-foreground disabled:opacity-50"
+                        variant="destructive"
                         onClick={deleteNote}
                         disabled={deleting || !canEdit}
+                        className="rounded-full px-5"
                     >
                         {deleting ? t("deleteLoading") : t("delete")}
-                    </button>
+                    </Button>
                 </div>
             )}
         </div>
