@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
 type FileEntry = {
     id: string;
     title: string;
@@ -27,7 +30,7 @@ export function FilesList({ files, canEdit }: { files: FileEntry[]; canEdit: boo
 
     return (
         <div className="space-y-3">
-            {!canEdit && <p className="text-sm text-[var(--kb-text-muted)]">{tPermissions("viewOnlyMessage")}</p>}
+            {!canEdit ? <p className="text-sm text-muted-foreground">{tPermissions("viewOnlyMessage")}</p> : null}
             <ul className="space-y-3">
                 {files.map((file) => {
                     const createdDate = formatter.dateTime(new Date(file.createdAt), { dateStyle: "medium" });
@@ -37,7 +40,7 @@ export function FilesList({ files, canEdit }: { files: FileEntry[]; canEdit: boo
                     return (
                         <li
                             key={file.id}
-                            className="rounded-xl border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] bg-[color-mix(in_srgb,var(--kb-surface)_90%,black_10%)] px-5 py-4 shadow-[0_18px_30px_-26px_rgba(0,0,0,0.55)]"
+                            className="rounded-2xl border border-border/30 bg-card/80 px-5 py-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/60"
                         >
                             <FileRow file={{ ...file, createdLabel }} canEdit={canEdit} />
                         </li>
@@ -177,25 +180,28 @@ function FileRow({ file, canEdit }: RowProps) {
         <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
                 {isRenaming ? (
-                    <form className="flex flex-col gap-2" onSubmit={handleRename}>
-                        <input
-                            className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-2 text-sm text-[var(--kb-text)] focus:border-[var(--kb-highlight)] focus:outline-none"
+                    <form className="space-y-3" onSubmit={handleRename}>
+                        <Input
                             placeholder={tForm("titlePlaceholder")}
                             value={title}
                             onChange={(event) => setTitle(event.target.value)}
                             disabled={!canEdit || busy === "rename"}
+                            className="h-11 rounded-2xl border-border/40 bg-background"
                         />
                         <div className="flex flex-wrap gap-2">
-                            <button
+                            <Button
                                 type="submit"
-                                className="rounded bg-[var(--kb-highlight)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                                size="sm"
+                                className="rounded-full px-4"
                                 disabled={!canEdit || busy === "rename"}
                             >
                                 {busy === "rename" ? tActions("renaming") : tActions("renameSave")}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 type="button"
-                                className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-[var(--kb-text)] hover:border-[var(--kb-highlight)]"
+                                variant="outline"
+                                size="sm"
+                                className="rounded-full px-4"
                                 onClick={() => {
                                     setIsRenaming(false);
                                     setTitle(file.title);
@@ -204,30 +210,30 @@ function FileRow({ file, canEdit }: RowProps) {
                                 disabled={!canEdit || busy === "rename"}
                             >
                                 {tActions("renameCancel")}
-                            </button>
+                            </Button>
                         </div>
                     </form>
                 ) : (
-                    <>
-                        <p className="text-sm font-medium text-[var(--kb-text)]">{file.title}</p>
-                        <p className="text-xs uppercase tracking-wide text-[var(--kb-text-muted)]">{file.createdLabel}</p>
-                    </>
+                    <div className="flex flex-col gap-1">
+                        <p className="text-sm font-semibold text-foreground">{file.title}</p>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">{file.createdLabel}</p>
+                    </div>
                 )}
-                <p className="text-xs text-[var(--kb-text-subtle)]">{tActions("originalName", { name: originalName })}</p>
-                <p className="text-xs text-[var(--kb-text-muted)]">{tActions("fileMeta", { size: formattedSize, type: file.mimeType })}</p>
+                <p className="text-xs text-muted-foreground">{tActions("originalName", { name: originalName })}</p>
+                <p className="text-xs text-muted-foreground">{tActions("fileMeta", { size: formattedSize, type: file.mimeType })}</p>
             </div>
 
             <div className="flex flex-wrap gap-2">
-                <a
-                    href={`/api/files/${file.id}`}
-                    download={originalName}
-                    className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-[var(--kb-text)] hover:border-[var(--kb-highlight)]"
-                >
-                    {tActions("download")}
-                </a>
-                <button
+                <Button asChild variant="outline" size="sm" className="rounded-full px-4">
+                    <a href={`/api/files/${file.id}`} download={originalName}>
+                        {tActions("download")}
+                    </a>
+                </Button>
+                <Button
                     type="button"
-                    className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-[var(--kb-text)] hover:border-[var(--kb-highlight)]"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full px-4"
                     onClick={() => {
                         if (!canEdit) {
                             return;
@@ -238,15 +244,17 @@ function FileRow({ file, canEdit }: RowProps) {
                     disabled={!canEdit || busy !== null || isRenaming}
                 >
                     {tActions("rename")}
-                </button>
-                <button
+                </Button>
+                <Button
                     type="button"
-                    className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-[var(--kb-text)] hover:border-[var(--kb-highlight)]"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full px-4"
                     onClick={handleReplaceClick}
                     disabled={!canEdit || busy !== null || isRenaming}
                 >
                     {busy === "replace" ? tActions("replacing") : tActions("replace")}
-                </button>
+                </Button>
                 <input
                     ref={fileInputRef}
                     type="file"
@@ -254,17 +262,19 @@ function FileRow({ file, canEdit }: RowProps) {
                     onChange={handleFileChange}
                     disabled={!canEdit}
                 />
-                <button
+                <Button
                     type="button"
-                    className="rounded border border-[color-mix(in_srgb,var(--kb-border)_65%,transparent_35%)] px-3 py-1.5 text-xs font-semibold text-red-600 hover:border-red-500"
+                    variant="destructive"
+                    size="sm"
+                    className="rounded-full px-4"
                     onClick={handleDelete}
                     disabled={!canEdit || busy !== null || isRenaming}
                 >
                     {busy === "delete" ? tActions("deleting") : tActions("delete")}
-                </button>
+                </Button>
             </div>
 
-            {error && <p className="text-xs text-red-600">{error}</p>}
+            {error ? <p className="text-xs text-red-500">{error}</p> : null}
         </div>
     );
 }

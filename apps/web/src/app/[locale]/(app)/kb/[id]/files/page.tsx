@@ -49,25 +49,34 @@ export default async function KnowledgeBaseFilesPage({ params }: PageProps) {
     }));
 
     return (
-        <>
-            <header className="flex flex-col gap-2">
-                <h2 className="text-xl font-semibold text-[var(--kb-text)]">{t("title")}</h2>
-                <p className="text-sm text-[var(--kb-text-subtle)]">{t("description")}</p>
-            </header>
-
-            <FileUploadForm kbId={id} canEdit={canEdit} />
+        <section className="flex h-full flex-col gap-6">
+            <div className="rounded-3xl border border-border/40 bg-card/95 p-6 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+                <div className="flex flex-col gap-2">
+                    <h2 className="text-2xl font-semibold text-foreground">{t("title")}</h2>
+                    <p className="text-sm text-muted-foreground">{t("description")}</p>
+                </div>
+                <div className="mt-6 rounded-2xl border border-border/30 bg-background/60 p-5 shadow-sm">
+                    <div className="mb-4 space-y-1 text-sm text-muted-foreground">
+                        <h3 className="text-base font-semibold text-foreground">{t("ctaTitle")}</h3>
+                        <p>{t("ctaDescription")}</p>
+                    </div>
+                    <FileUploadForm kbId={id} canEdit={canEdit} />
+                </div>
+            </div>
 
             {entries.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-[color-mix(in_srgb,var(--kb-border)_60%,transparent_40%)] bg-[color-mix(in_srgb,var(--kb-surface)_96%,black_4%)] px-6 py-10 text-center shadow-[0_16px_28px_-26px_rgba(0,0,0,0.55)]">
-                    <h3 className="text-lg font-semibold text-[var(--kb-text)]">{t("emptyTitle")}</h3>
-                    <p className="mt-2 text-sm text-[var(--kb-text-muted)]">{t("emptyDescription")}</p>
+                <div className="flex flex-1 items-center justify-center rounded-3xl border border-dashed border-border/40 bg-card/40 p-10 text-center shadow-sm">
+                    <div className="space-y-2">
+                        <h3 className="text-lg font-semibold text-foreground">{t("emptyTitle")}</h3>
+                        <p className="text-sm text-muted-foreground">{t("emptyDescription")}</p>
+                    </div>
                 </div>
             ) : (
-                <section className="space-y-3">
-                    <h3 className="text-base font-semibold text-[var(--kb-text)]">{t("historyTitle")}</h3>
+                <section className="flex-1 space-y-3 overflow-y-auto pr-1">
+                    <h3 className="text-base font-semibold text-foreground">{t("historyTitle")}</h3>
                     <FilesList files={entries} canEdit={canEdit} />
                 </section>
             )}
-        </>
+        </section>
     );
 }
