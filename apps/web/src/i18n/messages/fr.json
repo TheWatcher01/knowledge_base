@@ -82,6 +82,25 @@
       "card": {
         "documents": "{count, plural, one {# document} other {# documents}}",
         "created": "Créée le {date}"
+      },
+      "search": {
+        "placeholder": "Rechercher une base..."
+      },
+      "view": {
+        "grid": "Vue grille",
+        "list": "Vue liste"
+      },
+      "sort": {
+        "recent": "Trier : récents",
+        "alphabetical": "Trier : A-Z"
+      },
+      "table": {
+        "columns": {
+          "name": "Nom",
+          "created": "Créée le",
+          "documents": "Documents",
+          "actions": "Actions"
+        }
       }
     },
     "createForm": {
@@ -101,11 +120,12 @@
       "success": "Base de connaissance supprimée.",
       "cancel": "Annuler"
     },
-    "layout": {
-      "missingDescription": "Ajoutez une description pour contextualiser cette base de connaissance.",
-      "createdOn": "Créée le",
-      "documents": "Documents"
-    },
+  "layout": {
+    "missingDescription": "Ajoutez une description pour contextualiser cette base de connaissance.",
+    "createdOn": "Créée le",
+    "sources": "Sources",
+    "documents": "Documents"
+  },
     "tabs": {
       "overview": "Vue d'ensemble",
       "notes": "Notes",
@@ -142,9 +162,12 @@
         "empty": "Aucune note pour l'instant. Ajoutez votre première note depuis l'onglet \"Notes\"."
       }
     },
-    "notes": {
-      "empty": "Aucune note pour le moment."
-    },
+  "notes": {
+    "title": "Notes",
+    "description": "Consignez les idées et le contexte pour garder cette base alignée.",
+    "empty": "Aucune note pour le moment.",
+    "emptyDescription": "Ajoutez une première note grâce au formulaire ci-dessus pour conserver vos idées."
+  },
     "permissions": {
       "viewOnlyMessage": "Vous êtes en lecture seule. Demandez à un éditeur ou un administrateur d'accorder des droits de modification."
     },
@@ -237,20 +260,21 @@
       "ingestionDisabled": "L’ingestion automatique est désactivée. Vous pourrez relancer l’indexation plus tard.",
       "ingestionError": "L’ingestion a échoué : {error}"
     },
-    "urlActions": {
-      "open": "Ouvrir",
-      "edit": "Modifier",
-      "save": "Enregistrer",
-      "saving": "Enregistrement...",
-      "cancel": "Annuler",
-      "delete": "Supprimer",
-      "deleting": "Suppression...",
-      "deleteConfirm": "Supprimer le lien \"{title}\" ?",
-      "deleteError": "Impossible de supprimer le lien.",
-      "updateError": "Impossible de mettre à jour le lien.",
-      "queuedTooltip": "En cours d’ingestion. Actualisez plus tard ou modifiez le lien si besoin.",
-      "errorTooltip": "Échec de l’ingestion. Vérifiez l’URL puis utilisez «Modifier» pour relancer."
-    },
+  "urlActions": {
+    "open": "Ouvrir",
+    "edit": "Modifier",
+    "save": "Enregistrer",
+    "saving": "Enregistrement...",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "deleting": "Suppression...",
+    "deleteConfirm": "Supprimer le lien \"{title}\" ?",
+    "deleteError": "Impossible de supprimer le lien.",
+    "updateError": "Impossible de mettre à jour le lien.",
+    "resync": "Relancer l’ingestion",
+    "queuedTooltip": "En cours d’ingestion. Actualisez plus tard ou modifiez le lien si besoin.",
+    "errorTooltip": "Échec de l’ingestion. Vérifiez l’URL puis utilisez «Modifier» pour relancer."
+  },
     "urlStatuses": {
       "draft": "Brouillon",
       "queued": "En attente",
@@ -277,6 +301,42 @@
       "errorGeneric": "L’assistant n’a pas pu répondre. Réessayez dans un instant.",
       "errorModelRequired": "Sélectionnez un modèle avant d’envoyer une question.",
       "errorAborted": "Génération interrompue."
+    },
+  "card": {
+    "emptyDescription": "Aucune description pour le moment.",
+    "notes": "{count, plural, one {# note} other {# notes}}",
+    "files": "{count, plural, one {# fichier} other {# fichiers}}",
+    "urls": "{count, plural, one {# lien} other {# liens}}",
+    "documents": "{count, plural, one {# document} other {# documents}}"
+  },
+  "workspace": {
+    "sources": "Sources",
+    "searchPlaceholder": "Rechercher une base",
+    "documents": "{count, plural, one {# document} other {# documents}}",
+    "selection": {
+      "toggle": "{name} : basculer la sélection",
+      "count": "{count, plural, one {# base sélectionnée} other {# bases sélectionnées}}"
+    },
+    "actions": {
+      "selectVisible": "Tout sélectionner",
+      "unselectVisible": "Effacer la sélection visible",
+      "clear": "Réinitialiser"
+    },
+    "tip": {
+      "title": "Astuce",
+      "content": "Utilisez l’assistant pour résumer vos sources et enrichir rapidement cette base."
+    },
+    "studio": {
+      "title": "Studio",
+      "description": "Générez de nouveaux contenus pour cette base en un clic.",
+      "audio": "Résumé audio",
+      "video": "Résumé vidéo",
+      "mindmap": "Carte mentale",
+      "report": "Rapport",
+      "flashcards": "Fiches d’apprentissage",
+      "quiz": "Quiz",
+      "cta": "Workflows IA"
     }
   }
+}
 }

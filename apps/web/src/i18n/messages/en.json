@@ -82,6 +82,25 @@
       "card": {
         "documents": "{count, plural, one {# document} other {# documents}}",
         "created": "Created on {date}"
+      },
+      "search": {
+        "placeholder": "Search knowledge bases..."
+      },
+      "view": {
+        "grid": "Grid view",
+        "list": "List view"
+      },
+      "sort": {
+        "recent": "Sort: Recent",
+        "alphabetical": "Sort: A–Z"
+      },
+      "table": {
+        "columns": {
+          "name": "Name",
+          "created": "Created",
+          "documents": "Documents",
+          "actions": "Actions"
+        }
       }
     },
     "createForm": {
@@ -104,6 +123,7 @@
     "layout": {
       "missingDescription": "Add a description to provide context for this knowledge base.",
       "createdOn": "Created on",
+      "sources": "Sources",
       "documents": "Documents"
     },
     "tabs": {
@@ -143,7 +163,10 @@
       }
     },
     "notes": {
-      "empty": "No notes yet."
+      "title": "Notes",
+      "description": "Capture thoughts and context to keep this base aligned.",
+      "empty": "No notes yet.",
+      "emptyDescription": "Add your first note using the form above to keep track of insights."
     },
     "permissions": {
       "viewOnlyMessage": "You have view-only access. Ask an editor or admin for edit permissions to make changes."
@@ -237,20 +260,21 @@
       "ingestionDisabled": "Automatic ingestion is disabled. You can rerun it later.",
       "ingestionError": "Ingestion failed: {error}"
     },
-    "urlActions": {
-      "open": "Open",
-      "edit": "Edit",
-      "save": "Save",
-      "saving": "Saving...",
-      "cancel": "Cancel",
-      "delete": "Delete",
-      "deleting": "Deleting...",
-      "deleteConfirm": "Delete the link \"{title}\"?",
-      "deleteError": "Couldn't delete the link.",
-      "updateError": "Couldn't update the link.",
-      "queuedTooltip": "Ingestion in progress. Refresh later or edit the link if needed.",
-      "errorTooltip": "Ingestion failed. Check the URL then use “Edit” to retry."
-    },
+  "urlActions": {
+    "open": "Open",
+    "edit": "Edit",
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleting": "Deleting...",
+    "deleteConfirm": "Delete the link \"{title}\"?",
+    "deleteError": "Couldn't delete the link.",
+    "updateError": "Couldn't update the link.",
+    "resync": "Requeue ingestion",
+    "queuedTooltip": "Ingestion in progress. Refresh later or edit the link if needed.",
+    "errorTooltip": "Ingestion failed. Check the URL then use “Edit” to retry."
+  },
     "urlStatuses": {
       "draft": "Draft",
       "queued": "Queued",
@@ -277,6 +301,41 @@
       "errorGeneric": "The assistant could not answer. Please try again.",
       "errorModelRequired": "Select a model before asking a question.",
       "errorAborted": "Generation cancelled."
+    },
+    "card": {
+      "emptyDescription": "No description provided yet.",
+      "notes": "{count, plural, one {# note} other {# notes}}",
+      "files": "{count, plural, one {# file} other {# files}}",
+      "urls": "{count, plural, one {# link} other {# links}}"
+    },
+    "workspace": {
+      "sources": "Sources",
+      "searchPlaceholder": "Search a knowledge base",
+      "documents": "{count, plural, one {# document} other {# documents}}",
+      "selection": {
+        "toggle": "{name}: toggle selection",
+        "count": "{count, plural, one {# base selected} other {# bases selected}}"
+      },
+      "actions": {
+        "selectVisible": "Select visible",
+        "unselectVisible": "Clear visible",
+        "clear": "Clear selection"
+      },
+      "tip": {
+        "title": "Tip",
+        "content": "Use the assistant to summarise your sources and quickly enrich this base."
+      },
+      "studio": {
+        "title": "Studio",
+        "description": "Generate new assets from this knowledge base in a single click.",
+        "audio": "Audio summary",
+        "video": "Video summary",
+        "mindmap": "Mind map",
+        "report": "Report",
+        "flashcards": "Learning flashcards",
+        "quiz": "Quiz",
+        "cta": "AI powered workflows"
+      }
     }
   }
 }
