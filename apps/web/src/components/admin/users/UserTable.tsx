@@ -279,12 +279,12 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
                 />
             </div>
 
-            <Card className="relative overflow-hidden border border-border/50 bg-slate-950/70 shadow-[0_32px_120px_-60px_rgba(8,47,73,0.9)] backdrop-blur">
+            <Card className="relative overflow-hidden border border-border/50 bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
                 <div
                     aria-hidden
                     className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-50 transition-opacity duration-700 group-hover:opacity-70"
                 />
-                <CardHeader className="relative gap-4 md:flex md:flex-row md:items-center md:justify-between">
+                <CardHeader className="relative gap-4 md:flex md:flex-row md:items-center md:justify-between bg-card/80 supports-[backdrop-filter]:bg-card/70">
                     <div className="space-y-1">
                         <CardTitle className="text-xl font-semibold">Liste des utilisateurs</CardTitle>
                         <p className="text-sm text-muted-foreground">
@@ -315,7 +315,7 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
                     <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
-                                <TableRow className="bg-slate-900/60">
+                                <TableRow className="bg-card/80 supports-[backdrop-filter]:bg-card/70">
                                     <TableHead>Email</TableHead>
                                     <TableHead>Nom</TableHead>
                                     <TableHead>Rôle</TableHead>
@@ -337,7 +337,7 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
                                             key={user.id}
                                             className={cn(
                                                 "group border-border/30 transition-all duration-200",
-                                                "even:bg-slate-950/40",
+                                                "even:bg-card/70 supports-[backdrop-filter]:bg-card/60",
                                                 user.disabled
                                                     ? "hover:-translate-y-[1px] hover:border-amber-400/60 hover:bg-amber-500/10"
                                                     : "hover:-translate-y-[1px] hover:border-primary/60 hover:bg-primary/10",
@@ -399,7 +399,7 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
                     </div>
                 </CardContent>
 
-                <CardFooter className="flex flex-col gap-3 border-t bg-muted/20 px-6 py-4 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+                <CardFooter className="flex flex-col gap-3 border-t bg-card/80 supports-[backdrop-filter]:bg-card/70 px-6 py-4 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
                     <span>
                         Affichage de <strong>{numberFormatter.format(users.length)}</strong> utilisateur
                         {users.length > 1 ? "s" : ""} sur <strong>{numberFormatter.format(totalCount)}</strong>
@@ -503,16 +503,16 @@ type SummaryTileProps = {
 
 function SummaryTile({ label, value, helper, accentDot, accentGlow }: SummaryTileProps) {
     return (
-        <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-slate-950/40 p-4 shadow-lg backdrop-blur transition-transform duration-300 hover:-translate-y-1 hover:border-border/60">
+        <div className="group relative overflow-hidden rounded-3xl border border-border/50 bg-card/90 p-4 shadow-sm backdrop-blur transition-transform duration-300 hover:-translate-y-1 hover:border-border/70">
             <div
                 aria-hidden
                 className={cn(
-                    "pointer-events-none absolute inset-0 bg-gradient-to-br opacity-60 blur-2xl transition-opacity duration-500 group-hover:opacity-80",
+                    "pointer-events-none absolute inset-0 bg-gradient-to-br opacity-50 blur-2xl transition-opacity duration-500 group-hover:opacity-80",
                     accentGlow,
                 )}
             />
             <div className="relative">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">{label}</p>
                 <div className="mt-3 flex items-center gap-3">
                     <span className="text-2xl font-semibold text-foreground">{value}</span>
                     <span className={cn("h-2 w-2 rounded-full", accentDot)} aria-hidden />
@@ -525,9 +525,9 @@ function SummaryTile({ label, value, helper, accentDot, accentGlow }: SummaryTil
 
 function RoleBadge({ role }: { role: Role }) {
     const styles: Record<Role, string> = {
-        ADMIN: "border-purple-500/40 bg-purple-500/10 text-purple-200",
-        EDITOR: "border-sky-500/40 bg-sky-500/10 text-sky-200",
-        VIEWER: "border-zinc-500/40 bg-zinc-500/10 text-zinc-200",
+        ADMIN: "border-primary/50 bg-primary/10 text-primary/80",
+        EDITOR: "border-blue-500/50 bg-blue-500/10 text-blue-400",
+        VIEWER: "border-muted-foreground/40 bg-muted/10 text-muted-foreground",
     };
 
     return (
@@ -545,16 +545,16 @@ function RoleBadge({ role }: { role: Role }) {
 function StatusBadge({ disabled }: { disabled: boolean }) {
     if (disabled) {
         return (
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
-                <span className="h-2 w-2 rounded-full bg-amber-300" aria-hidden />
+            <span className="inline-flex items-center gap-1 rounded-full border border-yellow-500/40 bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-300">
+                <span className="h-2 w-2 rounded-full bg-yellow-300" aria-hidden />
                 Désactivé
             </span>
         );
     }
 
     return (
-        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
-            <span className="h-2 w-2 rounded-full bg-emerald-300" aria-hidden />
+        <span className="inline-flex items-center gap-1 rounded-full border border-green-500/40 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-300">
+            <span className="h-2 w-2 rounded-full bg-green-300" aria-hidden />
             Actif
         </span>
     );

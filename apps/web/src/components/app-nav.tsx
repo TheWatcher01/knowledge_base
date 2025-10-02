@@ -38,7 +38,7 @@ export function AppNav({
 
   return (
     <header className="border-b bg-card">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-4">
+      <div className="flex w-full items-center justify-between gap-6 px-4 py-4 sm:px-6 lg:px-8">
         <nav className="flex items-center gap-4 text-sm font-medium">
           {navItems.map((item) => {
             const active =
