@@ -32,7 +32,7 @@ export default async function AppLayout({ children, params }: LayoutProps) {
           userEmail={ensuredSession.user?.email ?? null}
           userRole={(ensuredSession.user?.role as "VIEWER" | "EDITOR" | "ADMIN" | null) ?? null}
         />
-        <main className="mx-auto flex w-full max-w-5xl flex-1 px-6 py-8">
+        <main className="flex-1 px-8 py-8 md:px-12 lg:px-16">
           {children}
         </main>
       </div>

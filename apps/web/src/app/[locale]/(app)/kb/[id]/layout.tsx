@@ -4,7 +4,8 @@ import { redirect } from "@/i18n/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { KnowledgeBaseTabs } from "./_components/kb-tabs";
-import { getFormatter, getTranslations } from "next-intl/server";
+import { KnowledgeBaseStudio } from "./_components/kb-studio";
+import { getTranslations } from "next-intl/server";
 
 type LayoutProps = {
     children: React.ReactNode;
@@ -30,45 +31,39 @@ export default async function KnowledgeBaseLayout({ children, params }: LayoutPr
         notFound();
     }
 
-    const [t, formatter] = await Promise.all([
-        getTranslations({ locale, namespace: "kb.layout" }),
-        getFormatter({ locale }),
-    ]);
-    const createdAt = formatter.dateTime(kb.createdAt, { dateStyle: "medium" });
+    const t = await getTranslations({ locale, namespace: "kb.layout" });
 
     return (
-        <section className="flex w-full flex-col gap-6">
-            <header className="rounded-2xl border border-[color-mix(in_srgb,var(--kb-border)_78%,transparent_22%)] bg-[color-mix(in_srgb,var(--kb-surface)_88%,black_12%)] px-6 py-6 shadow-[0_22px_44px_-32px_rgba(0,0,0,0.85)] backdrop-blur-sm">
-                <div className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-1.5">
-                        <h1 className="text-3xl font-semibold tracking-tight text-[var(--kb-text)]">{kb.name}</h1>
-                        {kb.description ? (
-                            <p className="max-w-3xl text-base text-[var(--kb-text-subtle)]">{kb.description}</p>
-                        ) : (
-                            <p className="text-sm text-[var(--kb-text-subtle)]">{t("missingDescription")}</p>
-                        )}
+        <div className="min-h-screen w-full bg-background px-4 py-4 sm:px-6 sm:py-6 lg:px-10">
+            <div className="mx-auto grid w-full gap-6 xl:grid-cols-[280px_minmax(0,1fr)_320px] 2xl:grid-cols-[320px_minmax(0,1fr)_360px]">
+                <aside className="flex max-h-[calc(100vh-160px)] flex-col gap-4 overflow-y-auto rounded-3xl border border-border/40 bg-card/95 p-4 shadow-sm backdrop-blur">
+                    <div>
+                        <h2 className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">{t("sources")}</h2>
                     </div>
+                    <KnowledgeBaseTabs kbId={kb.id} />
+                </aside>
 
-                    <dl className="flex flex-wrap gap-3 text-xs sm:text-sm text-[var(--kb-text-muted)]">
-                        <div className="flex items-center gap-2 rounded-full bg-[color-mix(in_srgb,var(--kb-highlight)_20%,transparent_80%)] px-3 py-1">
-                            <dt className="font-medium text-[var(--kb-text)]">{t("createdOn")}</dt>
-                            <dd>
-                                <time dateTime={kb.createdAt.toISOString()}>{createdAt}</time>
-                            </dd>
+                <div className="flex max-h-[calc(100vh-160px)] min-h-0 flex-col gap-4">
+                    <header className="sticky top-0 z-10 space-y-4 rounded-3xl border border-border/40 bg-card/95 px-6 py-6 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+                        <div className="flex flex-col gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/70">Knowledge Base</span>
+                            <h1 className="text-3xl font-semibold tracking-tight text-foreground">{kb.name}</h1>
+                            {kb.description ? (
+                                <p className="max-w-3xl text-sm text-muted-foreground">{kb.description}</p>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">{t("missingDescription")}</p>
+                            )}
                         </div>
-                        <div className="flex items-center gap-2 rounded-full bg-[color-mix(in_srgb,var(--kb-highlight)_20%,transparent_80%)] px-3 py-1">
-                            <dt className="font-medium text-[var(--kb-text)]">{t("documents")}</dt>
-                            <dd>{kb._count.documents}</dd>
-                        </div>
-                    </dl>
+                    </header>
+                    <div className="min-h-0 flex-1 overflow-y-auto rounded-3xl border border-border/40 bg-card/90 p-6 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+                        {children}
+                    </div>
                 </div>
-            </header>
 
-            <KnowledgeBaseTabs kbId={kb.id} />
-
-            <div className="rounded-2xl border border-[color-mix(in_srgb,var(--kb-border)_78%,transparent_22%)] bg-[color-mix(in_srgb,var(--kb-surface)_94%,black_6%)] px-6 py-6 shadow-[0_20px_40px_-30px_rgba(0,0,0,0.75)] backdrop-blur-sm">
-                <div className="flex flex-col gap-6">{children}</div>
+                <aside className="max-h-[calc(100vh-160px)] overflow-y-auto rounded-3xl border border-border/40 bg-card/95 p-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+                    <KnowledgeBaseStudio kbId={kb.id} />
+                </aside>
             </div>
-        </section>
+        </div>
     );
 }
