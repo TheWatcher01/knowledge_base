@@ -10,8 +10,7 @@ import {
   useId,
 } from "react";
 import { useTranslations } from "next-intl";
-import { Clock } from "lucide-react";
-import * as Dialog from "@radix-ui/react-dialog";
+import { useSearchParams, useRouter } from "next/navigation";
 
 import { LiveMessage } from "@/components/a11y/live-message";
 import { Button } from "@/components/ui/button";
@@ -26,13 +25,16 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { CHAT_CONVERSATIONS_UPDATED_EVENT } from "@/lib/chat-events";
 
 export const DEFAULT_MODEL = process.env.NEXT_PUBLIC_DEFAULT_CHAT_MODEL ?? "";
 
-type ChatMessage = {
-  id: string;
+type ConversationMessage = {
+  id: string | null;
   role: "user" | "assistant";
   content: string;
+  sequence: number;
+  isStreaming?: boolean;
 };
 
 type ModelOption = {
@@ -40,11 +42,17 @@ type ModelOption = {
   label: string;
 };
 
-type ChatTurn = {
+type ConversationSummary = {
   id: string;
-  question: string;
-  answer: string;
-  updatedAt: number;
+  title: string;
+  model: string | null;
+  summary: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lastActivityAt: string;
+  archived: boolean;
+  pinned: boolean;
+  meta?: Record<string, unknown> | null;
 };
 
 type LiveTone = "polite" | "assertive";
@@ -56,6 +64,8 @@ type KnowledgeBaseChatPanelProps = {
 
 export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPanelProps) {
   const t = useTranslations("kb.chat");
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const headingId = useId();
   const descriptionId = useId();
@@ -66,7 +76,11 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   const messageFieldId = useId();
   const errorMessageId = useId();
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [conversationsLoading, setConversationsLoading] = useState(true);
+  const [conversationsError, setConversationsError] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationIdState] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
@@ -79,14 +93,33 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   const [statusMessage, setStatusMessage] = useState("");
   const [statusTone, setStatusTone] = useState<LiveTone>("polite");
   const [focusTargetId, setFocusTargetId] = useState<string | null>(null);
-  const [history, setHistory] = useState<ChatTurn[]>([]);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const latestAssistantIdRef = useRef<string | null>(null);
   const assistantContentRef = useRef<string>("");
   const scrollAnchorRef = useRef<HTMLLIElement | null>(null);
-  const pendingTurnRef = useRef<{ id: string; question: string } | null>(null);
-  const pendingFocusAssistantIdRef = useRef<string | null>(null);
+  const initialConversationLoadedRef = useRef(false);
+  const pendingConversationIdRef = useRef<string | null>(null);
+  const emitConversationsUpdated = useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new CustomEvent(CHAT_CONVERSATIONS_UPDATED_EVENT));
+  }, []);
+
+  const setActiveConversationId = useCallback(
+    (conversationId: string | null) => {
+      setActiveConversationIdState(conversationId);
+      const current = new URLSearchParams(searchParams?.toString());
+      if (conversationId) {
+        current.set("conversation", conversationId);
+      } else {
+        current.delete("conversation");
+      }
+      const query = current.toString();
+      const href = query ? `?${query}` : "";
+      router.replace(href, { scroll: false });
+    },
+    [router, searchParams],
+  );
 
   const updateStatus = useCallback((message: string, tone: LiveTone = "polite") => {
     setStatusTone(tone);
@@ -96,6 +129,110 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   useEffect(() => {
     updateStatus(t("status"));
   }, [t, updateStatus]);
+
+  const loadConversation = useCallback(
+    async (conversationId: string) => {
+      try {
+        updateStatus(t("statusLoading"));
+        const response = await fetch(`/api/kb/${kbId}/chat/conversations/${conversationId}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = (await response.json()) as {
+          conversation?: {
+            id: string;
+            title: string;
+            model: string | null;
+            summary: string | null;
+            createdAt: string;
+            updatedAt: string;
+            lastActivityAt: string;
+            archived: boolean;
+            pinned: boolean;
+            meta?: Record<string, unknown> | null;
+            messages: Array<{
+              id: string;
+              role: "user" | "assistant";
+              content: string;
+              sequence: number;
+              createdAt: string;
+            }>;
+          };
+        };
+
+        if (!data.conversation) {
+          throw new Error("Missing conversation payload");
+        }
+
+        setActiveConversationId(data.conversation.id);
+        setSelectedModel((current) => data.conversation?.model ?? current);
+        const mappedMessages = data.conversation.messages.map((message) => ({
+          id: message.id,
+          role: message.role,
+          content: message.content,
+          sequence: message.sequence,
+        }));
+        setMessages(mappedMessages);
+        if (mappedMessages.length > 0) {
+          setFocusTargetId(mappedMessages[mappedMessages.length - 1]?.id ?? null);
+        }
+        setStreamError(null);
+        updateStatus(t("status"));
+      } catch (error) {
+        console.warn("[chat] Failed to load conversation", error);
+        setStreamError(t("historyLoadError"));
+      }
+    },
+    [kbId, t, updateStatus, setActiveConversationId],
+  );
+
+  const tryAutoSelectConversation = useCallback(
+    (items: ConversationSummary[]) => {
+      if (initialConversationLoadedRef.current) return;
+      if (items.length === 0) return;
+      const first = items[0];
+      if (!first) return;
+      initialConversationLoadedRef.current = true;
+      setActiveConversationId(first.id);
+      void loadConversation(first.id);
+    },
+    [loadConversation, setActiveConversationId],
+  );
+
+  useEffect(() => {
+    const conversationParam = searchParams?.get("conversation");
+    if (conversationParam && conversationParam !== activeConversationId) {
+      initialConversationLoadedRef.current = true;
+      setActiveConversationId(conversationParam);
+      void loadConversation(conversationParam);
+    }
+  }, [searchParams, activeConversationId, loadConversation, setActiveConversationId]);
+
+  const loadConversations = useCallback(async () => {
+    setConversationsLoading(true);
+    setConversationsError(null);
+
+    try {
+      const response = await fetch(`/api/kb/${kbId}/chat/conversations`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = (await response.json()) as { conversations?: ConversationSummary[] };
+      const list = Array.isArray(data.conversations) ? data.conversations : [];
+      setConversations(list);
+      tryAutoSelectConversation(list);
+      emitConversationsUpdated();
+    } catch (error) {
+      console.warn("[chat] Failed to load conversations", error);
+      setConversationsError(t("historyLoadError"));
+    } finally {
+      setConversationsLoading(false);
+    }
+  }, [kbId, t, tryAutoSelectConversation, emitConversationsUpdated]);
+
+  useEffect(() => {
+    void loadConversations();
+  }, [loadConversations]);
 
   useEffect(() => {
     let cancelled = false;
@@ -155,37 +292,6 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const storageKey = useMemo(() => `kb-chat-history-${kbId}`, [kbId]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const stored = window.localStorage.getItem(storageKey);
-      if (!stored) return;
-      const parsed = JSON.parse(stored) as ChatTurn[];
-      if (Array.isArray(parsed)) {
-        setHistory(parsed);
-      }
-    } catch (error) {
-      console.warn("[chat] Failed to parse stored history", error);
-    }
-  }, [storageKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(storageKey, JSON.stringify(history));
-    } catch (error) {
-      console.warn("[chat] Failed to persist history", error);
-    }
-  }, [history, storageKey]);
-
-  useEffect(() => {
-    if (pendingFocusAssistantIdRef.current && !focusTargetId) {
-      setFocusTargetId(pendingFocusAssistantIdRef.current);
-      pendingFocusAssistantIdRef.current = null;
-    }
-  }, [messages, focusTargetId]);
 
   const currentModelValue = selectedModel ?? "";
 
@@ -216,6 +322,15 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     updateStatus(t("announceError", { message: abortMessage }), "assertive");
   }
 
+  function handleStartNewConversation() {
+    initialConversationLoadedRef.current = true;
+    setActiveConversationId(null);
+    setMessages([]);
+    setInput("");
+    setStreamError(null);
+    updateStatus(t("status"));
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canSend) return;
@@ -231,23 +346,30 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     setInput("");
     setStreamError(null);
     updateStatus(t("announceSending"));
+    initialConversationLoadedRef.current = true;
 
-    const userMessage: ChatMessage = {
+    const nextSequence = messages.length;
+
+    const userMessage: ConversationMessage = {
       id: createId(),
       role: "user",
       content: question,
+      sequence: nextSequence,
     };
 
-    const assistantMessage: ChatMessage = {
-      id: createId(),
+    const assistantMessageId = createId();
+    const assistantMessage: ConversationMessage = {
+      id: assistantMessageId,
       role: "assistant",
       content: "",
+      sequence: nextSequence + 1,
+      isStreaming: true,
     };
 
-    latestAssistantIdRef.current = assistantMessage.id;
+    latestAssistantIdRef.current = assistantMessageId;
     assistantContentRef.current = "";
-    pendingTurnRef.current = { id: assistantMessage.id, question };
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
+    setFocusTargetId(assistantMessageId);
     setIsStreaming(true);
 
     const controller = new AbortController();
@@ -257,7 +379,12 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kbId, question, model: currentModelValue }),
+        body: JSON.stringify({
+          kbId,
+          question,
+          model: currentModelValue,
+          conversationId: activeConversationId ?? undefined,
+        }),
         signal: controller.signal,
       });
 
@@ -283,15 +410,20 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
         finalizeAssistantResponse("", {
           message: t("announceError", { message }),
           tone: "assertive",
-        });
+        }, null);
         return;
       }
 
-      await consumeEventStream(response, (delta) => {
-        appendAssistant(delta);
-      });
+      const conversationHeader = response.headers.get("X-Conversation-Id");
+      if (conversationHeader && conversationHeader !== activeConversationId) {
+        setActiveConversationId(conversationHeader);
+      }
 
-      finalizeAssistantResponse();
+      pendingConversationIdRef.current = conversationHeader ?? activeConversationId ?? null;
+
+      await consumeEventStream(response, appendAssistant);
+
+      finalizeAssistantResponse(undefined, undefined, pendingConversationIdRef.current);
     } catch (error) {
       if (controller.signal.aborted) {
         const abortMessage = t("errorAborted");
@@ -299,7 +431,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
         finalizeAssistantResponse("", {
           message: t("announceError", { message: abortMessage }),
           tone: "assertive",
-        });
+        }, pendingConversationIdRef.current);
       } else {
         console.error("[chat] Streaming error", error);
         const message = t("errorGeneric");
@@ -307,9 +439,10 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
         finalizeAssistantResponse("", {
           message: t("announceError", { message }),
           tone: "assertive",
-        });
+        }, pendingConversationIdRef.current);
       }
     } finally {
+      pendingConversationIdRef.current = null;
       abortControllerRef.current = null;
       latestAssistantIdRef.current = null;
       setIsStreaming(false);
@@ -343,6 +476,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   function finalizeAssistantResponse(
     fallback = "",
     statusOverride?: { message: string; tone?: LiveTone },
+    conversationId: string | null = null,
   ) {
     if (!latestAssistantIdRef.current) {
       return;
@@ -362,6 +496,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
         return {
           ...message,
           content: finalContent,
+          isStreaming: false,
         };
       }),
     );
@@ -374,33 +509,14 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       updateStatus(t("announceResponseComplete"));
     }
 
-    if (pendingTurnRef.current) {
-      const { id, question } = pendingTurnRef.current;
-      const answer = finalContent;
-      setHistory((prev) => {
-        const updatedTurn: ChatTurn = {
-          id,
-          question,
-          answer,
-          updatedAt: Date.now(),
-        };
-
-        const existingIndex = prev.findIndex((turn) => turn.id === id);
-        if (existingIndex >= 0) {
-          const next = [...prev];
-          next[existingIndex] = updatedTurn;
-          return next.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 50);
-        }
-
-        return [updatedTurn, ...prev].slice(0, 50);
-      });
-      pendingTurnRef.current = null;
+    if (conversationId) {
+      void loadConversations();
+      void loadConversation(conversationId);
+    } else {
+      void loadConversations();
     }
-
-    pendingFocusAssistantIdRef.current = latestAssistantIdRef.current;
   }
 
-  const streamingAssistantId = latestAssistantIdRef.current;
 
   const defaultStatus = t("status");
   const statusDisplay = statusMessage || defaultStatus;
@@ -408,10 +524,13 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   const modelHelperText = modelsLoading ? t("modelsLoading") : modelsError ?? "";
   const modelDescribedBy = showModelHelper ? modelStatusId : undefined;
   const messageErrorId = streamError ? errorMessageId : undefined;
-  const historyEntries = useMemo(
-    () => [...history].sort((a, b) => b.updatedAt - a.updatedAt),
-    [history],
+  const activeConversation = useMemo(
+    () => conversations.find((item) => item.id === activeConversationId) ?? null,
+    [conversations, activeConversationId],
   );
+  const activeConversationTitle = activeConversation
+    ? activeConversation.title || t("untitledConversation")
+    : t("newConversationTitle");
 
   return (
     <section
@@ -420,7 +539,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       aria-describedby={descriptionId}
       className={cn("flex min-h-[540px] w-full flex-col gap-6", className)}
     >
-      <Card className="h-full gap-6 p-6">
+      <Card className="flex h-full flex-col gap-6 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-col gap-2">
             <h1 id={headingId} className="text-2xl font-semibold">
@@ -431,27 +550,76 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
             </p>
             <p className="text-xs text-muted-foreground">{statusDisplay}</p>
           </div>
-
-          <ChatHistoryDialog
-            entries={historyEntries}
-            triggerLabel={t("historyButton")}
-            title={t("historyModalTitle")}
-            description={t("historyModalDescription")}
-            emptyLabel={t("historyEmpty")}
-            closeLabel={t("historyClose")}
-          />
+          <div className="flex flex-col items-end gap-2 sm:items-center">
+            <Button type="button" variant="outline" onClick={handleStartNewConversation} disabled={isStreaming}>
+              {t("newConversation")}
+            </Button>
+          </div>
         </div>
 
         <LiveMessage id={conversationStatusId} tone={statusTone} visuallyHidden>
           {statusDisplay}
         </LiveMessage>
 
-        <div className="grid flex-1 gap-6">
-          <Card className="flex min-h-[260px] flex-col gap-4 p-6">
+        <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)]">
+          <div className="flex h-full flex-col gap-4 rounded-2xl border border-border/40 bg-card/70 p-4">
             <div className="flex items-center justify-between">
-              <h2 id={conversationTitleId} className="text-sm font-semibold text-foreground">
-                {t("historyTitle")}
-              </h2>
+              <h2 className="text-sm font-semibold text-foreground">{t("sidebarTitle")}</h2>
+              <span className="text-xs text-muted-foreground">{conversations.length}</span>
+            </div>
+
+            {conversationsError ? (
+              <p className="text-xs text-red-500">{conversationsError}</p>
+            ) : null}
+
+            {conversationsLoading ? (
+              <p className="text-xs text-muted-foreground">{t("sidebarLoading")}</p>
+            ) : conversations.length === 0 ? (
+              <p className="text-xs text-muted-foreground">{t("sidebarEmpty")}</p>
+            ) : (
+              <ul className="flex-1 space-y-2 overflow-y-auto pr-1" role="list">
+                {conversations.map((conversation) => {
+                  const isActive = conversation.id === activeConversationId;
+                  return (
+                    <li key={conversation.id} role="listitem">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveConversationId(conversation.id);
+                          void loadConversation(conversation.id);
+                        }}
+                        disabled={isStreaming && conversation.id !== activeConversationId}
+                        className={cn(
+                          "w-full rounded-xl border px-3 py-2 text-left text-sm transition",
+                          isActive
+                            ? "border-primary/60 bg-primary/10 text-foreground"
+                            : "border-border/40 bg-card/80 text-muted-foreground hover:border-primary/40 hover:bg-card",
+                        )}
+                      >
+                        <span className="block truncate font-medium text-foreground">
+                          {conversation.title || t("untitledConversation")}
+                        </span>
+                        <span className="block text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                          {formatRelativeTime(conversation.lastActivityAt)}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div className="flex min-h-[260px] flex-col gap-4 rounded-3xl border border-border/40 bg-card/90 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 id={conversationTitleId} className="text-sm font-semibold text-foreground">
+                  {activeConversationTitle}
+                </h2>
+                {activeConversation?.model ? (
+                  <p className="text-xs text-muted-foreground">{activeConversation.model}</p>
+                ) : null}
+              </div>
             </div>
 
             <div className="flex-1 overflow-hidden">
@@ -476,10 +644,10 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
                 ) : (
                   messages.map((message) => (
                     <MessageBubble
-                      key={message.id}
+                      key={message.id ?? `${message.sequence}`}
                       role={message.role}
                       content={message.content}
-                      isStreaming={isStreaming && streamingAssistantId === message.id}
+                      isStreaming={Boolean(message.isStreaming)}
                       streamingLabel={t("messageStreaming")}
                       emptyLabel={t("messageEmpty")}
                       ariaLabel={
@@ -496,9 +664,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
                 <li ref={scrollAnchorRef} role="presentation" aria-hidden className="h-px" />
               </ul>
             </div>
-          </Card>
 
-          <Card className="p-6">
             <form
               className="space-y-5"
               onSubmit={handleSubmit}
@@ -540,7 +706,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
                       aria-invalid={modelsError ? "true" : undefined}
                       aria-label={t("modelsAriaLabel")}
                       disabled={isStreaming}
-                      className="h-11 rounded-2xl border border-border/40 bg-background px-4 text-sm font-medium text-foreground shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:border-border/50 dark:bg-slate-950/70"
+                      className="h-11 rounded-2xl border border-border/40 bg-background px-4 text-sm font-medium text-foreground shadow-sm focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary dark:border-border/50 dark:bg-slate-950/70"
                     />
                   )}
                 </div>
@@ -623,7 +789,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
                 ) : null}
               </div>
             </form>
-          </Card>
+          </div>
         </div>
       </Card>
     </section>
@@ -778,6 +944,22 @@ function createId() {
     : Math.random().toString(36).slice(2);
 }
 
+function formatRelativeTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(date);
+  } catch {
+    return date.toLocaleString();
+  }
+}
+
 type MessageBubbleProps = {
   role: "user" | "assistant";
   content: string;
@@ -840,78 +1022,6 @@ function MessageBubble({
         <FormattedMessage content={displayContent} />
       </article>
     </li>
-  );
-}
-
-type ChatHistoryDialogProps = {
-  entries: ChatTurn[];
-  triggerLabel: string;
-  title: string;
-  description: string;
-  emptyLabel: string;
-  closeLabel: string;
-};
-
-function ChatHistoryDialog({ entries, triggerLabel, title, description, emptyLabel, closeLabel }: ChatHistoryDialogProps) {
-  return (
-    <Dialog.Root>
-      <Dialog.Trigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="rounded-full px-6"
-        >
-          <Clock className="h-4 w-4" aria-hidden />
-          <span>{triggerLabel}</span>
-        </Button>
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
-        <Dialog.Content className="fixed inset-x-4 top-[10%] z-50 mx-auto max-h-[80vh] w-full max-w-xl overflow-hidden rounded-3xl border border-border/40 bg-card/95 p-6 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-card/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 dark:bg-slate-950">
-          <Dialog.Title className="text-lg font-semibold text-foreground">
-            {title}
-          </Dialog.Title>
-          <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-            {description}
-          </Dialog.Description>
-
-          <div className="mt-4 max-h-[55vh] overflow-y-auto pr-1">
-            {entries.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{emptyLabel}</p>
-            ) : (
-              <ul className="space-y-3" role="list">
-                {entries.map((entry, index) => (
-                  <li
-                    key={entry.id}
-                    role="listitem"
-                    className="rounded-2xl border border-border/40 bg-card/80 p-4 shadow-sm dark:bg-slate-950/80"
-                  >
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          {`${index + 1}.`}
-                        </span>
-                        <p className="mt-1 text-sm font-medium text-foreground">{entry.question}</p>
-                      </div>
-                      <div className="rounded-xl bg-muted/40 p-3 text-sm text-foreground">
-                        <FormattedMessage content={entry.answer} />
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <Dialog.Close asChild>
-            <Button type="button" size="lg" className="mt-6 w-full rounded-full px-6 sm:w-auto">
-              {closeLabel}
-            </Button>
-          </Dialog.Close>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
   );
 }
 

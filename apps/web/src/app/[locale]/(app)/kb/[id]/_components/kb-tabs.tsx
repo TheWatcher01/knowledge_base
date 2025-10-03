@@ -5,6 +5,8 @@ import { useSelectedLayoutSegments } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
+import { ChatHistoryNav } from "./chat-history-nav";
+
 const tabs = [
     { segment: undefined, key: "overview" as const, path: "" },
     { segment: "notes", key: "notes" as const, path: "notes" },
@@ -38,6 +40,7 @@ export function KnowledgeBaseTabs({ kbId }: { kbId: string }) {
                             >
                                 <span>{t(tab.key)}</span>
                             </Link>
+                            {tab.key === "chat" ? <ChatHistoryNav kbId={kbId} /> : null}
                         </li>
                     );
                 })}

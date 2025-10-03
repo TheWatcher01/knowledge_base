@@ -9,7 +9,12 @@
     "lint": "eslint",
     "test": "vitest",
     "seed:authz-fixtures": "node scripts/seed-authz-sample.mjs",
-    "seed:kb-sample": "node scripts/seed-kb-sample.mjs"
+    "seed:kb-sample": "node scripts/seed-kb-sample.mjs",
+    "prisma": "prisma",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "prisma:push": "prisma db push"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",

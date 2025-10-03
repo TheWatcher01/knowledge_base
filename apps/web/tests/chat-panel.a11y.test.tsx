@@ -6,6 +6,14 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { KnowledgeBaseChatPanel } from "@/components/kb/chat-panel";
 import enMessages from "@/i18n/messages/en.json";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    replace: vi.fn(),
+  }),
+  useSearchParams: () => new URLSearchParams(),
+  useSelectedLayoutSegments: () => [],
+}));
+
 describe("KnowledgeBaseChatPanel accessibility", () => {
   const originalFetch = global.fetch;
   const originalScrollIntoView = window.HTMLElement.prototype.scrollIntoView;

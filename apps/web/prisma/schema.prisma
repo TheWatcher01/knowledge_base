@@ -33,6 +33,7 @@ model User {
 
   // Relations
   knowledgeBases KnowledgeBase[]
+  chatConversations ChatConversation[]
 
   // Relations for Auth.js
   accounts Account[]
@@ -46,6 +47,7 @@ model KnowledgeBase {
   ownerId     String
   owner       User       @relation(fields: [ownerId], references: [id])
   documents   Document[]
+  conversations ChatConversation[]
   createdAt   DateTime   @default(now())
 }
 
@@ -92,6 +94,49 @@ model UsageLog {
   model     String?
   kbId      String?
   ts        DateTime @default(now())
+}
+
+enum ChatMessageRole {
+  user
+  assistant
+  system
+}
+
+model ChatConversation {
+  id            String          @id @default(uuid())
+  kbId          String
+  kb            KnowledgeBase   @relation(fields: [kbId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  model         String?
+  summary       String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  lastActivityAt DateTime       @default(now())
+  archived      Boolean         @default(false)
+  pinned        Boolean         @default(false)
+  meta          Json?
+
+  messages      ChatMessage[]
+
+  @@index([kbId, userId])
+  @@index([userId, archived, pinned])
+}
+
+model ChatMessage {
+  id              String            @id @default(uuid())
+  conversationId  String
+  conversation    ChatConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role            ChatMessageRole
+  content         String            @db.Text
+  sequence        Int
+  tokens          Int?
+  error           String?
+  createdAt       DateTime          @default(now())
+
+  @@unique([conversationId, sequence])
+  @@index([conversationId, createdAt])
 }
 
 // Auth.js configuration

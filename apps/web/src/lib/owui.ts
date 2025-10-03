@@ -30,7 +30,7 @@ export async function owuiJson(path: string, init?: RequestInit) {
 
     try {
         return JSON.parse(raw) as unknown;
-    } catch (error) {
+    } catch {
         const snippet = raw.slice(0, 200).replace(/\s+/g, " ").trim();
         throw new Error(`Invalid JSON response (status ${res.status}): ${snippet}`);
     }

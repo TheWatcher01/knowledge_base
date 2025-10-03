@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { z } from "zod";
+
 import { owuiJson } from "@/lib/owui";
 import { OWUI_BASE, OWUI_TOKEN, collectionName } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/lib/auth";
+import { assertRole, handleAuthError } from "@/lib/authz";
+import { ChatMessageRole } from "@prisma/client";
 
 type RetrievedDoc = { text: string };
 type RetrievalResponse = {
@@ -84,25 +90,61 @@ async function loadFallbackDocuments(kbId: string): Promise<RetrievedDoc[]> {
     return fallback;
 }
 
+const ChatRequestSchema = z.object({
+    kbId: z.string().uuid(),
+    model: z.string().trim().min(1).max(120).optional(),
+    question: z.string().trim().min(1),
+    conversationId: z.string().uuid().optional(),
+    title: z.string().trim().min(1).max(120).optional(),
+    meta: z.record(z.any()).optional(),
+});
+
 // POST /api/chat
 export async function POST(req: NextRequest) {
-    let body: unknown;
-
     try {
-        body = await req.json();
-    } catch {
-        return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
-    }
+        const session = await getServerSession(authOptions);
+        assertRole(session, ["VIEWER", "EDITOR", "ADMIN"]);
+        const userId = session!.user.id;
 
-    const { kbId, model, question } = (body ?? {}) as {
-        kbId?: string;
-        model?: string;
-        question?: string;
-    };
+        let body: unknown;
 
-    if (!kbId || !question) {
-        return NextResponse.json({ error: "Missing kbId or question" }, { status: 400 });
-    }
+        try {
+            body = await req.json();
+        } catch {
+            return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+        }
+
+        const parsed = ChatRequestSchema.safeParse(body ?? {});
+        if (!parsed.success) {
+            return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+        }
+
+        const { kbId, model, question, conversationId, title, meta } = parsed.data;
+
+        const kb = await prisma.knowledgeBase.findFirst({
+            where: { id: kbId, ownerId: userId },
+            select: { id: true, name: true },
+        });
+
+        if (!kb) {
+            return NextResponse.json({ error: "Knowledge base not found" }, { status: 404 });
+        }
+
+        const resolved = await resolveConversation({
+            kbId,
+            userId,
+            model,
+            conversationId,
+            title,
+            meta,
+            question,
+        });
+
+        if (!resolved) {
+            return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+        }
+
+        const { conversation, history, nextSequence } = resolved;
 
     let docs: RetrievedDoc[] = [];
 
@@ -113,6 +155,7 @@ export async function POST(req: NextRequest) {
                 query: question,
                 collection_name: collectionName(kbId),
                 k: 5,
+                hybrid: false,
             }),
         })) as RetrievalResponse;
 
@@ -138,6 +181,11 @@ export async function POST(req: NextRequest) {
 
     const prompt = `Réponds de façon concise en citant Doc1..N.\n\n${ctx}\n\nQuestion:\n${question}`;
 
+    const upstreamMessages = buildUpstreamMessages({
+        history,
+        prompt,
+    });
+
     try {
         const upstream = await fetch(`${OWUI_BASE}/api/v1/chat/completions`, {
             method: "POST",
@@ -146,9 +194,9 @@ export async function POST(req: NextRequest) {
                 Authorization: `Bearer ${OWUI_TOKEN}`,
             },
             body: JSON.stringify({
-                model,
+                model: conversation.model ?? model,
                 stream: true,
-                messages: [{ role: "user", content: prompt }],
+                messages: upstreamMessages,
             }),
         });
 
@@ -160,14 +208,268 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        return new Response(upstream.body, {
+        const stream = createStreamingResponse({
+            upstream,
+            conversationId: conversation.id,
+            question,
+            sequence: nextSequence,
+            model: conversation.model ?? model ?? null,
+        });
+
+        return new Response(stream, {
             headers: {
                 "Content-Type": "text/event-stream",
                 "Cache-Control": "no-cache",
+                "X-Conversation-Id": conversation.id,
             },
         });
     } catch (error) {
         console.error("[api/chat] Upstream request failed", error);
         return NextResponse.json({ error: "Failed to reach chat service" }, { status: 502 });
     }
+    } catch (error) {
+        return handleAuthError(error);
+    }
+}
+
+async function resolveConversation(params: {
+    kbId: string;
+    userId: string;
+    model?: string;
+    conversationId?: string;
+    title?: string;
+    meta?: Record<string, unknown>;
+    question: string;
+}) {
+    const { kbId, userId, model, conversationId, title, meta, question } = params;
+
+    if (conversationId) {
+        const existing = await prisma.chatConversation.findFirst({
+            where: { id: conversationId, kbId, userId },
+            include: {
+                messages: {
+                    orderBy: { sequence: "asc" },
+                    select: {
+                        role: true,
+                        content: true,
+                    },
+                },
+            },
+        });
+
+        if (!existing) {
+            return null;
+        }
+
+        const updateData: Record<string, unknown> = {};
+        if (model && existing.model !== model) {
+            updateData.model = model;
+            existing.model = model;
+        }
+        if (meta) {
+            updateData.meta = meta;
+        }
+        if (Object.keys(updateData).length > 0) {
+            await prisma.chatConversation.update({
+                where: { id: existing.id },
+                data: updateData,
+            });
+        }
+
+        return {
+            conversation: {
+                id: existing.id,
+                model: existing.model,
+            },
+            history: existing.messages,
+            nextSequence: existing.messages.length,
+        };
+    }
+
+    const created = await prisma.chatConversation.create({
+        data: {
+            kbId,
+            userId,
+            title: title ?? question.slice(0, 60) || "Conversation",
+            model: model ?? null,
+            meta: meta ?? undefined,
+        },
+    });
+
+    return {
+        conversation: {
+            id: created.id,
+            model: created.model,
+        },
+        history: [] as Array<{ role: ChatMessageRole; content: string }>,
+        nextSequence: 0,
+    };
+}
+
+function buildUpstreamMessages(params: {
+    history: Array<{ role: ChatMessageRole; content: string }>;
+    prompt: string;
+}) {
+    const { history, prompt } = params;
+    const mapped = history.map((message) => ({
+        role: message.role,
+        content: message.content,
+    }));
+
+    return [...mapped, { role: "user", content: prompt }];
+}
+
+function createStreamingResponse(params: {
+    upstream: Response;
+    conversationId: string;
+    question: string;
+    sequence: number;
+    model: string | null;
+}) {
+    const { upstream, conversationId, question, sequence, model } = params;
+    const reader = upstream.body!.getReader();
+    const decoder = new TextDecoder();
+
+    let buffered = "";
+    let assistantContent = "";
+    let doneStreaming = false;
+
+    const stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+            try {
+                await prisma.chatMessage.create({
+                    data: {
+                        conversationId,
+                        role: ChatMessageRole.user,
+                        content: question,
+                        sequence,
+                    },
+                });
+
+                await prisma.chatConversation.update({
+                    where: { id: conversationId },
+                    data: {
+                        lastActivityAt: new Date(),
+                    },
+                });
+
+                while (!doneStreaming) {
+                    const { value, done } = await reader.read();
+                    if (done) {
+                        break;
+                    }
+                    if (!value) continue;
+
+                    controller.enqueue(value);
+
+                    buffered += decoder.decode(value, { stream: true });
+                    const { content, remainder, finished } = extractAssistantDelta(buffered);
+                    buffered = remainder;
+                    if (content) {
+                        assistantContent += content;
+                    }
+                    if (finished) {
+                        doneStreaming = true;
+                    }
+                }
+
+                const tail = decoder.decode();
+                const finalBuffer = buffered + tail;
+                if (finalBuffer) {
+                    const { content } = extractAssistantDelta(finalBuffer);
+                    if (content) {
+                        assistantContent += content;
+                    }
+                }
+
+                await prisma.$transaction([
+                    prisma.chatMessage.create({
+                        data: {
+                            conversationId,
+                            role: ChatMessageRole.assistant,
+                            content: assistantContent.trim(),
+                            sequence: sequence + 1,
+                        },
+                    }),
+                    prisma.chatConversation.update({
+                        where: { id: conversationId },
+                        data: {
+                            lastActivityAt: new Date(),
+                            updatedAt: new Date(),
+                            model: model ?? undefined,
+                        },
+                    }),
+                ]);
+
+                controller.close();
+            } catch (error) {
+                console.error("[api/chat] streaming pipeline failed", error);
+                controller.error(error);
+            } finally {
+                reader.releaseLock();
+            }
+        },
+        cancel() {
+            reader.cancel();
+        },
+    });
+
+    return stream;
+}
+
+function extractAssistantDelta(buffer: string) {
+    let content = "";
+    let remainder = buffer;
+    let finished = false;
+
+    const segments = buffer.split("\n\n");
+    remainder = segments.pop() ?? "";
+
+    for (const segment of segments) {
+        const lines = segment.split("\n");
+        for (const line of lines) {
+            if (!line.startsWith("data:")) continue;
+            const data = line.slice(5).trim();
+            if (!data) continue;
+            if (data === "[DONE]") {
+                finished = true;
+                continue;
+            }
+
+            try {
+                const parsed = JSON.parse(data) as unknown;
+                const text = extractAssistantText(parsed);
+                content += text;
+            } catch (error) {
+                console.warn("[api/chat] Failed to parse SSE chunk", error);
+                continue;
+            }
+        }
+    }
+
+    return { content, remainder, finished };
+}
+
+function extractAssistantText(payload: unknown): string {
+    if (!payload || typeof payload !== "object") {
+        return "";
+    }
+
+    const choices = (payload as { choices?: unknown }).choices;
+    if (!Array.isArray(choices) || choices.length === 0) {
+        return "";
+    }
+
+    const first = choices[0];
+    if (!first || typeof first !== "object") {
+        return "";
+    }
+
+    const delta = (first as { delta?: unknown }).delta;
+    if (!delta || typeof delta !== "object") {
+        return "";
+    }
+
+    const content = (delta as { content?: unknown }).content;
+    return typeof content === "string" ? content : "";
 }

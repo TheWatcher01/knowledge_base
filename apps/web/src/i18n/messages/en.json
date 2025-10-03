@@ -141,9 +141,16 @@
       "notes": "Notes",
       "files": "Files",
       "urls": "URLs",
-      "chat": "Chat"
-    },
-    "overview": {
+    "chat": "Chat"
+  },
+  "chatNav": {
+    "heading": "Chat history",
+    "loading": "Loading…",
+    "empty": "No conversations yet.",
+    "loadError": "Unable to load history.",
+    "untitled": "Untitled"
+  },
+  "overview": {
       "stats": {
         "note": {
           "label": "Notes",
@@ -299,11 +306,14 @@
       "announceResponseComplete": "Assistant response available.",
       "announceError": "An error occurred: {message}",
       "historyTitle": "Conversation",
-      "historyButton": "History",
-      "historyModalTitle": "Conversation history",
-      "historyModalDescription": "Browse your latest exchanges with the assistant.",
-      "historyEmpty": "No previous exchanges yet.",
-      "historyClose": "Close",
+      "statusLoading": "Loading conversation…",
+      "historyLoadError": "Unable to load the history.",
+      "newConversation": "New conversation",
+      "newConversationTitle": "New conversation",
+      "untitledConversation": "Untitled conversation",
+      "sidebarTitle": "Conversations",
+      "sidebarLoading": "Loading…",
+      "sidebarEmpty": "No saved conversations yet.",
       "empty": "No messages yet.",
       "emptyHelper": "Pick a model and start the conversation to see messages here.",
       "messageStreaming": "Assistant is responding…",

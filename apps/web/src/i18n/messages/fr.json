@@ -141,9 +141,16 @@
       "notes": "Notes",
       "files": "Fichiers",
       "urls": "Liens",
-      "chat": "Chat"
-    },
-    "overview": {
+    "chat": "Chat"
+  },
+  "chatNav": {
+    "heading": "Historique du chat",
+    "loading": "Chargement…",
+    "empty": "Aucune conversation enregistrée.",
+    "loadError": "Impossible de charger l'historique.",
+    "untitled": "Sans titre"
+  },
+  "overview": {
       "stats": {
         "note": {
           "label": "Notes",
@@ -299,11 +306,14 @@
       "announceResponseComplete": "Réponse de l’assistant disponible.",
       "announceError": "Une erreur est survenue : {message}",
       "historyTitle": "Conversation",
-      "historyButton": "Historique",
-      "historyModalTitle": "Historique des échanges",
-      "historyModalDescription": "Consultez vos derniers échanges avec l’assistant.",
-      "historyEmpty": "Aucun échange précédent pour le moment.",
-      "historyClose": "Fermer",
+      "statusLoading": "Chargement de la conversation…",
+      "historyLoadError": "Impossible de charger l'historique.",
+      "newConversation": "Nouvelle conversation",
+      "newConversationTitle": "Nouvelle conversation",
+      "untitledConversation": "Conversation sans titre",
+      "sidebarTitle": "Conversations",
+      "sidebarLoading": "Chargement…",
+      "sidebarEmpty": "Aucune conversation enregistrée.",
       "empty": "Aucun échange pour le moment.",
       "emptyHelper": "Sélectionnez un modèle puis lancez une conversation pour afficher les messages ici.",
       "messageStreaming": "Réponse en cours…",
