@@ -32,7 +32,6 @@ export default async function KnowledgeBaseOverviewPage({ params }: PageProps) {
     }
 
     const statsContent = ["note", "file", "url"] as const;
-    const nextStepsItems = ["files", "urls", "questions"] as const;
 
     return (
         <div className="flex h-full flex-col gap-6">
@@ -49,17 +48,7 @@ export default async function KnowledgeBaseOverviewPage({ params }: PageProps) {
                 ))}
             </section>
 
-            <section className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-                <div className="rounded-3xl border border-border/30 bg-card/85 px-6 py-5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/70">
-                    <h2 className="text-lg font-semibold text-foreground">{t("nextSteps.title")}</h2>
-                    <p className="mt-2 text-sm text-muted-foreground">{t("nextSteps.description")}</p>
-                    <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                        {nextStepsItems.map((item) => (
-                            <li key={item}>• {t(`nextSteps.items.${item}`)}</li>
-                        ))}
-                    </ul>
-                </div>
-
+            <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)] lg:justify-items-stretch">
                 <div className="rounded-3xl border border-border/30 bg-card/85 px-6 py-5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/70">
                     <h3 className="text-base font-semibold text-foreground">{t("latestNotes.title")}</h3>
                     <ul className="mt-4 space-y-3 text-sm text-muted-foreground">

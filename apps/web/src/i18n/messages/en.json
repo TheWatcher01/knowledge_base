@@ -158,15 +158,6 @@
           "description": "External links used as references."
         }
       },
-      "nextSteps": {
-        "title": "Next steps",
-        "description": "Plan upcoming actions to enrich this knowledge base.",
-        "items": {
-          "files": "Add key files and check their ingestion.",
-          "urls": "Enter reference URLs to keep the context up to date.",
-          "questions": "Prepare sample questions for the future chat interface."
-        }
-      },
       "latestNotes": {
         "title": "Latest notes",
         "empty": "No notes yet. Add your first note from the \"Notes\" tab."

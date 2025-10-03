@@ -158,15 +158,6 @@
           "description": "Ressources externes utilisées comme références."
         }
       },
-      "nextSteps": {
-        "title": "Prochaines étapes",
-        "description": "Planifiez les actions à venir pour enrichir cette base de connaissance.",
-        "items": {
-          "files": "Ajoutez les fichiers clés et vérifiez leur ingestion.",
-          "urls": "Renseignez les liens de référence pour conserver le contexte à jour.",
-          "questions": "Préparez des exemples de questions pour la future interface de chat."
-        }
-      },
       "latestNotes": {
         "title": "Dernières notes",
         "empty": "Aucune note pour l'instant. Ajoutez votre première note depuis l'onglet \"Notes\"."
