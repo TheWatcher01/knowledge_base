@@ -10,15 +10,36 @@ const alias = {
 };
 
 const nextConfig: NextConfig = {
-  webpack: (config) => {
+  webpack(config) {
+    config.resolve = config.resolve || {};
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       ...alias,
     };
     return config;
   },
-  turbopack: {
-    resolveAlias: alias,
+  serverExternalPackages: ['sharp', 'onnxruntime-node'],
+
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Access-Control-Allow-Origin",
+            value: "https://cover-southeast-neon-hearing.trycloudflare.com",
+          },
+          {
+            key: "Access-Control-Allow-Methods",
+            value: "GET, POST, PUT, DELETE, OPTIONS",
+          },
+          {
+            key: "Access-Control-Allow-Headers",
+            value: "Content-Type, Authorization",
+          },
+        ],
+      },
+    ];
   },
 };
 
