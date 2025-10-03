@@ -120,12 +120,22 @@
       "success": "Knowledge base deleted.",
       "cancel": "Cancel"
     },
-    "layout": {
-      "missingDescription": "Add a description to provide context for this knowledge base.",
-      "createdOn": "Created on",
-      "sources": "Sources",
-      "documents": "Documents"
-    },
+  "layout": {
+    "missingDescription": "Add a description to provide context for this knowledge base.",
+    "createdOn": "Created on",
+    "sources": "Sources",
+    "documents": "Documents",
+    "ragSyncLabel": "Re-sync knowledge",
+    "ragSyncRunningButton": "Re-sync in progress…",
+    "ragSyncRunning": "Checking Open WebUI collection…",
+    "ragSyncAlready": "The Open WebUI collection already exists – no re-index required.",
+    "ragSyncReembedded": "Re-index request sent for {count, plural, one {# item} other {# items}}.",
+    "ragSyncNoEntries": "No stored knowledge to re-index.",
+    "ragSyncError": "Re-sync failed: {error}.",
+    "ragSyncErrorFallback": "unknown error",
+    "ragSyncErrorUnexpectedResponse": "unexpected Open WebUI response",
+    "ragSyncErrorTimeout": "request to Open WebUI timed out"
+  },
     "tabs": {
       "overview": "Overview",
       "notes": "Notes",

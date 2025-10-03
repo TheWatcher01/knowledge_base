@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { OWUI_BASE, collectionName } from "@/lib/config";
 import { owuiJson } from "@/lib/owui";
 import { assertRole, handleAuthError } from "@/lib/authz";
+import { removeKnowledgeEntriesForKb } from "@/lib/knowledge-store";
 
 export async function DELETE(
     _request: NextRequest,
@@ -52,6 +53,8 @@ export async function DELETE(
             prisma.document.deleteMany({ where: { kbId: id } }),
             prisma.knowledgeBase.delete({ where: { id } }),
         ]);
+
+        await removeKnowledgeEntriesForKb(id);
 
         return NextResponse.json({ ok: true });
     } catch (error) {

@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { KnowledgeBaseTabs } from "./_components/kb-tabs";
 import { KnowledgeBaseStudio } from "./_components/kb-studio";
+import { RagSyncTrigger } from "./_components/rag-sync-trigger";
 import { getTranslations } from "next-intl/server";
 
 type LayoutProps = {
@@ -46,14 +47,18 @@ export default async function KnowledgeBaseLayout({ children, params }: LayoutPr
 
                     <div className="flex flex-col gap-4 xl:h-full xl:min-h-0">
                         <header className="sticky top-0 z-10 space-y-4 rounded-3xl border border-border/40 bg-card/95 px-6 py-6 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
-                            <div className="flex flex-col gap-2">
-                                <span className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/70">Knowledge Base</span>
-                                <h1 className="text-3xl font-semibold tracking-tight text-foreground">{kb.name}</h1>
-                                {kb.description ? (
-                                    <p className="max-w-3xl text-sm text-muted-foreground">{kb.description}</p>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground">{t("missingDescription")}</p>
-                                )}
+                            <div className="flex flex-wrap items-start justify-between gap-4">
+                                <div className="flex min-w-0 flex-col gap-2">
+                                    <span className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/70">Knowledge Base</span>
+                                    <h1 className="text-3xl font-semibold tracking-tight text-foreground">{kb.name}</h1>
+                                    {kb.description ? (
+                                        <p className="max-w-3xl text-sm text-muted-foreground">{kb.description}</p>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">{t("missingDescription")}</p>
+                                    )}
+                                </div>
+
+                                <RagSyncTrigger kbId={kb.id} />
                             </div>
                         </header>
                         <div className="min-h-0 flex-1 overflow-y-auto rounded-3xl border border-border/40 bg-card/90 p-6 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
