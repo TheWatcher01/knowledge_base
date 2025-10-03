@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { owuiJson } from "@/lib/owui";
 import { OWUI_BASE, collectionName } from "@/lib/config";
+import { upsertKnowledgeEntry, markEmbedded } from "@/lib/knowledge-store";
 import { assertRole, handleAuthError } from "@/lib/authz";
 
 const Body = z.object({
@@ -43,6 +44,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    await upsertKnowledgeEntry({
+      kbId,
+      documentId: note.id,
+      type: "note",
+      ingestMethod: "text",
+      content,
+    });
+
     let ingestionStatus: "success" | "skipped" | "failed" = "skipped";
 
     if (OWUI_BASE && process.env.MOCK_OPEN_WEBUI !== "true") {
@@ -56,6 +65,7 @@ export async function POST(req: NextRequest) {
           }),
         });
         ingestionStatus = "success";
+        await markEmbedded(note.id);
       } catch (error) {
         console.warn(
           "[api/notebook] Open WebUI unavailable, note created without ingestion.",

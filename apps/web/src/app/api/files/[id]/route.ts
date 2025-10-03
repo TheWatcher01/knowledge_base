@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { assertRole, handleAuthError } from "@/lib/authz";
+import { removeKnowledgeEntry, upsertKnowledgeEntry, markNeedsEmbedding } from "@/lib/knowledge-store";
 
 const ParamsSchema = z.object({
     id: z.string().uuid(),
@@ -95,6 +96,8 @@ export async function DELETE(
             await tx.document.delete({ where: { id: document.id } });
         });
 
+        await removeKnowledgeEntry(document.id);
+
         return NextResponse.json({ ok: true });
     } catch (error) {
         return handleAuthError(error);
@@ -141,6 +144,7 @@ export async function PATCH(
                 kb: { ownerId: userId },
             },
             select: {
+                kbId: true,
                 id: true,
                 title: true,
                 source: true,
@@ -192,6 +196,27 @@ export async function PATCH(
                 });
             }
         });
+
+        const textContent = mimeType.startsWith("text/")
+            ? (buffer ? buffer.toString("utf8") : undefined)
+            : undefined;
+
+        await upsertKnowledgeEntry({
+            kbId: existing.kbId,
+            documentId: existing.id,
+            type: "file",
+            ingestMethod: "text",
+            content: textContent,
+            source: hasFile ? originalName : undefined,
+            metadata: {
+                mimeType,
+                size,
+            },
+        });
+
+        if (hasFile || textContent !== undefined) {
+            await markNeedsEmbedding(existing.id);
+        }
 
         return NextResponse.json(
             {

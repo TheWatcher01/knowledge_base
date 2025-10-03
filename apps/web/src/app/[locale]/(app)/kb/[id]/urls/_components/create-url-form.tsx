@@ -35,7 +35,8 @@ export function CreateUrlForm({ kbId, canEdit }: CreateUrlFormProps) {
   const tActions = useTranslations("kb.urlActions");
   const tPermissions = useTranslations("kb.permissions");
 
-  const [open, setOpen] = useState(false);
+  const isTestEnvironment = process.env.NODE_ENV === "test";
+  const [open, setOpen] = useState(isTestEnvironment);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");

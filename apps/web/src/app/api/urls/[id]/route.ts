@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { UrlStatus } from "@prisma/client";
 import { createUrlContentPlaceholder, updateUrlContentStatus } from "@/lib/url-content";
 import { OWUI_DISABLED_MESSAGE, deleteFromCollection, triggerWebIngestion } from "@/lib/owui";
+import { upsertKnowledgeEntry, markNeedsEmbedding, markEmbedded, removeKnowledgeEntry } from "@/lib/knowledge-store";
 import { assertRole, handleAuthError } from "@/lib/authz";
 
 const ParamsSchema = z.object({
@@ -230,6 +231,22 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     let entry = record.entry;
     let ingestionError: string | undefined;
 
+    await upsertKnowledgeEntry({
+      kbId: record.document.kbId,
+      documentId: record.document.id,
+      type: "url",
+      ingestMethod: "web",
+      source: record.entry.url,
+      metadata: {
+        description: record.entry.description,
+        status: record.entry.status,
+      },
+    });
+
+    if (urlChanged) {
+      await markNeedsEmbedding(record.document.id);
+    }
+
     const shouldTriggerIngestion = urlChanged || parsedBody.data.status === UrlStatus.queued;
 
     if (shouldTriggerIngestion) {
@@ -262,6 +279,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     if (entry.externalId) {
       await updateUrlContentStatus({ externalId: entry.externalId, status: entry.status });
+    }
+
+    if (entry.status === UrlStatus.queued) {
+      await markEmbedded(record.document.id);
     }
 
     return NextResponse.json(
@@ -313,6 +334,8 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
       await tx.urlEntry.delete({ where: { documentId: document.id } });
       await tx.document.delete({ where: { id: document.id } });
     });
+
+    await removeKnowledgeEntry(document.id);
 
     if (document.urlEntry.externalId) {
       await deleteFromCollection({ kbId: document.kbId, documentId: document.id });

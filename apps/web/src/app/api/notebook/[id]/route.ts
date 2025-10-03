@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { assertRole, handleAuthError } from "@/lib/authz";
-
+import { markNeedsEmbedding, upsertKnowledgeEntry, removeKnowledgeEntry } from "@/lib/knowledge-store";
 
 const UpdateBody = z.object({
     title: z.string().min(1),
@@ -29,6 +29,7 @@ export async function PATCH(
 
         const note = await prisma.document.findFirst({
             where: { id, type: "note", kb: { ownerId: session!.user.id } },
+            select: { id: true, kbId: true },
         });
         if (!note) {
             return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -38,6 +39,15 @@ export async function PATCH(
             where: { id },
             data: { title, source: content },
         });
+
+        await upsertKnowledgeEntry({
+            kbId: note.kbId,
+            documentId: note.id,
+            type: "note",
+            ingestMethod: "text",
+            content,
+        });
+        await markNeedsEmbedding(note.id);
 
         return NextResponse.json({ note: updated });
     } catch (error) {
@@ -63,6 +73,7 @@ export async function DELETE(
         }
 
         await prisma.document.delete({ where: { id } });
+        await removeKnowledgeEntry(id);
 
         return NextResponse.json({ ok: true });
     } catch (error) {

@@ -7,6 +7,7 @@ import { assertRole, handleAuthError } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { OWUI_BASE, collectionName } from "@/lib/config";
 import { owuiJson } from "@/lib/owui";
+import { upsertKnowledgeEntry, markEmbedded } from "@/lib/knowledge-store";
 
 const FormSchema = z.object({
     kbId: z.string().uuid(),
@@ -82,6 +83,20 @@ export async function POST(request: Request) {
 
         let ingestionStatus: "success" | "skipped" | "failed" = "skipped";
         let ingestionError: string | undefined;
+        const textContent = mimeType.startsWith("text/") ? buffer.toString("utf8") : null;
+
+        await upsertKnowledgeEntry({
+            kbId,
+            documentId: document.id,
+            type: "file",
+            ingestMethod: "text",
+            content: textContent,
+            source: originalName,
+            metadata: {
+                mimeType,
+                size,
+            },
+        });
 
         const shouldAttemptIngestion =
             OWUI_BASE &&
@@ -101,6 +116,7 @@ export async function POST(request: Request) {
                         }),
                     });
                     ingestionStatus = "success";
+                    await markEmbedded(document.id);
                 }
             } catch (error) {
                 console.warn("[api/files] Open WebUI ingestion failed", error);

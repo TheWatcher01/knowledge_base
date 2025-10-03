@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { UrlStatus } from "@prisma/client";
 import { createUrlContentPlaceholder, updateUrlContentStatus } from "@/lib/url-content";
 import { OWUI_DISABLED_MESSAGE, triggerWebIngestion } from "@/lib/owui";
+import { upsertKnowledgeEntry, markEmbedded } from "@/lib/knowledge-store";
 import { assertRole, handleAuthError } from "@/lib/authz";
 
 const OptionalTitle = z.preprocess(
@@ -133,6 +134,17 @@ export async function POST(request: Request) {
     let finalStatus = status;
     let ingestionError: string | undefined;
 
+    await upsertKnowledgeEntry({
+      kbId: record.document.kbId,
+      documentId: record.document.id,
+      type: "url",
+      ingestMethod: "web",
+      source: record.entry.url,
+      metadata: {
+        description: record.entry.description,
+      },
+    });
+
     const ingestion = await triggerWebIngestion({ kbId: record.document.kbId, url: record.entry.url });
 
     if (ingestion.ok) {
@@ -162,6 +174,10 @@ export async function POST(request: Request) {
 
     if (entry.externalId) {
       await updateUrlContentStatus({ externalId: entry.externalId, status: entry.status });
+    }
+
+    if (entry.status === UrlStatus.queued) {
+      await markEmbedded(record.document.id);
     }
 
     return NextResponse.json(
