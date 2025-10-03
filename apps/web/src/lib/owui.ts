@@ -11,16 +11,29 @@ export async function owuiJson(path: string, init?: RequestInit) {
         ...init,
         headers: {
             "Content-Type": "application/json",
+            Accept: "application/json",
             Authorization: `Bearer ${OWUI_TOKEN}`,
             ...(init?.headers || {}),
         },
     });
 
     if (!res.ok) {
-        throw new Error(await res.text());
+        const errorText = await res.text().catch(() => "");
+        throw new Error(errorText || `HTTP ${res.status}`);
     }
 
-    return res.json();
+    const raw = await res.text();
+
+    if (!raw) {
+        return {};
+    }
+
+    try {
+        return JSON.parse(raw) as unknown;
+    } catch (error) {
+        const snippet = raw.slice(0, 200).replace(/\s+/g, " ").trim();
+        throw new Error(`Invalid JSON response (status ${res.status}): ${snippet}`);
+    }
 }
 
 export async function triggerWebIngestion(params: { kbId: string; url: string }): Promise<OwuiActionResult> {

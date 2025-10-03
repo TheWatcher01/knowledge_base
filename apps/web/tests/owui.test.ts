@@ -29,7 +29,7 @@ describe("owui helpers", () => {
     test("triggerWebIngestion réussit quand OWUI répond correctement", async () => {
         process.env.OWUI_BASE = "http://owui.test";
         process.env.OWUI_TOKEN = "token-test";
-        const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({}) });
+        const fetchMock = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue("{}") });
         vi.stubGlobal("fetch", fetchMock);
 
         const { triggerWebIngestion } = await import("@/lib/owui");
@@ -61,7 +61,7 @@ describe("owui helpers", () => {
     test("deleteFromCollection appelle l'API OWUI", async () => {
         process.env.OWUI_BASE = "http://owui.test";
         process.env.OWUI_TOKEN = "token-test";
-        const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({}) });
+        const fetchMock = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue("{}") });
         vi.stubGlobal("fetch", fetchMock);
 
         const { deleteFromCollection } = await import("@/lib/owui");
