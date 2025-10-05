@@ -1,31 +1,38 @@
 "use client";
 
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useId,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams, useRouter } from "next/navigation";
 
 import { LiveMessage } from "@/components/a11y/live-message";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import type { ChatStatus } from "ai";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+  PromptInput,
+  PromptInputModelSelect,
+  PromptInputModelSelectContent,
+  PromptInputModelSelectItem,
+  PromptInputModelSelectTrigger,
+  PromptInputModelSelectValue,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputToolbar,
+  PromptInputTools,
+} from "@/components/ui/shadcn-io/ai/prompt-input";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from "@/components/ui/shadcn-io/ai/conversation";
+import { Message, MessageContent } from "@/components/ui/shadcn-io/ai/message";
+import { Response } from "@/components/ui/shadcn-io/ai/response";
+import { Loader } from "@/components/ui/shadcn-io/ai/loader";
+import { Action } from "@/components/ui/shadcn-io/ai/actions";
+import { Suggestions, Suggestion } from "@/components/ui/shadcn-io/ai/suggestion";
 import { cn } from "@/lib/utils";
 import { CHAT_CONVERSATIONS_UPDATED_EVENT } from "@/lib/chat-events";
+import { SquareIcon } from "lucide-react";
 
 export const DEFAULT_MODEL = process.env.NEXT_PUBLIC_DEFAULT_CHAT_MODEL ?? "";
 
@@ -67,15 +74,6 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const headingId = useId();
-  const descriptionId = useId();
-  const conversationTitleId = useId();
-  const conversationStatusId = useId();
-  const modelSelectId = useId();
-  const modelStatusId = useId();
-  const messageFieldId = useId();
-  const errorMessageId = useId();
-
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationIdState] = useState<string | null>(null);
@@ -95,7 +93,6 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   const abortControllerRef = useRef<AbortController | null>(null);
   const latestAssistantIdRef = useRef<string | null>(null);
   const assistantContentRef = useRef<string>("");
-  const scrollAnchorRef = useRef<HTMLLIElement | null>(null);
   const pendingConversationIdRef = useRef<string | null>(null);
   const skipSearchParamSyncRef = useRef(false);
 
@@ -105,14 +102,23 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   }, []);
 
   const setActiveConversationId = useCallback(
-    (conversationId: string | null) => {
-      if (conversationId === null) {
-        skipSearchParamSyncRef.current = true;
-      } else {
-        skipSearchParamSyncRef.current = false;
+    (conversationId: string | null, options?: { syncSearchParams?: boolean }) => {
+      const shouldSync = options?.syncSearchParams ?? true;
+
+      // Skip the next search-param synchronisation pass when we intentionally avoid syncing the URL.
+      skipSearchParamSyncRef.current = !shouldSync;
+
+      setActiveConversationIdState((current) => {
+        if (current === conversationId) {
+          return current;
+        }
+        return conversationId;
+      });
+
+      if (!shouldSync) {
+        return;
       }
 
-      setActiveConversationIdState(conversationId);
       const current = new URLSearchParams(searchParams?.toString());
       if (conversationId) {
         current.set("conversation", conversationId);
@@ -169,7 +175,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
           throw new Error("Missing conversation payload");
         }
 
-        setActiveConversationId(data.conversation.id);
+        setActiveConversationId(data.conversation.id, { syncSearchParams: false });
         setSelectedModel((current) => data.conversation?.model ?? current);
         const mappedMessages = data.conversation.messages.map((message) => ({
           id: message.id,
@@ -201,7 +207,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
 
     if (!conversationParam) {
       if (activeConversationId !== null) {
-        setActiveConversationId(null);
+        setActiveConversationId(null, { syncSearchParams: false });
       }
       return;
     }
@@ -210,7 +216,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       return;
     }
 
-    setActiveConversationId(conversationParam);
+    setActiveConversationId(conversationParam, { syncSearchParams: false });
     void loadConversation(conversationParam);
   }, [searchParams, activeConversationId, loadConversation, setActiveConversationId]);
 
@@ -304,11 +310,6 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     };
   }, [t, updateStatus]);
 
-  useEffect(() => {
-    scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-
   const currentModelValue = selectedModel ?? "";
 
   const canSend = useMemo(() => {
@@ -319,13 +320,6 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       currentModelValue.trim().length > 0
     );
   }, [input, isStreaming, kbId.length, currentModelValue]);
-
-  function handleSendButtonClick(event: React.MouseEvent<HTMLButtonElement>) {
-    if (!canSend) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-  }
 
   function handleStop() {
     abortControllerRef.current?.abort();
@@ -422,7 +416,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
 
       const conversationHeader = response.headers.get("X-Conversation-Id");
       if (conversationHeader && conversationHeader !== activeConversationId) {
-        setActiveConversationId(conversationHeader);
+        setActiveConversationId(conversationHeader, { syncSearchParams: false });
       }
 
       pendingConversationIdRef.current = conversationHeader ?? activeConversationId ?? null;
@@ -516,6 +510,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     }
 
     if (conversationId) {
+      setActiveConversationId(conversationId, { syncSearchParams: true });
       void loadConversations();
       void loadConversation(conversationId);
     } else {
@@ -523,6 +518,16 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     }
   }
 
+
+  const baseId = useMemo(() => `kb-chat-${kbId}`, [kbId]);
+  const headingId = `${baseId}-heading`;
+  const descriptionId = `${baseId}-description`;
+  const conversationTitleId = `${baseId}-conversation-title`;
+  const conversationStatusId = `${baseId}-conversation-status`;
+  const modelSelectId = `${baseId}-model-select`;
+  const modelStatusId = `${baseId}-model-status`;
+  const messageFieldId = `${baseId}-message`;
+  const errorMessageId = `${baseId}-error`;
 
   const defaultStatus = t("status");
   const statusDisplay = statusMessage || defaultStatus;
@@ -537,6 +542,37 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   const activeConversationTitle = activeConversation
     ? activeConversation.title || t("untitledConversation")
     : t("newConversationTitle");
+  const quickSuggestions = useMemo(() => {
+    const meta = activeConversation?.meta;
+    if (!meta || typeof meta !== "object") {
+      return [] as string[];
+    }
+
+    const raw = (meta as { suggestions?: unknown }).suggestions;
+    if (!Array.isArray(raw)) {
+      return [] as string[];
+    }
+
+    return raw
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .slice(0, 4);
+  }, [activeConversation]);
+  const chatStatus: ChatStatus | undefined = streamError
+    ? "error"
+    : isStreaming
+      ? "streaming"
+      : undefined;
+  const handleSuggestionClick = useCallback(
+    (suggestion: string) => {
+      setInput(suggestion);
+
+      if (typeof window !== "undefined") {
+        const textarea = document.getElementById(messageFieldId) as HTMLTextAreaElement | null;
+        textarea?.focus();
+      }
+    },
+    [messageFieldId],
+  );
 
   return (
     <section
@@ -563,92 +599,67 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
         </LiveMessage>
 
         <div className="flex-1">
-          <div className="flex min-h-[260px] flex-col gap-4 rounded-3xl border border-border/40 bg-card/90 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 id={conversationTitleId} className="text-sm font-semibold text-foreground">
-                  {activeConversationTitle}
-                </h2>
-                {activeConversation?.model ? (
-                  <p className="text-xs text-muted-foreground">{activeConversation.model}</p>
-                ) : null}
-              </div>
+          <div className="flex min-h-[260px] flex-col gap-6">
+            <div>
+              <h2 id={conversationTitleId} className="text-sm font-semibold text-foreground">
+                {activeConversationTitle}
+              </h2>
+              {activeConversation?.model ? (
+                <p className="text-xs text-muted-foreground">{activeConversation.model}</p>
+              ) : null}
             </div>
 
-            <div className="flex-1 overflow-hidden">
-              <ul
-                className="flex h-full flex-col gap-4 overflow-y-auto overscroll-y-contain pr-1"
-                role="list"
+            {messages.length > 0 ? (
+              <Conversation
                 aria-labelledby={conversationTitleId}
                 aria-describedby={conversationStatusId}
-                aria-live="polite"
-                aria-relevant="additions text"
                 aria-busy={isStreaming ? "true" : "false"}
+                className="flex-1 rounded-2xl border border-border/40 bg-card/80"
               >
-                {messages.length === 0 ? (
-                  <li
-                    className="flex flex-1 flex-col justify-center gap-2 rounded-xl border border-dashed border-border/30 bg-background/60 p-6 text-left text-sm text-muted-foreground dark:border-border/50"
-                    role="listitem"
-                    aria-label={t("empty")}
-                  >
-                    <p className="text-base font-semibold text-foreground">{t("empty")}</p>
-                    <p className="text-sm text-muted-foreground">{t("emptyHelper")}</p>
-                  </li>
-                ) : (
-                  messages.map((message) => (
-                    <MessageBubble
+                <ConversationContent className="flex flex-1 flex-col gap-4 p-6">
+                  {messages.map((message) => (
+                    <ChatMessageItem
                       key={message.id ?? `${message.sequence}`}
-                      role={message.role}
-                      content={message.content}
-                      isStreaming={Boolean(message.isStreaming)}
-                      streamingLabel={t("messageStreaming")}
-                      emptyLabel={t("messageEmpty")}
-                      ariaLabel={
-                        message.role === "user"
-                          ? t("messageUserLabel")
-                          : t("messageAssistantLabel")
-                      }
+                      message={message}
                       shouldFocus={focusTargetId === message.id}
                       onFocusComplete={() => setFocusTargetId(null)}
+                      assistantLabel={t("messageAssistantLabel")}
+                      userLabel={t("messageUserLabel")}
+                      streamingLabel={t("messageStreaming")}
+                      emptyLabel={t("messageEmpty")}
                     />
-                  ))
-                )}
+                  ))}
+                </ConversationContent>
+                <ConversationScrollButton />
+              </Conversation>
+            ) : null}
 
-                <li ref={scrollAnchorRef} role="presentation" aria-hidden className="h-px" />
-              </ul>
-            </div>
-
-            <form
-              className="space-y-5"
-              onSubmit={handleSubmit}
-              aria-busy={isStreaming ? "true" : "false"}
-            >
-              <div className="grid gap-4 sm:grid-cols-2">
-              <label htmlFor={modelSelectId} className="flex flex-col gap-2 text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">{t("modelsLabel")}</span>
-                <div className="relative">
+            <PromptInput onSubmit={handleSubmit} aria-busy={isStreaming ? "true" : "false"} className="mt-2">
+              <PromptInputToolbar className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex w-full flex-col gap-2 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{t("modelsLabel")}</span>
                   {models.length > 0 ? (
-                    <Select
+                    <PromptInputModelSelect
                       value={currentModelValue || undefined}
                       onValueChange={setSelectedModel}
                       disabled={isStreaming}
                     >
-                      <SelectTrigger
+                      <PromptInputModelSelectTrigger
                         id={modelSelectId}
                         aria-describedby={modelDescribedBy}
                         aria-invalid={modelsError ? "true" : undefined}
                         aria-label={t("modelsAriaLabel")}
                       >
-                        <SelectValue placeholder={t("modelsPlaceholder")} />
-                      </SelectTrigger>
-                      <SelectContent>
+                        <PromptInputModelSelectValue placeholder={t("modelsPlaceholder")} />
+                      </PromptInputModelSelectTrigger>
+                      <PromptInputModelSelectContent>
                         {models.map((option) => (
-                          <SelectItem key={option.id} value={option.id}>
+                          <PromptInputModelSelectItem key={option.id} value={option.id}>
                             {option.label}
-                          </SelectItem>
+                          </PromptInputModelSelectItem>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </PromptInputModelSelectContent>
+                    </PromptInputModelSelect>
                   ) : (
                     <Input
                       id={modelSelectId}
@@ -659,89 +670,89 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
                       aria-invalid={modelsError ? "true" : undefined}
                       aria-label={t("modelsAriaLabel")}
                       disabled={isStreaming}
-                      className="h-11 rounded-2xl border border-border/40 bg-background px-4 text-sm font-medium text-foreground shadow-sm focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary dark:border-border/50 dark:bg-slate-950/70"
                     />
                   )}
+                  {showModelHelper ? (
+                    <span
+                      id={modelStatusId}
+                      className={cn(
+                        "text-xs",
+                        modelsError ? "text-red-600 dark:text-red-300" : "text-muted-foreground",
+                      )}
+                    >
+                      {modelHelperText}
+                    </span>
+                  ) : null}
                 </div>
+              </PromptInputToolbar>
 
-                {showModelHelper ? (
-                  <span
-                    id={modelStatusId}
-                    className={cn(
-                      "text-xs",
-                      modelsError ? "text-red-600 dark:text-red-300" : "text-muted-foreground",
-                    )}
-                  >
-                    {modelHelperText}
-                  </span>
-                ) : null}
-              </label>
-              </div>
-
-              <label htmlFor={messageFieldId} className="flex flex-col gap-2 text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">{t("label")}</span>
-                <Textarea
-                  id={messageFieldId}
-                  name="message"
-                  className="min-h-[140px] rounded-2xl border border-border/40 bg-background px-4 py-3 text-sm text-foreground shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50 dark:border-border/50 dark:bg-slate-950/70"
-                  placeholder={t("placeholder")}
-                  value={input}
-                  onChange={(event) => setInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    const isModifier = event.metaKey || event.ctrlKey;
-                    if (isModifier && event.key === "Enter") {
-                      event.preventDefault();
-                      if (canSend) {
-                        event.currentTarget.form?.requestSubmit();
+              <div className="space-y-3 px-4 py-3">
+                <label htmlFor={messageFieldId} className="flex flex-col gap-2 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{t("label")}</span>
+                  <PromptInputTextarea
+                    id={messageFieldId}
+                    name="message"
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape" && isStreaming) {
+                        event.preventDefault();
+                        handleStop();
                       }
-                    }
-                    if (event.key === "Escape" && isStreaming) {
-                      event.preventDefault();
-                      handleStop();
-                    }
-                  }}
-                  disabled={!kbId || isStreaming || currentModelValue.trim().length === 0}
-                  aria-describedby={messageErrorId}
-                  aria-invalid={streamError ? "true" : undefined}
-                  required
-                />
-              </label>
-
-              {streamError ? (
-                <LiveMessage
-                  id={errorMessageId}
-                  tone="assertive"
-                  className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-500 dark:border-red-500/30 dark:text-red-200"
-                >
-                  {streamError}
-                </LiveMessage>
-              ) : null}
-
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  type="submit"
-                  size="lg"
-                  onClick={handleSendButtonClick}
-                  aria-disabled={!canSend}
-                  data-disabled={!canSend || undefined}
-                  className={cn("rounded-full px-6", !canSend && "cursor-not-allowed opacity-60")}
-                >
-                  {isStreaming ? t("loading") : t("submit")}
-                </Button>
-
-                {isStreaming ? (
-                  <Button
-                    type="button"
-                    size="lg"
-                    variant="outline"
-                    onClick={handleStop}
-                    className="rounded-full px-6"
+                    }}
+                    placeholder={t("placeholder")}
+                    disabled={!kbId || isStreaming || currentModelValue.trim().length === 0}
+                    aria-describedby={messageErrorId}
+                    aria-invalid={streamError ? "true" : undefined}
+                    aria-label={t("label")}
+                    className="min-h-[140px]"
+                  />
+                </label>
+                {streamError ? (
+                  <LiveMessage
+                    id={errorMessageId}
+                    tone="assertive"
+                    className="rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-500 dark:border-red-500/30 dark:text-red-200"
                   >
-                    {t("stop")}
-                  </Button>
+                    {streamError}
+                  </LiveMessage>
+                ) : null}
+                {quickSuggestions.length > 0 ? (
+                  <Suggestions>
+                    {quickSuggestions.map((suggestion) => (
+                      <Suggestion key={suggestion} suggestion={suggestion} onClick={handleSuggestionClick} />
+                    ))}
+                  </Suggestions>
                 ) : null}
               </div>
-            </form>
+
+              <PromptInputToolbar className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {isStreaming ? (
+                    <>
+                      <Loader size={14} />
+                      <span>{t("messageStreaming")}</span>
+                    </>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2">
+                  {isStreaming ? (
+                    <PromptInputTools className="gap-2">
+                      <Action tooltip={t("stop")} label={t("stop")} onClick={handleStop}>
+                        <SquareIcon className="size-4" />
+                      </Action>
+                    </PromptInputTools>
+                  ) : null}
+                  <PromptInputSubmit
+                    status={chatStatus}
+                    disabled={!canSend}
+                    aria-disabled={!canSend}
+                    aria-label={isStreaming ? t("stop") : t("submit")}
+                    size="default"
+                  />
+                </div>
+              </PromptInputToolbar>
+            </PromptInput>
           </div>
         </div>
       </Card>
@@ -897,168 +908,65 @@ function createId() {
     : Math.random().toString(36).slice(2);
 }
 
-type MessageBubbleProps = {
-  role: "user" | "assistant";
-  content: string;
-  isStreaming: boolean;
+type ChatMessageItemProps = {
+  message: ConversationMessage;
+  assistantLabel: string;
+  userLabel: string;
   streamingLabel: string;
   emptyLabel: string;
-  ariaLabel: string;
   shouldFocus: boolean;
   onFocusComplete: () => void;
 };
 
-function MessageBubble({
-  role,
-  content,
-  isStreaming,
+function ChatMessageItem({
+  message,
+  assistantLabel,
+  userLabel,
   streamingLabel,
   emptyLabel,
-  ariaLabel,
   shouldFocus,
   onFocusComplete,
-}: MessageBubbleProps) {
-  const bubbleRef = useRef<HTMLDivElement | null>(null);
-
-  const displayContent = content.trim().length > 0
-    ? content
-    : role === "assistant" && isStreaming
-      ? streamingLabel
-      : emptyLabel;
-
-  const wrapperClass = cn("flex", role === "user" ? "justify-end" : "justify-start");
-  const bubbleClass = cn(
-    "max-w-full rounded-2xl border px-4 py-3 text-sm leading-relaxed shadow-sm transition-colors sm:max-w-[75%]",
-    "break-words break-anywhere",
-    role === "user"
-      ? "border-primary/40 bg-gradient-to-r from-primary/85 to-primary text-primary-foreground dark:from-primary/90"
-      : "border-border/40 bg-card/95 text-foreground dark:bg-slate-950/80",
-  );
+}: ChatMessageItemProps) {
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (shouldFocus && bubbleRef.current) {
-      bubbleRef.current.focus();
+    if (shouldFocus && contentRef.current) {
+      contentRef.current.focus();
       onFocusComplete();
     }
   }, [shouldFocus, onFocusComplete]);
 
-  return (
-    <li
-      role="listitem"
-      aria-label={ariaLabel}
-      data-role={role}
-      className={wrapperClass}
-    >
-      <article
-        ref={bubbleRef}
-        className={cn(bubbleClass, "whitespace-pre-wrap focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60")}
-        tabIndex={shouldFocus ? -1 : undefined}
-        aria-live={role === "assistant" && isStreaming ? "polite" : undefined}
-        aria-busy={role === "assistant" && isStreaming ? "true" : undefined}
-      >
-        <FormattedMessage content={displayContent} />
-      </article>
-    </li>
-  );
-}
-
-type ParsedBlock = { type: "list" | "paragraph"; lines: string[] };
-
-function FormattedMessage({ content }: { content: string }) {
-  const blocks = parseBlocks(content);
+  const isAssistant = message.role === "assistant";
+  const trimmedContent = message.content.trim();
+  const showLoader = isAssistant && message.isStreaming && trimmedContent.length === 0;
 
   return (
-    <div className="space-y-3">
-      {blocks.map((block, index) => {
-        if (block.type === "list") {
-          return (
-            <ul key={index} className="list-disc space-y-1 pl-5">
-              {block.lines.map((line, lineIndex) => (
-                <li key={lineIndex} className="text-sm leading-relaxed text-foreground">
-                  {renderInline(line, `${index}-${lineIndex}`)}
-                </li>
-              ))}
-            </ul>
-          );
-        }
-
-        return (
-          <p key={index} className="text-sm leading-relaxed text-foreground">
-            {renderParagraph(block.lines)}
-          </p>
-        );
-      })}
-    </div>
+    <Message from={message.role}>
+      <MessageContent className="text-sm leading-relaxed">
+        <div
+          ref={contentRef}
+          tabIndex={shouldFocus ? -1 : undefined}
+          aria-live={isAssistant ? "polite" : undefined}
+          aria-busy={isAssistant && message.isStreaming ? "true" : undefined}
+          aria-label={isAssistant ? assistantLabel : userLabel}
+          className="outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-secondary group-[.is-user]:focus-visible:ring-offset-primary"
+        >
+          {isAssistant ? (
+            showLoader ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader size={16} />
+                <span>{streamingLabel}</span>
+              </div>
+            ) : trimmedContent.length > 0 ? (
+              <Response>{message.content}</Response>
+            ) : (
+              <p className="text-muted-foreground">{emptyLabel}</p>
+            )
+          ) : (
+            <p className="whitespace-pre-wrap">{message.content}</p>
+          )}
+        </div>
+      </MessageContent>
+    </Message>
   );
-}
-
-function renderParagraph(lines: string[]): ReactNode {
-  const last = lines.length - 1;
-  return lines.map((line, index) => (
-    <span key={index}>
-      {renderInline(line, `p-${index}`)}
-      {index < last ? <br /> : null}
-    </span>
-  ));
-}
-
-function renderInline(input: string, keyPrefix: string): ReactNode[] {
-  const nodes: ReactNode[] = [];
-  const boldRegex = /\*\*(.+?)\*\*/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = boldRegex.exec(input)) !== null) {
-    if (match.index > lastIndex) {
-      nodes.push(input.slice(lastIndex, match.index));
-    }
-    nodes.push(
-      <strong key={`${keyPrefix}-bold-${nodes.length}`} className="font-semibold text-primary">
-        {match[1]}
-      </strong>,
-    );
-    lastIndex = boldRegex.lastIndex;
-  }
-
-  if (lastIndex < input.length) {
-    nodes.push(input.slice(lastIndex));
-  }
-
-  return nodes;
-}
-
-function parseBlocks(content: string): ParsedBlock[] {
-  const blocks: ParsedBlock[] = [];
-
-  const rawBlocks = content
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean);
-
-  for (const block of rawBlocks) {
-    const lines = block
-      .split(/\n+/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-
-    if (lines.length === 0) continue;
-
-    const isList = lines.every((line) => /^[-*•]\s+/.test(line));
-
-    if (isList) {
-      blocks.push({
-        type: "list",
-        lines: lines.map((line) => line.replace(/^[-*•]\s+/, "").trim()),
-      });
-      continue;
-    }
-
-    blocks.push({ type: "paragraph", lines });
-  }
-
-  if (blocks.length === 0) {
-    blocks.push({ type: "paragraph", lines: [content] });
-  }
-
-  return blocks;
 }

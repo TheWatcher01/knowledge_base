@@ -336,6 +336,38 @@ function createStreamingResponse(params: {
 
     const stream = new ReadableStream<Uint8Array>({
         async start(controller) {
+            const controllerState = { closed: false, errored: false };
+            const isClosedError = (error: unknown) =>
+                error instanceof Error && error.message.includes("Controller is already closed");
+
+            const safeClose = () => {
+                if (controllerState.closed || controllerState.errored) return;
+                try {
+                    controller.close();
+                    controllerState.closed = true;
+                } catch (error) {
+                    if (isClosedError(error)) {
+                        controllerState.closed = true;
+                    } else {
+                        throw error;
+                    }
+                }
+            };
+
+            const safeError = (error: unknown) => {
+                if (controllerState.closed || controllerState.errored) return;
+                try {
+                    controller.error(error);
+                    controllerState.errored = true;
+                } catch (err) {
+                    if (isClosedError(err)) {
+                        controllerState.closed = true;
+                    } else {
+                        throw err;
+                    }
+                }
+            };
+
             try {
                 await prisma.chatMessage.create({
                     data: {
@@ -360,7 +392,15 @@ function createStreamingResponse(params: {
                     }
                     if (!value) continue;
 
-                    controller.enqueue(value);
+                    try {
+                        controller.enqueue(value);
+                    } catch (error) {
+                        if (isClosedError(error)) {
+                            controllerState.closed = true;
+                            break;
+                        }
+                        throw error;
+                    }
 
                     buffered += decoder.decode(value, { stream: true });
                     const { content, remainder, finished } = extractAssistantDelta(buffered);
@@ -401,10 +441,18 @@ function createStreamingResponse(params: {
                     }),
                 ]);
 
-                controller.close();
+                safeClose();
             } catch (error) {
-                console.error("[api/chat] streaming pipeline failed", error);
-                controller.error(error);
+                if (error instanceof Error && error.message.includes("Controller is already closed")) {
+                    console.warn("[api/chat] streaming pipeline stopped after consumer closed", error);
+                } else {
+                    console.error("[api/chat] streaming pipeline failed", error);
+                }
+                try {
+                    safeError(error);
+                } catch (secondary) {
+                    console.warn("[api/chat] failed to signal stream error", secondary);
+                }
             } finally {
                 reader.releaseLock();
             }

@@ -148,7 +148,10 @@
     "loading": "Chargement…",
     "empty": "Aucune conversation enregistrée.",
     "loadError": "Impossible de charger l'historique.",
-    "untitled": "Sans titre"
+    "untitled": "Sans titre",
+    "delete": "Supprimer",
+    "deleteConfirm": "Supprimer la conversation \"{title}\" ?",
+    "deleteError": "Impossible de supprimer la conversation."
   },
   "overview": {
       "stats": {

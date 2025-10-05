@@ -148,7 +148,10 @@
     "loading": "Loading…",
     "empty": "No conversations yet.",
     "loadError": "Unable to load history.",
-    "untitled": "Untitled"
+    "untitled": "Untitled",
+    "delete": "Delete",
+    "deleteConfirm": "Delete conversation \"{title}\"?",
+    "deleteError": "Couldn't delete the conversation."
   },
   "overview": {
       "stats": {
