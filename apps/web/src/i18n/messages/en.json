@@ -141,14 +141,22 @@
       "notes": "Notes",
       "files": "Files",
       "urls": "URLs",
-    "chat": "Chat"
-  },
+      "chat": "Chat",
+      "navLabel": "Knowledge base sections",
+      "viewAll": "Open {section}",
+      "previewEmpty": "No items available in {section}.",
+      "previewUntitled": "Untitled",
+      "toggleSectionAria": "Toggle {section} section"
+    },
   "chatNav": {
     "heading": "Chat history",
     "loading": "Loading…",
     "empty": "No conversations yet.",
     "loadError": "Unable to load history.",
-    "untitled": "Untitled"
+    "untitled": "Untitled",
+    "deleteLabel": "Delete conversation",
+    "deleteConfirm": "Delete this conversation?",
+    "deleteError": "Unable to delete the conversation."
   },
   "overview": {
       "stats": {
@@ -314,6 +322,8 @@
       "sidebarTitle": "Conversations",
       "sidebarLoading": "Loading…",
       "sidebarEmpty": "No saved conversations yet.",
+      "sidebarNewChatLabel": "New chat",
+      "sidebarNewChatHint": "Start a fresh conversation",
       "empty": "No messages yet.",
       "emptyHelper": "Pick a model and start the conversation to see messages here.",
       "messageStreaming": "Assistant is responding…",
@@ -323,7 +333,41 @@
       "errorGeneric": "The assistant could not answer. Please try again.",
       "errorModelRequired": "Select a model before asking a question.",
       "errorAborted": "Generation cancelled.",
-      "modelsAriaLabel": "Available chat models"
+      "modelsAriaLabel": "Available chat models",
+      "skipToComposer": "Skip to message field",
+      "sidebarCount": "{count, plural, one {# conversation} other {# conversations}}",
+      "sidebarSelect": "Open conversation {title}",
+      "conversationMenu": {
+        "label": "Actions for {title}",
+        "heading": "Conversation",
+        "rename": "Rename",
+        "export": "Export",
+        "delete": "Delete"
+      },
+      "renameDialog": {
+        "title": "Rename conversation",
+        "description": "Rename “{title}” to keep your history organised.",
+        "label": "Conversation title",
+        "placeholder": "New conversation",
+        "cancel": "Cancel",
+        "save": "Save",
+        "saving": "Saving...",
+        "validation": "Please enter a title.",
+        "success": "“{title}” has been renamed.",
+        "error": "Unable to rename the conversation."
+      },
+      "deleteDialog": {
+        "title": "Delete conversation",
+        "description": "Delete “{title}”? This action cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Delete",
+        "deleting": "Deleting...",
+        "success": "Conversation deleted.",
+        "error": "Unable to delete the conversation."
+      },
+      "exportStatus": "Exporting “{title}”…",
+      "exportSuccess": "Conversation exported.",
+      "exportError": "Unable to export the conversation."
     },
     "card": {
       "emptyDescription": "No description provided yet.",

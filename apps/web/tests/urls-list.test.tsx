@@ -25,7 +25,7 @@ afterEach(() => {
 describe("UrlRow", () => {
     async function renderRow(status: "draft" | "queued" | "synced" | "error") {
         const user = userEvent.setup();
-        const { UrlsList } = await import("@/app/[locale]/(app)/kb/[id]/urls/_components/urls-list");
+        const { UrlsList } = await import("@/app/[locale]/(app)/kb/[id]/_components/urls/urls-list");
         render(
             <UrlsList
                 canEdit

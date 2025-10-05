@@ -25,7 +25,7 @@ afterEach(() => {
 
     async function setup(fetchResponse: { ok: boolean; json: () => Promise<unknown> }) {
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue(fetchResponse));
-        const { CreateUrlForm } = await import("@/app/[locale]/(app)/kb/[id]/urls/_components/create-url-form");
+        const { CreateUrlForm } = await import("@/app/[locale]/(app)/kb/[id]/_components/urls/create-url-form");
         const user = userEvent.setup();
         render(<CreateUrlForm kbId="kb-test" canEdit />);
 
@@ -64,7 +64,7 @@ afterEach(() => {
             ok: false,
             json: () => Promise.resolve({ error: "Custom error" }),
         }));
-        const { CreateUrlForm } = await import("@/app/[locale]/(app)/kb/[id]/urls/_components/create-url-form");
+        const { CreateUrlForm } = await import("@/app/[locale]/(app)/kb/[id]/_components/urls/create-url-form");
         const user = userEvent.setup();
         render(<CreateUrlForm kbId="kb-test" canEdit />);
 
@@ -79,7 +79,7 @@ afterEach(() => {
     });
 
     test("valide la présence de l'URL", async () => {
-        const { CreateUrlForm } = await import("@/app/[locale]/(app)/kb/[id]/urls/_components/create-url-form");
+        const { CreateUrlForm } = await import("@/app/[locale]/(app)/kb/[id]/_components/urls/create-url-form");
         const user = userEvent.setup();
         render(<CreateUrlForm kbId="kb-test" canEdit />);
 

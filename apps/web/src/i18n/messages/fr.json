@@ -141,14 +141,22 @@
       "notes": "Notes",
       "files": "Fichiers",
       "urls": "Liens",
-    "chat": "Chat"
-  },
+      "chat": "Chat",
+      "navLabel": "Sections de la base",
+      "viewAll": "Accéder à {section}",
+      "previewEmpty": "Aucun élément disponible dans {section}.",
+      "previewUntitled": "Sans titre",
+      "toggleSectionAria": "Replier ou déplier {section}"
+    },
   "chatNav": {
     "heading": "Historique du chat",
     "loading": "Chargement…",
     "empty": "Aucune conversation enregistrée.",
     "loadError": "Impossible de charger l'historique.",
-    "untitled": "Sans titre"
+    "untitled": "Sans titre",
+    "deleteLabel": "Supprimer la conversation",
+    "deleteConfirm": "Supprimer cette conversation ?",
+    "deleteError": "Impossible de supprimer la conversation."
   },
   "overview": {
       "stats": {
@@ -314,6 +322,8 @@
       "sidebarTitle": "Conversations",
       "sidebarLoading": "Chargement…",
       "sidebarEmpty": "Aucune conversation enregistrée.",
+      "sidebarNewChatLabel": "Nouveau chat",
+      "sidebarNewChatHint": "Démarrer une nouvelle discussion",
       "empty": "Aucun échange pour le moment.",
       "emptyHelper": "Sélectionnez un modèle puis lancez une conversation pour afficher les messages ici.",
       "messageStreaming": "Réponse en cours…",
@@ -323,7 +333,41 @@
       "errorGeneric": "L’assistant n’a pas pu répondre. Réessayez dans un instant.",
       "errorModelRequired": "Sélectionnez un modèle avant d’envoyer une question.",
       "errorAborted": "Génération interrompue.",
-      "modelsAriaLabel": "Modèles disponibles pour le chat"
+      "modelsAriaLabel": "Modèles disponibles pour le chat",
+      "skipToComposer": "Aller directement au champ de message",
+      "sidebarCount": "{count, plural, one {# conversation} other {# conversations}}",
+      "sidebarSelect": "Ouvrir la conversation {title}",
+      "conversationMenu": {
+        "label": "Actions pour {title}",
+        "heading": "Conversation",
+        "rename": "Renommer",
+        "export": "Exporter",
+        "delete": "Supprimer"
+      },
+      "renameDialog": {
+        "title": "Renommer la conversation",
+        "description": "Renommez «\u00a0{title}\u00a0» pour la retrouver facilement.",
+        "label": "Titre de la conversation",
+        "placeholder": "Nouvelle conversation",
+        "cancel": "Annuler",
+        "save": "Enregistrer",
+        "saving": "Enregistrement...",
+        "validation": "Saisissez un titre.",
+        "success": "«\u00a0{title}\u00a0» a été renommée.",
+        "error": "Impossible de renommer la conversation."
+      },
+      "deleteDialog": {
+        "title": "Supprimer la conversation",
+        "description": "Confirmez la suppression de «\u00a0{title}\u00a0». Cette action est définitive.",
+        "cancel": "Annuler",
+        "confirm": "Supprimer",
+        "deleting": "Suppression...",
+        "success": "Conversation supprimée.",
+        "error": "Impossible de supprimer la conversation."
+      },
+      "exportStatus": "Export de «\u00a0{title}\u00a0» en cours…",
+      "exportSuccess": "Conversation exportée.",
+      "exportError": "Impossible d’exporter la conversation."
     },
   "card": {
     "emptyDescription": "Aucune description pour le moment.",

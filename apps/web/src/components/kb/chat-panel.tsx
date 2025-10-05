@@ -60,12 +60,20 @@ type LiveTone = "polite" | "assertive";
 type KnowledgeBaseChatPanelProps = {
   kbId: string;
   className?: string;
+  activeConversationId?: string | null;
+  onConversationChange?: (conversationId: string | null) => void;
 };
 
-export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPanelProps) {
+export function KnowledgeBaseChatPanel({
+  kbId,
+  className,
+  activeConversationId: controlledConversationId,
+  onConversationChange,
+}: KnowledgeBaseChatPanelProps) {
   const t = useTranslations("kb.chat");
   const searchParams = useSearchParams();
   const router = useRouter();
+  const isControlled = typeof onConversationChange === "function";
 
   const headingId = useId();
   const descriptionId = useId();
@@ -78,9 +86,10 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
 
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [conversationsLoading, setConversationsLoading] = useState(true);
-  const [conversationsError, setConversationsError] = useState<string | null>(null);
-  const [activeConversationId, setActiveConversationIdState] = useState<string | null>(null);
+  const [internalConversationId, setInternalConversationId] = useState<string | null>(
+    searchParams?.get("conversation") ?? null,
+  );
+  const activeConversationId = isControlled ? controlledConversationId ?? null : internalConversationId;
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
@@ -100,6 +109,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   const scrollAnchorRef = useRef<HTMLLIElement | null>(null);
   const initialConversationLoadedRef = useRef(false);
   const pendingConversationIdRef = useRef<string | null>(null);
+  const lastLoadedConversationRef = useRef<string | null>(null);
   const emitConversationsUpdated = useCallback(() => {
     if (typeof window === "undefined") return;
     window.dispatchEvent(new CustomEvent(CHAT_CONVERSATIONS_UPDATED_EVENT));
@@ -107,7 +117,12 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
 
   const setActiveConversationId = useCallback(
     (conversationId: string | null) => {
-      setActiveConversationIdState(conversationId);
+      if (isControlled) {
+        onConversationChange?.(conversationId);
+        return;
+      }
+
+      setInternalConversationId(conversationId);
       const current = new URLSearchParams(searchParams?.toString());
       if (conversationId) {
         current.set("conversation", conversationId);
@@ -118,7 +133,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       const href = query ? `?${query}` : "";
       router.replace(href, { scroll: false });
     },
-    [router, searchParams],
+    [isControlled, onConversationChange, router, searchParams],
   );
 
   const updateStatus = useCallback((message: string, tone: LiveTone = "polite") => {
@@ -135,6 +150,18 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       try {
         updateStatus(t("statusLoading"));
         const response = await fetch(`/api/kb/${kbId}/chat/conversations/${conversationId}`);
+        if (response.status === 404) {
+          if (activeConversationId === conversationId) {
+            setActiveConversationId(null);
+          }
+          lastLoadedConversationRef.current = null;
+          initialConversationLoadedRef.current = false;
+          setMessages([]);
+          setFocusTargetId(null);
+          setStreamError(t("historyLoadError"));
+          updateStatus(t("historyLoadError"), "assertive");
+          return;
+        }
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -164,7 +191,10 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
           throw new Error("Missing conversation payload");
         }
 
-        setActiveConversationId(data.conversation.id);
+        if (data.conversation.id !== activeConversationId) {
+          setActiveConversationId(data.conversation.id);
+        }
+        lastLoadedConversationRef.current = data.conversation.id;
         setSelectedModel((current) => data.conversation?.model ?? current);
         const mappedMessages = data.conversation.messages.map((message) => ({
           id: message.id,
@@ -181,9 +211,10 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       } catch (error) {
         console.warn("[chat] Failed to load conversation", error);
         setStreamError(t("historyLoadError"));
+        updateStatus(t("historyLoadError"), "assertive");
       }
     },
-    [kbId, t, updateStatus, setActiveConversationId],
+    [activeConversationId, kbId, t, updateStatus, setActiveConversationId],
   );
 
   const tryAutoSelectConversation = useCallback(
@@ -200,18 +231,43 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   );
 
   useEffect(() => {
-    const conversationParam = searchParams?.get("conversation");
-    if (conversationParam && conversationParam !== activeConversationId) {
-      initialConversationLoadedRef.current = true;
-      setActiveConversationId(conversationParam);
-      void loadConversation(conversationParam);
+    if (isControlled) {
+      return;
     }
-  }, [searchParams, activeConversationId, loadConversation, setActiveConversationId]);
+
+    const conversationParam = searchParams?.get("conversation") ?? null;
+    if (conversationParam && conversationParam !== internalConversationId) {
+      initialConversationLoadedRef.current = true;
+      setInternalConversationId(conversationParam);
+      void loadConversation(conversationParam);
+      return;
+    }
+
+    if (!conversationParam && internalConversationId) {
+      setInternalConversationId(null);
+    }
+  }, [isControlled, searchParams, internalConversationId, loadConversation]);
+
+  useEffect(() => {
+    if (!isControlled) {
+      return;
+    }
+
+    const nextId = controlledConversationId ?? null;
+    if (!nextId) {
+      return;
+    }
+
+    if (lastLoadedConversationRef.current === nextId) {
+      return;
+    }
+
+    initialConversationLoadedRef.current = true;
+    lastLoadedConversationRef.current = nextId;
+    void loadConversation(nextId);
+  }, [controlledConversationId, isControlled, loadConversation]);
 
   const loadConversations = useCallback(async () => {
-    setConversationsLoading(true);
-    setConversationsError(null);
-
     try {
       const response = await fetch(`/api/kb/${kbId}/chat/conversations`);
       if (!response.ok) {
@@ -224,11 +280,9 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       emitConversationsUpdated();
     } catch (error) {
       console.warn("[chat] Failed to load conversations", error);
-      setConversationsError(t("historyLoadError"));
-    } finally {
-      setConversationsLoading(false);
+      setStreamError(t("historyLoadError"));
     }
-  }, [kbId, t, tryAutoSelectConversation, emitConversationsUpdated]);
+  }, [emitConversationsUpdated, kbId, t, tryAutoSelectConversation]);
 
   useEffect(() => {
     void loadConversations();
@@ -292,6 +346,20 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (activeConversationId || isStreaming || pendingConversationIdRef.current) {
+      return;
+    }
+
+    if (messages.length === 0) {
+      return;
+    }
+
+    setMessages([]);
+    setStreamError(null);
+    setFocusTargetId(null);
+  }, [activeConversationId, isStreaming, messages.length]);
+
 
   const currentModelValue = selectedModel ?? "";
 
@@ -320,15 +388,6 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     const abortMessage = t("errorAborted");
     setStreamError(abortMessage);
     updateStatus(t("announceError", { message: abortMessage }), "assertive");
-  }
-
-  function handleStartNewConversation() {
-    initialConversationLoadedRef.current = true;
-    setActiveConversationId(null);
-    setMessages([]);
-    setInput("");
-    setStreamError(null);
-    updateStatus(t("status"));
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -376,20 +435,25 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     abortControllerRef.current = controller;
 
     try {
+      const requestBody: Record<string, unknown> = {
+        kbId,
+        question,
+        model: currentModelValue,
+      };
+      if (activeConversationId) {
+        requestBody.conversationId = activeConversationId;
+      }
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kbId,
-          question,
-          model: currentModelValue,
-          conversationId: activeConversationId ?? undefined,
-        }),
+        body: JSON.stringify(requestBody),
         signal: controller.signal,
       });
 
       if (!response.ok || !response.body) {
         let message = t("errorGeneric");
+        const status = response.status;
         try {
           const payload = (await response.json()) as { error?: string };
           if (payload?.error) {
@@ -406,6 +470,12 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
             // ignore secondary parsing failures
           }
         }
+        if (status === 404) {
+          setActiveConversationId(null);
+          lastLoadedConversationRef.current = null;
+          initialConversationLoadedRef.current = false;
+        }
+
         setStreamError(message);
         finalizeAssistantResponse("", {
           message: t("announceError", { message }),
@@ -550,66 +620,15 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
             </p>
             <p className="text-xs text-muted-foreground">{statusDisplay}</p>
           </div>
-          <div className="flex flex-col items-end gap-2 sm:items-center">
-            <Button type="button" variant="outline" onClick={handleStartNewConversation} disabled={isStreaming}>
-              {t("newConversation")}
-            </Button>
-          </div>
+          <div className="h-9" />
         </div>
 
         <LiveMessage id={conversationStatusId} tone={statusTone} visuallyHidden>
           {statusDisplay}
         </LiveMessage>
 
-        <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)]">
-          <div className="flex h-full flex-col gap-4 rounded-2xl border border-border/40 bg-card/70 p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">{t("sidebarTitle")}</h2>
-              <span className="text-xs text-muted-foreground">{conversations.length}</span>
-            </div>
-
-            {conversationsError ? (
-              <p className="text-xs text-red-500">{conversationsError}</p>
-            ) : null}
-
-            {conversationsLoading ? (
-              <p className="text-xs text-muted-foreground">{t("sidebarLoading")}</p>
-            ) : conversations.length === 0 ? (
-              <p className="text-xs text-muted-foreground">{t("sidebarEmpty")}</p>
-            ) : (
-              <ul className="flex-1 space-y-2 overflow-y-auto pr-1" role="list">
-                {conversations.map((conversation) => {
-                  const isActive = conversation.id === activeConversationId;
-                  return (
-                    <li key={conversation.id} role="listitem">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveConversationId(conversation.id);
-                          void loadConversation(conversation.id);
-                        }}
-                        disabled={isStreaming && conversation.id !== activeConversationId}
-                        className={cn(
-                          "w-full rounded-xl border px-3 py-2 text-left text-sm transition",
-                          isActive
-                            ? "border-primary/60 bg-primary/10 text-foreground"
-                            : "border-border/40 bg-card/80 text-muted-foreground hover:border-primary/40 hover:bg-card",
-                        )}
-                      >
-                        <span className="block truncate font-medium text-foreground">
-                          {conversation.title || t("untitledConversation")}
-                        </span>
-                        <span className="block text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                          {formatRelativeTime(conversation.lastActivityAt)}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
+        {/* Suppression du panneau interne de conversations: la liste est désormais gérée dans la sidebar de gauche (Sources > Chat) */}
+        <div className="flex-1">
           <div className="flex min-h-[260px] flex-col gap-4 rounded-3xl border border-border/40 bg-card/90 p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -942,22 +961,6 @@ function createId() {
   return typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2);
-}
-
-function formatRelativeTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      dateStyle: "short",
-      timeStyle: "short",
-    }).format(date);
-  } catch {
-    return date.toLocaleString();
-  }
 }
 
 type MessageBubbleProps = {

@@ -1,37 +1,26 @@
-import { getServerSession } from "next-auth";
-import { redirect } from "@/i18n/navigation";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { CreateNoteForm } from "./_components/create-note-form";
-import { NoteActions } from "./_components/note-actions";
-import { getFormatter, getTranslations } from "next-intl/server";
+"use client";
 
-type PageProps = {
-    params: Promise<{ locale: string; id: string }>;
+import { useFormatter, useTranslations } from "next-intl";
+
+import { CreateNoteForm } from "../notes/create-note-form";
+import { NoteActions } from "../notes/note-actions";
+
+export type NoteEntry = {
+    id: string;
+    title: string;
+    content: string;
+    createdAt: string;
 };
 
-export default async function NotesPage({ params }: PageProps) {
-    const { id, locale } = await params;
+type NotesSectionProps = {
+    kbId: string;
+    canEdit: boolean;
+    notes: NoteEntry[];
+};
 
-    const session = await getServerSession(authOptions);
-    const userId = session?.user?.id;
-    if (!userId) redirect({ href: "/login", locale });
-    const role = (session?.user?.role ?? "VIEWER") as "VIEWER" | "EDITOR" | "ADMIN";
-    const canEdit = role !== "VIEWER";
-
-    const kb = await prisma.knowledgeBase.findFirst({
-        where: { id, ownerId: userId },
-    });
-    if (!kb) redirect({ href: "/kb", locale });
-
-    const [notes, t, formatter] = await Promise.all([
-        prisma.document.findMany({
-            where: { kbId: id, type: "note" },
-            orderBy: { createdAt: "desc" },
-        }),
-        getTranslations({ locale, namespace: "kb.notes" }),
-        getFormatter({ locale }),
-    ]);
+export function NotesSection({ kbId, canEdit, notes }: NotesSectionProps) {
+    const t = useTranslations("kb.notes");
+    const formatter = useFormatter();
 
     return (
         <section className="flex h-full flex-col gap-6">
@@ -41,7 +30,7 @@ export default async function NotesPage({ params }: PageProps) {
                         <h2 className="text-2xl font-semibold text-foreground">{t("title")}</h2>
                         <p className="text-sm text-muted-foreground">{t("description")}</p>
                     </div>
-                    <CreateNoteForm kbId={id} canEdit={canEdit} />
+                    <CreateNoteForm kbId={kbId} canEdit={canEdit} />
                 </div>
             </div>
 
@@ -55,12 +44,11 @@ export default async function NotesPage({ params }: PageProps) {
             ) : (
                 <ul className="flex-1 space-y-3 overflow-y-auto pr-1">
                     {notes.map((note) => {
-                        const formatted = formatter.dateTime(note.createdAt, {
+                        const createdAt = new Date(note.createdAt);
+                        const formatted = formatter.dateTime(createdAt, {
                             dateStyle: "medium",
                             timeStyle: "short",
                         });
-
-                        const content = note.source ?? "";
 
                         return (
                             <li
@@ -72,15 +60,15 @@ export default async function NotesPage({ params }: PageProps) {
                                         <h3 className="text-lg font-semibold text-foreground">{note.title}</h3>
                                         <span className="text-xs text-muted-foreground">{formatted}</span>
                                     </div>
-                                    {content && (
-                                        <p className="whitespace-pre-wrap text-sm text-muted-foreground">{content}</p>
-                                    )}
+                                    {note.content ? (
+                                        <p className="whitespace-pre-wrap text-sm text-muted-foreground">{note.content}</p>
+                                    ) : null}
                                 </div>
 
                                 <NoteActions
                                     noteId={note.id}
                                     initialTitle={note.title}
-                                    initialContent={content}
+                                    initialContent={note.content}
                                     canEdit={canEdit}
                                 />
                             </li>
