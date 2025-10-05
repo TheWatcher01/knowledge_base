@@ -78,8 +78,6 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
 
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [conversationsLoading, setConversationsLoading] = useState(true);
-  const [conversationsError, setConversationsError] = useState<string | null>(null);
   const [activeConversationId, setActiveConversationIdState] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -98,8 +96,9 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   const latestAssistantIdRef = useRef<string | null>(null);
   const assistantContentRef = useRef<string>("");
   const scrollAnchorRef = useRef<HTMLLIElement | null>(null);
-  const initialConversationLoadedRef = useRef(false);
   const pendingConversationIdRef = useRef<string | null>(null);
+  const skipSearchParamSyncRef = useRef(false);
+
   const emitConversationsUpdated = useCallback(() => {
     if (typeof window === "undefined") return;
     window.dispatchEvent(new CustomEvent(CHAT_CONVERSATIONS_UPDATED_EVENT));
@@ -107,6 +106,12 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
 
   const setActiveConversationId = useCallback(
     (conversationId: string | null) => {
+      if (conversationId === null) {
+        skipSearchParamSyncRef.current = true;
+      } else {
+        skipSearchParamSyncRef.current = false;
+      }
+
       setActiveConversationIdState(conversationId);
       const current = new URLSearchParams(searchParams?.toString());
       if (conversationId) {
@@ -186,32 +191,30 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     [kbId, t, updateStatus, setActiveConversationId],
   );
 
-  const tryAutoSelectConversation = useCallback(
-    (items: ConversationSummary[]) => {
-      if (initialConversationLoadedRef.current) return;
-      if (items.length === 0) return;
-      const first = items[0];
-      if (!first) return;
-      initialConversationLoadedRef.current = true;
-      setActiveConversationId(first.id);
-      void loadConversation(first.id);
-    },
-    [loadConversation, setActiveConversationId],
-  );
-
   useEffect(() => {
     const conversationParam = searchParams?.get("conversation");
-    if (conversationParam && conversationParam !== activeConversationId) {
-      initialConversationLoadedRef.current = true;
-      setActiveConversationId(conversationParam);
-      void loadConversation(conversationParam);
+
+    if (skipSearchParamSyncRef.current) {
+      skipSearchParamSyncRef.current = false;
+      return;
     }
+
+    if (!conversationParam) {
+      if (activeConversationId !== null) {
+        setActiveConversationId(null);
+      }
+      return;
+    }
+
+    if (conversationParam === activeConversationId) {
+      return;
+    }
+
+    setActiveConversationId(conversationParam);
+    void loadConversation(conversationParam);
   }, [searchParams, activeConversationId, loadConversation, setActiveConversationId]);
 
   const loadConversations = useCallback(async () => {
-    setConversationsLoading(true);
-    setConversationsError(null);
-
     try {
       const response = await fetch(`/api/kb/${kbId}/chat/conversations`);
       if (!response.ok) {
@@ -220,19 +223,32 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       const data = (await response.json()) as { conversations?: ConversationSummary[] };
       const list = Array.isArray(data.conversations) ? data.conversations : [];
       setConversations(list);
-      tryAutoSelectConversation(list);
       emitConversationsUpdated();
     } catch (error) {
       console.warn("[chat] Failed to load conversations", error);
-      setConversationsError(t("historyLoadError"));
-    } finally {
-      setConversationsLoading(false);
     }
-  }, [kbId, t, tryAutoSelectConversation, emitConversationsUpdated]);
+  }, [kbId, emitConversationsUpdated]);
 
   useEffect(() => {
     void loadConversations();
   }, [loadConversations]);
+
+  useEffect(() => {
+    if (activeConversationId !== null) {
+      return;
+    }
+
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    latestAssistantIdRef.current = null;
+    assistantContentRef.current = "";
+    pendingConversationIdRef.current = null;
+    setMessages([]);
+    setStreamError(null);
+    setIsStreaming(false);
+    setFocusTargetId(null);
+    updateStatus(t("status"));
+  }, [activeConversationId, t, updateStatus]);
 
   useEffect(() => {
     let cancelled = false;
@@ -322,15 +338,6 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     updateStatus(t("announceError", { message: abortMessage }), "assertive");
   }
 
-  function handleStartNewConversation() {
-    initialConversationLoadedRef.current = true;
-    setActiveConversationId(null);
-    setMessages([]);
-    setInput("");
-    setStreamError(null);
-    updateStatus(t("status"));
-  }
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canSend) return;
@@ -346,7 +353,6 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     setInput("");
     setStreamError(null);
     updateStatus(t("announceSending"));
-    initialConversationLoadedRef.current = true;
 
     const nextSequence = messages.length;
 
@@ -540,7 +546,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       className={cn("flex min-h-[540px] w-full flex-col gap-6", className)}
     >
       <Card className="flex h-full flex-col gap-6 p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className="flex flex-col gap-2">
             <h1 id={headingId} className="text-2xl font-semibold">
               {t("title")}
@@ -550,66 +556,13 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
             </p>
             <p className="text-xs text-muted-foreground">{statusDisplay}</p>
           </div>
-          <div className="flex flex-col items-end gap-2 sm:items-center">
-            <Button type="button" variant="outline" onClick={handleStartNewConversation} disabled={isStreaming}>
-              {t("newConversation")}
-            </Button>
-          </div>
         </div>
 
         <LiveMessage id={conversationStatusId} tone={statusTone} visuallyHidden>
           {statusDisplay}
         </LiveMessage>
 
-        <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)]">
-          <div className="flex h-full flex-col gap-4 rounded-2xl border border-border/40 bg-card/70 p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">{t("sidebarTitle")}</h2>
-              <span className="text-xs text-muted-foreground">{conversations.length}</span>
-            </div>
-
-            {conversationsError ? (
-              <p className="text-xs text-red-500">{conversationsError}</p>
-            ) : null}
-
-            {conversationsLoading ? (
-              <p className="text-xs text-muted-foreground">{t("sidebarLoading")}</p>
-            ) : conversations.length === 0 ? (
-              <p className="text-xs text-muted-foreground">{t("sidebarEmpty")}</p>
-            ) : (
-              <ul className="flex-1 space-y-2 overflow-y-auto pr-1" role="list">
-                {conversations.map((conversation) => {
-                  const isActive = conversation.id === activeConversationId;
-                  return (
-                    <li key={conversation.id} role="listitem">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveConversationId(conversation.id);
-                          void loadConversation(conversation.id);
-                        }}
-                        disabled={isStreaming && conversation.id !== activeConversationId}
-                        className={cn(
-                          "w-full rounded-xl border px-3 py-2 text-left text-sm transition",
-                          isActive
-                            ? "border-primary/60 bg-primary/10 text-foreground"
-                            : "border-border/40 bg-card/80 text-muted-foreground hover:border-primary/40 hover:bg-card",
-                        )}
-                      >
-                        <span className="block truncate font-medium text-foreground">
-                          {conversation.title || t("untitledConversation")}
-                        </span>
-                        <span className="block text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                          {formatRelativeTime(conversation.lastActivityAt)}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
+        <div className="flex-1">
           <div className="flex min-h-[260px] flex-col gap-4 rounded-3xl border border-border/40 bg-card/90 p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -942,22 +895,6 @@ function createId() {
   return typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2);
-}
-
-function formatRelativeTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      dateStyle: "short",
-      timeStyle: "short",
-    }).format(date);
-  } catch {
-    return date.toLocaleString();
-  }
 }
 
 type MessageBubbleProps = {

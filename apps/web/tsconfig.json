@@ -21,7 +21,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@repo/shadcn-ui/components/*": ["./src/components/*"],
+      "@repo/shadcn-ui/lib/*": ["./src/lib/*"]
     }
   },
   "include": ["next-env.d.ts","**/*.ts","**/*.tsx","src/types/**/*.d.ts",".next/types/**/*.ts"],
