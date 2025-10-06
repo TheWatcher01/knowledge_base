@@ -95,3 +95,5 @@ open-webui-doc
 *.gitignore
 *.codex
 screenshot
+trace-artifacts
+test-results

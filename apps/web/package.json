@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "next dev --turbopack -p 3001",
     "build": "next build --turbopack",
-    "start": "next start",
+    "start": "next start -p 3001",
     "lint": "eslint",
     "test": "vitest",
+    "test:e2e": "playwright test",
     "seed:authz-fixtures": "node scripts/seed-authz-sample.mjs",
     "seed:kb-sample": "node scripts/seed-kb-sample.mjs",
     "prisma": "prisma",
@@ -33,6 +34,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
+    "@shikijs/transformers": "^3.13.0",
     "ai": "^5.0.60",
     "bcrypt": "^6.0.0",
     "class-variance-authority": "^0.7.1",
@@ -63,6 +65,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@faker-js/faker": "^10.0.0",
+    "@playwright/test": "^1.55.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",

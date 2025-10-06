@@ -113,7 +113,10 @@ function createTitle(words = 3) {
 }
 
 async function ensureUser(email, role = Role.ADMIN) {
-    const password = faker.internet.password({ length: 12, memorable: false });
+    const password =
+        process.env.DEMO_PASSWORD?.trim() && process.env.DEMO_PASSWORD.trim().length >= 8
+            ? process.env.DEMO_PASSWORD.trim()
+            : faker.internet.password({ length: 12, memorable: false });
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await prisma.user.upsert({
         where: { email },
