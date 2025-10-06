@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSession } from "next-auth";
+import { Prisma } from "@prisma/client";
 
 import { authOptions } from "@/lib/auth";
 import { assertRole, handleAuthError } from "@/lib/authz";
@@ -17,7 +18,7 @@ const UpdateBody = z.object({
   summary: z.string().max(2000).optional().or(z.literal("")),
   archived: z.boolean().optional(),
   pinned: z.boolean().optional(),
-  meta: z.record(z.any()).optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
 });
 
 export async function GET(
@@ -128,7 +129,7 @@ export async function PATCH(
       data.pinned = parsed.data.pinned;
     }
     if (parsed.data.meta !== undefined) {
-      data.meta = parsed.data.meta;
+      data.meta = parsed.data.meta as Prisma.JsonObject;
     }
 
     if (Object.keys(data).length === 0) {

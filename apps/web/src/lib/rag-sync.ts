@@ -162,7 +162,7 @@ async function fetchTextContent(documentId: string): Promise<string | null> {
     if (!document.fileAsset.mimeType.startsWith("text/")) {
       return null;
     }
-    return document.fileAsset.data.toString("utf8");
+    return Buffer.from(document.fileAsset.data).toString("utf8");
   }
 
   return null;
@@ -194,7 +194,7 @@ async function ensureKnowledgeEntries(kbId: string): Promise<KnowledgeRecord[]> 
       });
     } else if (doc.type === "file") {
       const content = doc.fileAsset && doc.fileAsset.mimeType.startsWith("text/")
-        ? doc.fileAsset.data.toString("utf8")
+        ? Buffer.from(doc.fileAsset.data).toString("utf8")
         : null;
       await upsertKnowledgeEntry({
         kbId,

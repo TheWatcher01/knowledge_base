@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSession } from "next-auth";
+import { Prisma } from "@prisma/client";
 
 import { authOptions } from "@/lib/auth";
 import { assertRole, handleAuthError } from "@/lib/authz";
@@ -13,7 +14,7 @@ const ListQuery = z.object({
 const CreateBody = z.object({
   title: z.string().trim().min(1).max(120).optional(),
   model: z.string().trim().min(1).max(120).optional(),
-  meta: z.record(z.any()).optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
 });
 
 export async function GET(
@@ -104,7 +105,7 @@ export async function POST(
         userId,
         title: title ?? kb.name ?? "Conversation",
         model: model ?? null,
-        meta: meta ?? undefined,
+        meta: meta ? (meta as Prisma.JsonObject) : undefined,
       },
       select: {
         id: true,

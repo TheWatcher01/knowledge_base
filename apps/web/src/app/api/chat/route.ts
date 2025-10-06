@@ -7,7 +7,7 @@ import { OWUI_BASE, OWUI_TOKEN, collectionName } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import { assertRole, handleAuthError } from "@/lib/authz";
-import { ChatMessageRole } from "@prisma/client";
+import { ChatMessageRole, Prisma } from "@prisma/client";
 
 type RetrievedDoc = { text: string };
 type RetrievalResponse = {
@@ -65,15 +65,23 @@ async function loadFallbackDocuments(kbId: string): Promise<RetrievedDoc[]> {
 
     const fallback: RetrievedDoc[] = [];
 
+    const collectSegments = (...segments: (string | null | undefined)[]) =>
+        segments.filter((segment): segment is string => typeof segment === "string" && segment.trim().length > 0);
+
     for (const doc of documents) {
         if (doc.type === "note") {
-            const text = [doc.title, doc.source ?? ""].filter(Boolean).join("\n\n").trim();
+            const text = collectSegments(doc.title, doc.source)
+                .join("\n\n")
+                .trim();
             if (text) fallback.push({ text });
             continue;
         }
 
         if (doc.type === "file" && doc.fileAsset?.data) {
-            const text = [doc.title, doc.fileAsset.data.toString("utf8")].filter(Boolean).join("\n\n").trim();
+            const fileContent = Buffer.from(doc.fileAsset.data).toString("utf8");
+            const text = collectSegments(doc.title, fileContent)
+                .join("\n\n")
+                .trim();
             if (text) fallback.push({ text });
             continue;
         }
@@ -81,7 +89,9 @@ async function loadFallbackDocuments(kbId: string): Promise<RetrievedDoc[]> {
         if (doc.type === "url") {
             const summary = doc.urlEntry?.description ?? "";
             const source = doc.source ?? doc.urlEntry?.url ?? "";
-            const text = [doc.title, source, summary].filter(Boolean).join("\n\n").trim();
+            const text = collectSegments(doc.title, source, summary)
+                .join("\n\n")
+                .trim();
             if (text) fallback.push({ text });
             continue;
         }
@@ -96,7 +106,7 @@ const ChatRequestSchema = z.object({
     question: z.string().trim().min(1),
     conversationId: z.string().uuid().optional(),
     title: z.string().trim().min(1).max(120).optional(),
-    meta: z.record(z.any()).optional(),
+    meta: z.record(z.string(), z.unknown()).optional(),
 });
 
 // POST /api/chat
@@ -267,7 +277,7 @@ async function resolveConversation(params: {
             existing.model = model;
         }
         if (meta) {
-            updateData.meta = meta;
+            updateData.meta = meta as Prisma.JsonObject;
         }
         if (Object.keys(updateData).length > 0) {
             await prisma.chatConversation.update({
@@ -286,13 +296,14 @@ async function resolveConversation(params: {
         };
     }
 
+    const fallbackTitle = question.slice(0, 60) || "Conversation";
     const created = await prisma.chatConversation.create({
         data: {
             kbId,
             userId,
-            title: title ?? question.slice(0, 60) || "Conversation",
+            title: title ?? fallbackTitle,
             model: model ?? null,
-            meta: meta ?? undefined,
+            meta: meta ? (meta as Prisma.JsonObject) : undefined,
         },
     });
 
