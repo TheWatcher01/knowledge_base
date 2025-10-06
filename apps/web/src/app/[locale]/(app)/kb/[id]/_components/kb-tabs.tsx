@@ -4,6 +4,7 @@ import { Link } from "@/i18n/navigation";
 import { useSelectedLayoutSegments } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import { CHAT_CONVERSATION_RESET_REQUESTED_EVENT } from "@/lib/chat-events";
 
 import { ChatHistoryNav } from "./chat-history-nav";
 
@@ -37,6 +38,15 @@ export function KnowledgeBaseTabs({ kbId }: { kbId: string }) {
                                         ? "bg-[color-mix(in_srgb,var(--kb-highlight)_28%,transparent_72%)] text-[var(--kb-text)]"
                                         : "text-[var(--kb-text-subtle)] hover:bg-[color-mix(in_srgb,var(--kb-highlight)_18%,transparent_82%)] hover:text-[var(--kb-text)]",
                                 )}
+                                onClick={() => {
+                                    if (typeof window !== "undefined" && tab.key === "chat") {
+                                        window.dispatchEvent(
+                                            new CustomEvent(CHAT_CONVERSATION_RESET_REQUESTED_EVENT, {
+                                                detail: { kbId },
+                                            }),
+                                        );
+                                    }
+                                }}
                             >
                                 <span>{t(tab.key)}</span>
                             </Link>

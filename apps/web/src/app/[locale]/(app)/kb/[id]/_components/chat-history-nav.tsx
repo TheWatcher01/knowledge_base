@@ -22,6 +22,10 @@ interface ConversationNavItem {
 
 const MAX_ITEMS = 30;
 
+type ConversationsUpdatedDetail = {
+  conversations?: Array<{ id: string; title: string; lastActivityAt: string }> | null;
+};
+
 export function ChatHistoryNav({ kbId }: ChatHistoryNavProps) {
   const t = useTranslations("kb.chatNav");
   const params = useSearchParams();
@@ -68,7 +72,23 @@ export function ChatHistoryNav({ kbId }: ChatHistoryNavProps) {
   }, [load]);
 
   useEffect(() => {
-    function handleUpdate() {
+    function handleUpdate(event: Event) {
+      const detail = (event as CustomEvent<ConversationsUpdatedDetail>).detail;
+      const list = detail?.conversations ?? null;
+
+      if (Array.isArray(list)) {
+        setItems(
+          list.map((conversation) => ({
+            id: conversation.id,
+            title: conversation.title || t("untitled"),
+            lastActivityAt: conversation.lastActivityAt,
+          })),
+        );
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
       void load();
     }
 
@@ -76,7 +96,7 @@ export function ChatHistoryNav({ kbId }: ChatHistoryNavProps) {
     return () => {
       window.removeEventListener(CHAT_CONVERSATIONS_UPDATED_EVENT, handleUpdate);
     };
-  }, [load]);
+  }, [load, t]);
 
   const formattedItems = useMemo(
     () =>

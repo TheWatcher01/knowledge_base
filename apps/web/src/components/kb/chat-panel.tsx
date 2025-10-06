@@ -31,7 +31,10 @@ import { Loader } from "@/components/ui/shadcn-io/ai/loader";
 import { Action } from "@/components/ui/shadcn-io/ai/actions";
 import { Suggestions, Suggestion } from "@/components/ui/shadcn-io/ai/suggestion";
 import { cn } from "@/lib/utils";
-import { CHAT_CONVERSATIONS_UPDATED_EVENT } from "@/lib/chat-events";
+import {
+  CHAT_CONVERSATIONS_UPDATED_EVENT,
+  CHAT_CONVERSATION_RESET_REQUESTED_EVENT,
+} from "@/lib/chat-events";
 import { SquareIcon } from "lucide-react";
 
 export const DEFAULT_MODEL = process.env.NEXT_PUBLIC_DEFAULT_CHAT_MODEL ?? "";
@@ -95,11 +98,35 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   const assistantContentRef = useRef<string>("");
   const pendingConversationIdRef = useRef<string | null>(null);
   const skipSearchParamSyncRef = useRef(false);
+  const previousKbIdRef = useRef(kbId);
+  const currentKbIdRef = useRef(kbId);
+  const activeConversationIdRef = useRef<string | null>(null);
+  const loadConversationControllerRef = useRef<AbortController | null>(null);
 
-  const emitConversationsUpdated = useCallback(() => {
-    if (typeof window === "undefined") return;
-    window.dispatchEvent(new CustomEvent(CHAT_CONVERSATIONS_UPDATED_EVENT));
+  useEffect(() => {
+    currentKbIdRef.current = kbId;
+  }, [kbId]);
+
+  useEffect(() => {
+    return () => {
+      loadConversationControllerRef.current?.abort();
+      loadConversationControllerRef.current = null;
+    };
   }, []);
+
+  const emitConversationsUpdated = useCallback(
+    (conversations?: ConversationSummary[]) => {
+      if (typeof window === "undefined") return;
+      window.dispatchEvent(
+        new CustomEvent(CHAT_CONVERSATIONS_UPDATED_EVENT, {
+          detail: {
+            conversations: conversations ?? null,
+          },
+        }),
+      );
+    },
+    [],
+  );
 
   const setActiveConversationId = useCallback(
     (conversationId: string | null, options?: { syncSearchParams?: boolean }) => {
@@ -114,6 +141,8 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
         }
         return conversationId;
       });
+
+      activeConversationIdRef.current = conversationId;
 
       if (!shouldSync) {
         return;
@@ -141,11 +170,58 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     updateStatus(t("status"));
   }, [t, updateStatus]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    function handleReset(event: Event) {
+      const customEvent = event as CustomEvent<{ kbId?: string }>;
+      const targetKbId = customEvent.detail?.kbId;
+
+      if (targetKbId && targetKbId !== kbId) {
+        return;
+      }
+
+      skipSearchParamSyncRef.current = false;
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+      latestAssistantIdRef.current = null;
+      assistantContentRef.current = "";
+      pendingConversationIdRef.current = null;
+      setMessages([]);
+      setInput("");
+      setStreamError(null);
+      setIsStreaming(false);
+      setFocusTargetId(null);
+      updateStatus(t("status"));
+      setActiveConversationId(null);
+    }
+
+    window.addEventListener(
+      CHAT_CONVERSATION_RESET_REQUESTED_EVENT,
+      handleReset as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        CHAT_CONVERSATION_RESET_REQUESTED_EVENT,
+        handleReset as EventListener,
+      );
+    };
+  }, [kbId, setActiveConversationId, t, updateStatus]);
+
   const loadConversation = useCallback(
     async (conversationId: string) => {
+      loadConversationControllerRef.current?.abort();
+      const controller = new AbortController();
+      loadConversationControllerRef.current = controller;
+
       try {
         updateStatus(t("statusLoading"));
-        const response = await fetch(`/api/kb/${kbId}/chat/conversations/${conversationId}`);
+        const response = await fetch(`/api/kb/${kbId}/chat/conversations/${conversationId}` , {
+          signal: controller.signal,
+        });
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -175,6 +251,13 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
           throw new Error("Missing conversation payload");
         }
 
+        if (
+          currentKbIdRef.current !== kbId ||
+          activeConversationIdRef.current !== conversationId
+        ) {
+          return;
+        }
+
         setActiveConversationId(data.conversation.id, { syncSearchParams: false });
         setSelectedModel((current) => data.conversation?.model ?? current);
         const mappedMessages = data.conversation.messages.map((message) => ({
@@ -183,6 +266,13 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
           content: message.content,
           sequence: message.sequence,
         }));
+        if (
+          currentKbIdRef.current !== kbId ||
+          activeConversationIdRef.current !== conversationId
+        ) {
+          return;
+        }
+
         setMessages(mappedMessages);
         if (mappedMessages.length > 0) {
           setFocusTargetId(mappedMessages[mappedMessages.length - 1]?.id ?? null);
@@ -190,8 +280,15 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
         setStreamError(null);
         updateStatus(t("status"));
       } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
         console.warn("[chat] Failed to load conversation", error);
         setStreamError(t("historyLoadError"));
+      } finally {
+        if (loadConversationControllerRef.current === controller) {
+          loadConversationControllerRef.current = null;
+        }
       }
     },
     [kbId, t, updateStatus, setActiveConversationId],
@@ -229,7 +326,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       const data = (await response.json()) as { conversations?: ConversationSummary[] };
       const list = Array.isArray(data.conversations) ? data.conversations : [];
       setConversations(list);
-      emitConversationsUpdated();
+      emitConversationsUpdated(list);
     } catch (error) {
       console.warn("[chat] Failed to load conversations", error);
     }
@@ -238,6 +335,25 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   useEffect(() => {
     void loadConversations();
   }, [loadConversations]);
+
+  useEffect(() => {
+    if (previousKbIdRef.current === kbId) {
+      return;
+    }
+
+    previousKbIdRef.current = kbId;
+
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    latestAssistantIdRef.current = null;
+    assistantContentRef.current = "";
+    pendingConversationIdRef.current = null;
+    skipSearchParamSyncRef.current = false;
+
+    setConversations([]);
+    setInput("");
+    setActiveConversationId(null);
+  }, [kbId, setActiveConversationId]);
 
   useEffect(() => {
     if (activeConversationId !== null) {
