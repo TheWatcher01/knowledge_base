@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useSearchParams, useRouter } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 
 import { LiveMessage } from "@/components/a11y/live-message";
 import { Card } from "@/components/ui/card";
@@ -76,6 +76,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   const t = useTranslations("kb.chat");
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -128,12 +129,18 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     [],
   );
 
+  useEffect(() => {
+    emitConversationsUpdated(conversations);
+  }, [conversations, emitConversationsUpdated]);
+
   const setActiveConversationId = useCallback(
     (conversationId: string | null, options?: { syncSearchParams?: boolean }) => {
       const shouldSync = options?.syncSearchParams ?? true;
+      const hasChanged = activeConversationIdRef.current !== conversationId;
 
-      // Skip the next search-param synchronisation pass when we intentionally avoid syncing the URL.
-      skipSearchParamSyncRef.current = !shouldSync;
+      // Skip the next search-param synchronisation pass whenever we update the
+      // active conversation from code or intentionally avoid syncing the URL.
+      skipSearchParamSyncRef.current = hasChanged || !shouldSync;
 
       setActiveConversationIdState((current) => {
         if (current === conversationId) {
@@ -148,17 +155,22 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
         return;
       }
 
-      const current = new URLSearchParams(searchParams?.toString());
+      const currentParams = searchParams?.toString() ?? "";
+      const current = new URLSearchParams(currentParams);
       if (conversationId) {
         current.set("conversation", conversationId);
       } else {
         current.delete("conversation");
       }
       const query = current.toString();
-      const href = query ? `?${query}` : "";
-      router.replace(href, { scroll: false });
+      const nextHref = query ? `${pathname}?${query}` : pathname ?? "/";
+
+      const currentHref = currentParams ? `${pathname}?${currentParams}` : pathname ?? "/";
+      if (nextHref !== currentHref) {
+        router.replace(nextHref, { scroll: false });
+      }
     },
-    [router, searchParams],
+    [router, searchParams, pathname],
   );
 
   const updateStatus = useCallback((message: string, tone: LiveTone = "polite") => {
@@ -258,9 +270,23 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
           return;
         }
 
+        const { messages: conversationMessages, ...conversationSummary } = data.conversation;
+
+        setConversations((prev) => {
+          const nextSummary: ConversationSummary = {
+            ...conversationSummary,
+            meta: conversationSummary.meta ?? null,
+          };
+          const existingIndex = prev.findIndex((item) => item.id === nextSummary.id);
+
+          return existingIndex === -1
+            ? [...prev, nextSummary]
+            : prev.map((item, index) => (index === existingIndex ? { ...item, ...nextSummary } : item));
+        });
+
         setActiveConversationId(data.conversation.id, { syncSearchParams: false });
-        setSelectedModel((current) => data.conversation?.model ?? current);
-        const mappedMessages = data.conversation.messages.map((message) => ({
+        setSelectedModel((current) => conversationSummary.model ?? current);
+        const mappedMessages = conversationMessages.map((message) => ({
           id: message.id,
           role: message.role,
           content: message.content,
@@ -291,7 +317,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
         }
       }
     },
-    [kbId, t, updateStatus, setActiveConversationId],
+    [kbId, t, updateStatus, setActiveConversationId, emitConversationsUpdated],
   );
 
   useEffect(() => {
@@ -299,7 +325,9 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
 
     if (skipSearchParamSyncRef.current) {
       skipSearchParamSyncRef.current = false;
-      return;
+      if (conversationParam === activeConversationId) {
+        return;
+      }
     }
 
     if (!conversationParam) {
@@ -326,7 +354,6 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       const data = (await response.json()) as { conversations?: ConversationSummary[] };
       const list = Array.isArray(data.conversations) ? data.conversations : [];
       setConversations(list);
-      emitConversationsUpdated(list);
     } catch (error) {
       console.warn("[chat] Failed to load conversations", error);
     }
@@ -360,6 +387,10 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       return;
     }
 
+    if (isStreaming || pendingConversationIdRef.current) {
+      return;
+    }
+
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     latestAssistantIdRef.current = null;
@@ -370,7 +401,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     setIsStreaming(false);
     setFocusTargetId(null);
     updateStatus(t("status"));
-  }, [activeConversationId, t, updateStatus]);
+  }, [activeConversationId, isStreaming, t, updateStatus]);
 
   useEffect(() => {
     let cancelled = false;
@@ -678,6 +709,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     : isStreaming
       ? "streaming"
       : undefined;
+
   const handleSuggestionClick = useCallback(
     (suggestion: string) => {
       setInput(suggestion);
@@ -717,7 +749,11 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
         <div className="flex-1">
           <div className="flex min-h-[260px] flex-col gap-6">
             <div>
-              <h2 id={conversationTitleId} className="text-sm font-semibold text-foreground">
+            <h2
+              id={conversationTitleId}
+              data-testid="chat-conversation-title"
+              className="text-sm font-semibold text-foreground"
+            >
                 {activeConversationTitle}
               </h2>
               {activeConversation?.model ? (

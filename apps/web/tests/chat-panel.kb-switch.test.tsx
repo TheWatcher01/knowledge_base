@@ -6,6 +6,7 @@ import { KnowledgeBaseChatPanel } from "@/components/kb/chat-panel";
 import enMessages from "@/i18n/messages/en.json";
 
 const searchParamsState = { value: "conversation=existing-convo" };
+const pathnameState = { value: "/fr/kb/kb-1/chat" };
 
 const replaceSpy = vi.fn<(href: string, options?: { scroll?: boolean }) => void>();
 
@@ -28,11 +29,17 @@ vi.mock("next/navigation", () => ({
         return;
       }
 
-      const queryIndex = href.indexOf("?");
-      searchParamsState.value = queryIndex >= 0 ? href.slice(queryIndex + 1) : "";
+      try {
+        const url = new URL(href, "http://localhost");
+        searchParamsState.value = url.search.startsWith("?") ? url.search.slice(1) : "";
+      } catch {
+        const queryIndex = href.indexOf("?");
+        searchParamsState.value = queryIndex >= 0 ? href.slice(queryIndex + 1) : "";
+      }
     },
   }),
   useSearchParams: () => new URLSearchParams(searchParamsState.value),
+  usePathname: () => pathnameState.value,
   useSelectedLayoutSegments: () => [],
 }));
 
@@ -60,6 +67,7 @@ describe("KnowledgeBaseChatPanel kb switch", () => {
 
   beforeEach(() => {
     searchParamsState.value = "conversation=existing-convo";
+    pathnameState.value = "/fr/kb/kb-1/chat";
     replaceSpy.mockClear();
   });
 
@@ -149,20 +157,28 @@ describe("KnowledgeBaseChatPanel kb switch", () => {
       </NextIntlClientProvider>,
     );
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/models"));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/kb/kb-1/chat/conversations"));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/kb/kb-1/chat/conversations/existing-convo"));
+    const expectFetchUrl = (url: string) =>
+      waitFor(() => {
+        expect(fetchMock.mock.calls.map(([calledUrl]) => calledUrl)).toContain(url);
+      });
+
+    await expectFetchUrl("/api/models");
+    await expectFetchUrl("/api/kb/kb-1/chat/conversations");
+    await expectFetchUrl("/api/kb/kb-1/chat/conversations/existing-convo");
     await screen.findByRole("heading", { name: "Loaded Conversation" });
 
+    pathnameState.value = "/fr/kb/kb-2/chat";
     rerender(
       <NextIntlClientProvider locale="en" messages={enMessages}>
         <KnowledgeBaseChatPanel kbId="kb-2" />
       </NextIntlClientProvider>,
     );
 
-    await waitFor(() => expect(replaceSpy).toHaveBeenCalledWith("", { scroll: false }));
+    await waitFor(() =>
+      expect(replaceSpy).toHaveBeenCalledWith("/fr/kb/kb-2/chat", { scroll: false }),
+    );
     await waitFor(() => expect(searchParamsState.value).toBe(""));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/kb/kb-2/chat/conversations"));
+    await expectFetchUrl("/api/kb/kb-2/chat/conversations");
     await screen.findByRole("heading", { name: "New conversation" });
   });
 });

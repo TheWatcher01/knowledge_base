@@ -170,6 +170,7 @@ export function ChatHistoryNav({ kbId }: ChatHistoryNavProps) {
                     )}
                   >
                     <span className="truncate font-medium">{item.title}</span>
+                    {"\n"}
                     <span className="text-[10px] uppercase tracking-[0.18em] text-[color-mix(in_srgb,var(--kb-text-subtle)_80%,transparent_20%)]">
                       {item.formattedTime}
                     </span>

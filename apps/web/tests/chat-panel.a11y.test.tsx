@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({
     replace: vi.fn(),
   }),
   useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/fr/kb/kb_test/chat",
   useSelectedLayoutSegments: () => [],
 }));
 

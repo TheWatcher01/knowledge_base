@@ -74,7 +74,9 @@ test.describe('Chat des bases de connaissance', () => {
             }, { message: 'conversation should be saved in history' })
             .toBeTruthy();
 
-        await expect(page.getByRole('heading', { name: messageText })).toBeVisible({ timeout: 15_000 });
+        await expect(page.getByTestId('chat-conversation-title')).toHaveText(messageText, {
+            timeout: 15_000,
+        });
 
         const reopenChatLink = page.getByRole('link', { name: 'Chat', exact: true }).first();
         await Promise.all([
@@ -85,10 +87,44 @@ test.describe('Chat des bases de connaissance', () => {
         const resetTextarea = page.getByRole('textbox', { name: 'Message' });
         await expect(resetTextarea).toBeEnabled();
         await expect(resetTextarea).toHaveValue('');
-        await expect(page.getByRole('heading', { name: 'Nouvelle conversation' })).toBeVisible();
+        await page.waitForSelector('[data-testid="chat-conversation-title"]', { timeout: 10_000 });
+        await expect(page.getByTestId('chat-conversation-title')).toHaveText('Nouvelle conversation', {
+            timeout: 10_000,
+        });
 
         const newConversationUrl = new URL(page.url());
         expect(newConversationUrl.search).toBe('');
+
+        // Navigation dans l'historique : cliquer rapidement sur plusieurs conversations et vérifier que chaque vue se charge.
+        const conversationLinks = await page.locator('a[href*="/chat?conversation="]');
+        const conversationData = await conversationLinks.evaluateAll((elements) =>
+            elements.map((element) => {
+                const href = element.getAttribute('href') ?? '';
+                const title = (element.textContent ?? '').split('\n')[0].trim();
+                return { href, title };
+            }),
+        );
+
+        expect(conversationData.length, 'au moins deux conversations seedées').toBeGreaterThan(1);
+
+        const maxIterations = Math.min(conversationData.length, 5);
+        for (let index = 0; index < maxIterations; index += 1) {
+            const { href, title } = conversationData[index];
+            const conversationId = new URL(href, 'http://localhost:3001').searchParams.get('conversation');
+            expect(conversationId, `conversation id manquant pour le lien ${href}`).toBeTruthy();
+            const escapedHref = href.replace(/(["\\])/g, '\\$1');
+
+            await Promise.all([
+                page.waitForURL((url) => url.searchParams.get('conversation') === conversationId, {
+                    timeout: 10_000,
+                }),
+                page.locator(`a[href="${escapedHref}"]`).first().click(),
+            ]);
+
+            await expect(page.getByTestId('chat-conversation-title')).toContainText(title, {
+                timeout: 10_000,
+            });
+        }
 
         expect(consoleErrors.join('\n')).not.toMatch(/Fetch failed loading/i);
     });
