@@ -10,11 +10,10 @@ export default async function KnowledgeBasesPage({ params }: { params: Promise<{
     const { locale } = await params;
 
     const session = await getServerSession(authOptions);
-    if (!session || !session.user?.id) {
+    const userId = session?.user?.id;
+    if (!userId) {
         redirect({ href: "/login", locale });
     }
-
-    const userId = session.user.id;
 
     const [knowledgeBases, tList] = await Promise.all([
         prisma.knowledgeBase.findMany({

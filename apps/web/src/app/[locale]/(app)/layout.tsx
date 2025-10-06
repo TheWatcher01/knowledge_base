@@ -1,6 +1,8 @@
 import { authOptions } from "@/lib/auth";
 import { AppNav } from "@/components/app-nav";
 import { AuthSessionProvider } from "@/components/session-provider";
+import { NextAuthAbortFilter } from "@/components/dev/nextauth-abort-filter";
+import { RscAbortTelemetry } from "@/components/telemetry/rsc-abort-telemetry";
 import { getServerSession } from "next-auth";
 import { redirect } from "@/i18n/navigation";
 import type { ReactNode } from "react";
@@ -27,6 +29,8 @@ export default async function AppLayout({ children, params }: LayoutProps) {
 
   return (
     <AuthSessionProvider session={ensuredSession}>
+      <NextAuthAbortFilter />
+      <RscAbortTelemetry />
       <div key={locale} className="flex min-h-screen flex-col bg-background text-foreground">
         <AppNav
           userEmail={ensuredSession.user?.email ?? null}
