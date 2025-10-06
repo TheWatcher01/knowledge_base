@@ -36,9 +36,8 @@ export default function LoginPage() {
             return;
         }
 
-        // redirect to home page
-        router.replace("/dashboard");
-        router.refresh();
+        // redirect to home page once the credentials flow succeeded
+        await router.replace("/dashboard");
     }
 
     return (
