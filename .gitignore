@@ -1,4 +1,6 @@
 node_modules/
+.venv/
+services/**/.venv/
 .env
 .env.local
 
@@ -89,11 +91,8 @@ apps/**/temp/
 next-env.d.ts
 
 /src/generated/prisma
-
-open-webui-doc
-
-*.gitignore
-*.codex
-screenshot
-trace-artifacts
-test-results
+Travail
+# RNCP Build artifacts
+preparation_rncp/build/*.md
+preparation_rncp/build/*.pdf
+.codex
