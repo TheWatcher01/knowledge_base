@@ -1,7 +1,7 @@
 # 📘 Knowledge Base Platform
 
 A **full-stack Knowledge Base application** built with **Next.js (App Router)**, **TailwindCSS / shadcn/ui**, **Prisma**, and **Auth.js**.
-The platform allows users to **create, ingest, and query knowledge bases** through a modern web interface, while delegating RAG (Retrieval-Augmented Generation) and LLM processing to [Open-WebUI](https://github.com/open-webui/open-webui).
+The platform allows users to **create, ingest, and query knowledge bases** through a modern web interface, while delegating RAG (Retrieval-Augmented Generation) and LLM processing to an in-house FastAPI service powered by Ollama, LlamaIndex et LangChain.
 
 ---
 
@@ -14,9 +14,9 @@ The platform allows users to **create, ingest, and query knowledge bases** throu
   * Notes (text CRUD).
   * Files (uploaded, parsed via [Apache Tika](https://tika.apache.org/), ingested in RAG).
   * URLs (indexed with [SearxNG](https://docs.searxng.org/), ingested in RAG).
-* **Chat interface**: query your knowledge base with streaming completions via Open-WebUI.
+* **Chat interface**: query your knowledge base with streaming completions via the RAG API (FastAPI + Ollama).
 * **Backend logging**: track usage and events (MongoDB).
-* **Dockerized services**: PostgreSQL, MongoDB, Tika, SearxNG, Open-WebUI.
+* **Dockerized services**: PostgreSQL, MongoDB, Tika, SearxNG, Ollama, RAG API service.
 
 ---
 
@@ -27,7 +27,7 @@ The platform allows users to **create, ingest, and query knowledge bases** throu
 * **Authentication**: [Auth.js](https://authjs.dev/)
 * **Database**: PostgreSQL + [Prisma ORM](https://www.prisma.io/)
 * **NoSQL Logging**: MongoDB
-* **RAG / LLM**: [Open-WebUI](https://github.com/open-webui/open-webui) with [ChromaDB](https://www.trychroma.com/)
+* **RAG / LLM**: FastAPI service (`services/rag-api`) + [Ollama](https://ollama.com/), orchestrated with [LlamaIndex](https://www.llamaindex.ai/) & [LangChain](https://www.langchain.com/)
 * **File Parsing**: [Apache Tika](https://tika.apache.org/)
 * **Web Crawling**: [SearxNG](https://docs.searxng.org/)
 * **Deployment**: Docker Compose
@@ -40,9 +40,11 @@ The platform allows users to **create, ingest, and query knowledge bases** throu
 knowledge_base/
 ├── apps/
 │   └── web/           # Next.js frontend / backend (App Router)
-├── docker/
-│   └── compose.yml    # Services: Postgres, Mongo, Tika, SearxNG, Open-WebUI
-└── packages/          # (optional) shared libraries
+├── services/
+│   └── rag-api/       # FastAPI microservice (Ollama, LlamaIndex, LangChain)
+├── docs/              # Guides & migration notes (incl. RAG service plan)
+├── compose.yml        # Docker services: Postgres, Mongo, Tika, SearxNG, Ollama, RAG API
+└── screenshot/        # Assets & previews
 ```
 
 ---
@@ -69,7 +71,7 @@ pnpm install
 ### Development
 
 ```bash
-# Start Docker services (DBs, Tika, SearxNG, Open-WebUI)
+# Start Docker services (DBs, Tika, SearxNG, Ollama, RAG API)
 docker compose up -d
 
 # Start the web app
