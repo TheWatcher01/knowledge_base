@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { owuiJson } from "@/lib/owui";
+import { owuiJson } from "@/lib/rag";
 
 export async function GET() {
     try {

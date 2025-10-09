@@ -2,6 +2,7 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { OWUI_DISABLED_MESSAGE } from "@/lib/rag";
 
 const refreshMock = vi.fn();
 
@@ -51,7 +52,7 @@ afterEach(() => {
     test("affiche le message désactivé quand OWUI est indisponible", async () => {
         await setup({
             ok: true,
-            json: () => Promise.resolve({ url: { ingestionError: "Open WebUI integration is disabled." } }),
+            json: () => Promise.resolve({ url: { ingestionError: OWUI_DISABLED_MESSAGE } }),
         });
 
         await waitFor(() => {

@@ -127,14 +127,14 @@
     "documents": "Documents",
     "ragSyncLabel": "Re-sync knowledge",
     "ragSyncRunningButton": "Re-sync in progress…",
-    "ragSyncRunning": "Checking Open WebUI collection…",
-    "ragSyncAlready": "The Open WebUI collection already exists – no re-index required.",
+    "ragSyncRunning": "Checking RAG service collection…",
+    "ragSyncAlready": "The RAG service collection already exists – no re-index required.",
     "ragSyncReembedded": "Re-index request sent for {count, plural, one {# item} other {# items}}.",
     "ragSyncNoEntries": "No stored knowledge to re-index.",
     "ragSyncError": "Re-sync failed: {error}.",
     "ragSyncErrorFallback": "unknown error",
-    "ragSyncErrorUnexpectedResponse": "unexpected Open WebUI response",
-    "ragSyncErrorTimeout": "request to Open WebUI timed out"
+    "ragSyncErrorUnexpectedResponse": "unexpected RAG service response",
+    "ragSyncErrorTimeout": "request to RAG service timed out"
   },
     "tabs": {
       "overview": "Overview",
@@ -294,7 +294,7 @@
     },
     "chat": {
       "title": "AI Assistant",
-      "description": "Chat with the AI about knowledge base #{id}. Answers are generated via Open WebUI.",
+      "description": "Chat with the AI about knowledge base #{id}. Answers are generated via RAG service.",
       "modelsLabel": "Model",
       "modelsPlaceholder": "e.g. llama3.1:8b",
       "modelsLoading": "Loading available models…",

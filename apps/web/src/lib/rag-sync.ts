@@ -1,5 +1,5 @@
 import { OWUI_BASE, OWUI_TOKEN, collectionName } from "@/lib/config";
-import { owuiJson, triggerWebIngestion, OWUI_DISABLED_MESSAGE } from "@/lib/owui";
+import { owuiJson, triggerWebIngestion, OWUI_DISABLED_MESSAGE } from "@/lib/rag";
 import { prisma } from "@/lib/prisma";
 import {
   listKnowledgeEntries,
@@ -93,12 +93,12 @@ async function checkCollectionExists(collectionName: string): Promise<Collection
     }
 
     if (/timeout/i.test(message)) {
-      return { exists: false, error: "Timed out while checking collection on Open WebUI." };
+      return { exists: false, error: "Timed out while checking collection on the RAG service." };
     }
 
     return {
       exists: false,
-      error: `Unable to verify collection on Open WebUI (${message})`,
+      error: `Unable to verify collection on the RAG service (${message})`,
     };
   }
 }

@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { assertRole, handleAuthError } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { OWUI_BASE, collectionName } from "@/lib/config";
-import { owuiJson } from "@/lib/owui";
+import { owuiJson } from "@/lib/rag";
 import { upsertKnowledgeEntry, markEmbedded } from "@/lib/knowledge-store";
 
 const FormSchema = z.object({
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
                     await markEmbedded(document.id);
                 }
             } catch (error) {
-                console.warn("[api/files] Open WebUI ingestion failed", error);
+                console.warn("[api/files] RAG service ingestion failed", error);
                 ingestionStatus = "failed";
                 ingestionError = error instanceof Error ? error.message : String(error);
             }

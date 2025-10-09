@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { owuiJson } from "@/lib/owui";
+import { owuiJson } from "@/lib/rag";
 import { OWUI_BASE, collectionName } from "@/lib/config";
 import { upsertKnowledgeEntry, markEmbedded } from "@/lib/knowledge-store";
 import { assertRole, handleAuthError } from "@/lib/authz";
@@ -67,10 +67,7 @@ export async function POST(req: NextRequest) {
         ingestionStatus = "success";
         await markEmbedded(note.id);
       } catch (error) {
-        console.warn(
-          "[api/notebook] Open WebUI unavailable, note created without ingestion.",
-          error,
-        );
+        console.warn("[api/notebook] RAG service unavailable, note created without ingestion.", error);
         ingestionStatus = "failed";
       }
     } else if (process.env.MOCK_OPEN_WEBUI === "true") {

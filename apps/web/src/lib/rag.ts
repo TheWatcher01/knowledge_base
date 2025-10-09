@@ -1,6 +1,6 @@
 import { OWUI_BASE, OWUI_TOKEN, collectionName } from "./config";
 
-export const OWUI_DISABLED_MESSAGE = "Open WebUI integration is disabled.";
+export const OWUI_DISABLED_MESSAGE = "RAG service integration is disabled.";
 
 export type OwuiActionResult =
     | { ok: true }
@@ -38,7 +38,7 @@ export async function owuiJson(path: string, init?: RequestInit) {
 
 export async function triggerWebIngestion(params: { kbId: string; url: string }): Promise<OwuiActionResult> {
     if (!OWUI_BASE || !OWUI_TOKEN) {
-        console.warn("[owui] integration disabled: OWUI_BASE=", OWUI_BASE, "OWUI_TOKEN=", OWUI_TOKEN ? "***" : undefined);
+        console.warn("[rag-service] integration disabled: RAG_API_BASE=", OWUI_BASE, "RAG_API_TOKEN=", OWUI_TOKEN ? "***" : undefined);
         return { ok: false, error: OWUI_DISABLED_MESSAGE };
     }
 
@@ -54,7 +54,7 @@ export async function triggerWebIngestion(params: { kbId: string; url: string })
         return { ok: true };
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.warn("[owui] Failed to trigger web ingestion", message);
+        console.warn("[rag-service] Failed to trigger web ingestion", message);
         return { ok: false, error: message };
     }
 }
@@ -76,7 +76,7 @@ export async function deleteFromCollection(params: { kbId: string; documentId: s
         return { ok: true };
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.warn("[owui] Failed to delete entry from collection", message);
+        console.warn("[rag-service] Failed to delete entry from collection", message);
         return { ok: false, error: message };
     }
 }

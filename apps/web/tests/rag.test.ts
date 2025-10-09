@@ -13,13 +13,13 @@ afterEach(() => {
     vi.resetModules();
 });
 
-describe("owui helpers", () => {
+describe("rag helpers", () => {
     test("triggerWebIngestion retourne une erreur quand OWUI est désactivé", async () => {
         delete process.env.OWUI_BASE;
         delete process.env.OWUI_TOKEN;
         const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-        const { triggerWebIngestion, OWUI_DISABLED_MESSAGE } = await import("@/lib/owui");
+        const { triggerWebIngestion, OWUI_DISABLED_MESSAGE } = await import("@/lib/rag");
         const result = await triggerWebIngestion({ kbId: "kb_42", url: "https://example.com" });
 
         expect(result).toEqual({ ok: false, error: OWUI_DISABLED_MESSAGE });
@@ -32,7 +32,7 @@ describe("owui helpers", () => {
         const fetchMock = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue("{}") });
         vi.stubGlobal("fetch", fetchMock);
 
-        const { triggerWebIngestion } = await import("@/lib/owui");
+        const { triggerWebIngestion } = await import("@/lib/rag");
         const result = await triggerWebIngestion({ kbId: "kb_99", url: "https://example.com" });
 
         expect(fetchMock).toHaveBeenCalledWith("http://owui.test/api/v1/retrieval/process/web", expect.objectContaining({
@@ -50,21 +50,21 @@ describe("owui helpers", () => {
             text: () => Promise.resolve("KO"),
         }));
 
-        const { triggerWebIngestion } = await import("@/lib/owui");
+        const { triggerWebIngestion } = await import("@/lib/rag");
         await expect(triggerWebIngestion({ kbId: "kb_77", url: "https://example.com" })).resolves.toEqual({
             ok: false,
             error: "KO",
         });
-        expect(warnSpy).toHaveBeenCalledWith("[owui] Failed to trigger web ingestion", "KO");
+        expect(warnSpy).toHaveBeenCalledWith("[rag-service] Failed to trigger web ingestion", "KO");
     });
 
-    test("deleteFromCollection appelle l'API OWUI", async () => {
+    test("deleteFromCollection appelle le service RAG", async () => {
         process.env.OWUI_BASE = "http://owui.test";
         process.env.OWUI_TOKEN = "token-test";
         const fetchMock = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue("{}") });
         vi.stubGlobal("fetch", fetchMock);
 
-        const { deleteFromCollection } = await import("@/lib/owui");
+        const { deleteFromCollection } = await import("@/lib/rag");
         const result = await deleteFromCollection({ kbId: "kb_1", documentId: "doc_123" });
 
         expect(fetchMock).toHaveBeenCalledWith("http://owui.test/api/v1/retrieval/delete", expect.objectContaining({

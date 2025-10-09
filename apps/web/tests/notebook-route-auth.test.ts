@@ -16,7 +16,7 @@ vi.mock("@/lib/prisma", () => ({
     },
 }));
 
-vi.mock("@/lib/owui", () => ({
+vi.mock("@/lib/rag", () => ({
     owuiJson: vi.fn(),
 }));
 

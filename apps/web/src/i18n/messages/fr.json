@@ -127,14 +127,14 @@
     "documents": "Documents",
     "ragSyncLabel": "Réanalyser les connaissances",
     "ragSyncRunningButton": "Réanalyse en cours…",
-    "ragSyncRunning": "Vérification Open WebUI en cours…",
-    "ragSyncAlready": "La collection Open WebUI existe déjà, aucune réindexation n'est nécessaire.",
+    "ragSyncRunning": "Vérification service RAG en cours…",
+    "ragSyncAlready": "La collection service RAG existe déjà, aucune réindexation n'est nécessaire.",
     "ragSyncReembedded": "Réindexation envoyée pour {count, plural, one {# élément} other {# éléments}}.",
     "ragSyncNoEntries": "Aucune connaissance sauvegardée à réindexer.",
     "ragSyncError": "Échec de la réanalyse : {error}.",
     "ragSyncErrorFallback": "erreur inconnue",
-    "ragSyncErrorUnexpectedResponse": "réponse Open WebUI inattendue",
-    "ragSyncErrorTimeout": "délai dépassé lors de l'appel Open WebUI"
+    "ragSyncErrorUnexpectedResponse": "réponse service RAG inattendue",
+    "ragSyncErrorTimeout": "délai dépassé lors de l'appel service RAG"
   },
     "tabs": {
       "overview": "Vue d'ensemble",
@@ -294,7 +294,7 @@
     },
     "chat": {
       "title": "Assistant IA",
-      "description": "Discutez avec l'IA à propos de la base #{id}. Les réponses sont générées via Open WebUI.",
+      "description": "Discutez avec l'IA à propos de la base #{id}. Les réponses sont générées via service RAG.",
       "modelsLabel": "Modèle",
       "modelsPlaceholder": "Ex : llama3.1:8b",
       "modelsLoading": "Chargement des modèles disponibles…",

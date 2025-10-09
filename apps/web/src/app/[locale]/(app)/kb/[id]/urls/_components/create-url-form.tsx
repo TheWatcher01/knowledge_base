@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { OWUI_DISABLED_MESSAGE } from "@/lib/rag";
 
 const STATUSES = ["draft", "queued", "synced", "error"] as const;
 type UrlStatus = (typeof STATUSES)[number];
@@ -150,7 +151,7 @@ export function CreateUrlForm({ kbId, canEdit }: CreateUrlFormProps) {
     };
 
     if (data.url?.ingestionError) {
-      if (data.url.ingestionError === "Open WebUI integration is disabled.") {
+      if (data.url.ingestionError === OWUI_DISABLED_MESSAGE) {
         setInfo(tForm("ingestionDisabled"));
       } else {
         setInfo(tForm("ingestionError", { error: data.url.ingestionError }));

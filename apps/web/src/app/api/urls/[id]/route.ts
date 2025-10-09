@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UrlStatus } from "@prisma/client";
 import { createUrlContentPlaceholder, updateUrlContentStatus } from "@/lib/url-content";
-import { OWUI_DISABLED_MESSAGE, deleteFromCollection, triggerWebIngestion } from "@/lib/owui";
+import { OWUI_DISABLED_MESSAGE, deleteFromCollection, triggerWebIngestion } from "@/lib/rag";
 import { upsertKnowledgeEntry, markNeedsEmbedding, markEmbedded, removeKnowledgeEntry } from "@/lib/knowledge-store";
 import { assertRole, handleAuthError } from "@/lib/authz";
 

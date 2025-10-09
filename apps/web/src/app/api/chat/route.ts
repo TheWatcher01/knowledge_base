@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 
-import { owuiJson } from "@/lib/owui";
+import { owuiJson } from "@/lib/rag";
 import { OWUI_BASE, OWUI_TOKEN, collectionName } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";

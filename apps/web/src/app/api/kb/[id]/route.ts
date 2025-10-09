@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { OWUI_BASE, collectionName } from "@/lib/config";
-import { owuiJson } from "@/lib/owui";
+import { owuiJson } from "@/lib/rag";
 import { assertRole, handleAuthError } from "@/lib/authz";
 import { removeKnowledgeEntriesForKb } from "@/lib/knowledge-store";
 
@@ -42,7 +42,7 @@ export async function DELETE(
             results.forEach((result, index) => {
                 if (result.status === "rejected") {
                     console.warn(
-                        `[api/kb/${id}] Failed to delete Open WebUI entry ${kb.documents[index]?.id}.`,
+                        `[api/kb/${id}] Failed to delete RAG service entry ${kb.documents[index]?.id}.`,
                         result.reason,
                     );
                 }
