@@ -95,4 +95,5 @@ Travail
 # RNCP Build artifacts
 preparation_rncp/build/*.md
 preparation_rncp/build/*.pdf
-.codex
+.codex/
+.AGENTS.md
