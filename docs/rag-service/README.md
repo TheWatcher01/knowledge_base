@@ -5,6 +5,27 @@
 - Remplacer l’intégration actuelle avec Open WebUI par un service RAG Python léger, modulable et réutilisable dans d’autres projets.
 - Capitaliser sur les services déjà présents dans `compose.yml` (Ollama, SearxNG, Tika, Postgres, Mongo) et sur les briques applicatives existantes (`apps/web`).
 
+## Roadmap
+
+- [x] Initialisation du service FastAPI (`rag-api`), Dockerfile et configuration `uv`.
+- [x] Migration du front Next.js vers les variables `RAG_API_*` et helpers `rag.ts`.
+- [x] Ingestion texte synchrone : chunking, embeddings Ollama, stockage PGVector.
+- [ ] Ingestion URL : crawl via SearxNG, extraction Tika, pipeline asynchrone.
+- [ ] Suppression & synchronisation complète (`rag-sync`) avec alignement vecteurs/métadonnées.
+- [ ] Endpoint chat streaming (ChatOllama + SSE) avec fallback Prisma.
+- [ ] Intégration SearxNG comme outil de recherche temps réel, observabilité et logs.
+- [ ] Jeux de tests backend/front + documentation finale.
+
+## TODO détaillé
+
+- Définir le format de stockage Mongo pour les métadonnées (chunks, statut d’ingestion, timestamps).
+- Implémenter un loader Tika fiable (gestion des timeouts / retries) et prévoir un fallback Unstructured si Tika échoue.
+- Concevoir la tâche d’ingestion asynchrone pour les URLs (queue ou background task) avec suivi d’état (`queued`, `processing`, `synced`).
+- Ajouter un module de recherche SearxNG (wrapper LangChain) exposé comme outil optionnel dans le chat.
+- Mettre en place un système de logs structurés (JSON) côté FastAPI + intégration Prometheus/OTEL.
+- Écrire des tests pytest (ingestion texte, suppression) et Vitest/Playwright adaptés.
+- Documenter le playbook de déploiement (Docker Compose, initialisation PGVector, chargement modèles Ollama).
+
 ## Intégration actuelle d’Open WebUI
 
 - Points d’entrée : `apps/web/src/lib/rag.ts`, `apps/web/src/lib/rag-sync.ts`, `apps/web/src/app/api/{chat,files,urls,urls/[id],kb/[id],notebook}/route.ts`.
