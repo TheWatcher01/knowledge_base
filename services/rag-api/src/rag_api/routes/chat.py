@@ -13,8 +13,11 @@ from pydantic import BaseModel, Field
 
 from ..config import Settings, get_settings
 from ..dependencies.auth import verify_bearer_token
+from ..rate_limit import limit_dependency
 
 router = APIRouter(tags=["chat"], dependencies=[Depends(verify_bearer_token)])
+
+chat_limit = limit_dependency("30/minute")
 
 
 class ChatMessage(BaseModel):
@@ -32,7 +35,7 @@ class ChatCompletionRequest(BaseModel):
     messages: list[ChatMessage] = Field(default_factory=list)
 
 
-@router.post("/chat/completions", summary="Chat completions proxy")
+@router.post("/chat/completions", summary="Chat completions proxy", dependencies=[Depends(chat_limit)])
 async def chat_completions(
     payload: ChatCompletionRequest,
     settings: Annotated[Settings, Depends(get_settings)],

@@ -14,10 +14,20 @@ from pydantic import BaseModel, Field
 
 from ..config import Settings, get_settings
 from ..dependencies.auth import verify_bearer_token
+from ..rate_limit import limit_dependency
 from ..services.ingestion import delete_document as delete_document_from_store
 from ..services.ingestion import ingest_text as ingest_text_into_store
 from ..logging import logger
-from ..services.jobs import create_job, get_latest_job, mark_job_completed, mark_job_failed, mark_job_processing
+from ..services.jobs import (
+    count_active_jobs,
+    create_job,
+    get_job,
+    get_latest_job,
+    list_jobs,
+    mark_job_completed,
+    mark_job_failed,
+    mark_job_processing,
+)
 from ..services.persistence import get_url_status, update_url_status
 from ..services.retrieval import query_documents
 from ..services.web_ingestion import WebIngestionError, ingest_url_document
@@ -25,6 +35,11 @@ from ..services.web_ingestion import WebIngestionError, ingest_url_document
 log = logger("retrieval")
 
 router = APIRouter(tags=["retrieval"], dependencies=[Depends(verify_bearer_token)])
+
+text_ingest_limit = limit_dependency("5/minute")
+web_ingest_limit = limit_dependency("3/minute")
+delete_limit = limit_dependency("10/minute")
+query_limit = limit_dependency("60/minute")
 
 
 class TextIngestRequest(BaseModel):
@@ -89,7 +104,12 @@ class IngestionStatusResponse(BaseModel):
     updated_at: str | None = None
 
 
-@router.post("/retrieval/process/text", response_model=IngestResponse, summary="Ingest plain text")
+@router.post(
+    "/retrieval/process/text",
+    response_model=IngestResponse,
+    summary="Ingest plain text",
+    dependencies=[Depends(text_ingest_limit)],
+)
 async def ingest_text(
     payload: TextIngestRequest,
     settings: Annotated[Settings, Depends(get_settings)],
@@ -99,6 +119,19 @@ async def ingest_text(
     _ensure_collection_configured(settings)
 
     kb_id = _extract_kb_id(payload.collection_name)
+
+    if len(payload.content) > settings.max_text_chars:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail="Text payload exceeds allowed size.",
+        )
+
+    payload_size = len(payload.model_dump_json().encode("utf-8"))
+    if payload_size > settings.max_json_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail="Ingestion payload too large.",
+        )
 
     try:
         await run_in_threadpool(
@@ -124,7 +157,12 @@ async def ingest_text(
     )
 
 
-@router.post("/retrieval/process/web", response_model=IngestResponse, summary="Ingest URL")
+@router.post(
+    "/retrieval/process/web",
+    response_model=IngestResponse,
+    summary="Ingest URL",
+    dependencies=[Depends(web_ingest_limit)],
+)
 async def ingest_web(
     payload: WebIngestRequest,
     settings: Annotated[Settings, Depends(get_settings)],
@@ -135,6 +173,20 @@ async def ingest_web(
 
     kb_id = _extract_kb_id(payload.collection_name) or "unknown"
     document_id = payload.document_id or _hash_document_id(payload.url)
+
+    payload_size = len(payload.model_dump_json().encode("utf-8"))
+    if payload_size > settings.max_json_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail="Ingestion payload too large.",
+        )
+
+    active_jobs = count_active_jobs(settings, kb_id=kb_id if kb_id != "unknown" else None)
+    if active_jobs >= settings.max_concurrent_jobs:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Web ingestion queue is full. Try again later.",
+        )
 
     job_id, created = create_job(settings, document_id, url=payload.url)
 
@@ -173,7 +225,12 @@ async def ingest_web(
     return IngestResponse(message=f"Web ingestion queued for {payload.url}.")
 
 
-@router.post("/retrieval/delete", response_model=DeleteResponse, summary="Delete document")
+@router.post(
+    "/retrieval/delete",
+    response_model=DeleteResponse,
+    summary="Delete document",
+    dependencies=[Depends(delete_limit)],
+)
 async def delete_document(
     payload: DeleteRequest,
     settings: Annotated[Settings, Depends(get_settings)],
@@ -195,7 +252,12 @@ async def delete_document(
     return DeleteResponse(message=f"Deleted document {payload.file_id}.")
 
 
-@router.post("/retrieval/query/doc", response_model=QueryResponse, summary="Query collection")
+@router.post(
+    "/retrieval/query/doc",
+    response_model=QueryResponse,
+    summary="Query collection",
+    dependencies=[Depends(query_limit)],
+)
 async def query_collection(
     payload: QueryRequest,
     settings: Annotated[Settings, Depends(get_settings)],
@@ -239,6 +301,51 @@ async def get_ingestion_status(document_id: str, settings: Annotated[Settings, D
         )
 
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown document")
+
+
+class UrlIngestionJob(BaseModel):
+    id: str
+    document_id: str
+    kb_id: str
+    status: str
+    queued_at: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    error_message: str | None = None
+    metadata: Dict[str, Any] | None = None
+    updated_at: str | None = None
+    url: str | None = None
+    url_status: str | None = None
+    url_updated_at: str | None = None
+    document_title: str | None = None
+
+
+class JobListResponse(BaseModel):
+    jobs: List[UrlIngestionJob]
+
+
+@router.get("/retrieval/jobs", response_model=JobListResponse, summary="List ingestion jobs")
+async def list_ingestion_jobs(
+    settings: Annotated[Settings, Depends(get_settings)],
+    document_id: str | None = None,
+    kb_id: str | None = None,
+    limit: int = 20,
+) -> JobListResponse:
+    try:
+        jobs = list_jobs(settings, document_id=document_id, kb_id=kb_id, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return JobListResponse(jobs=jobs)
+
+
+@router.get("/retrieval/jobs/{job_id}", response_model=UrlIngestionJob, summary="Get ingestion job")
+async def get_ingestion_job(job_id: str, settings: Annotated[Settings, Depends(get_settings)]) -> UrlIngestionJob:
+    job = get_job(settings, job_id)
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+
+    return UrlIngestionJob(**job)
 
 
 def _ensure_collection_configured(settings: Settings) -> None:

@@ -69,6 +69,26 @@ class Settings(BaseSettings):
         description="CORS allowed origins.",
     )
 
+    rate_limit: str | None = Field(
+        default="60/minute",
+        description="Default SlowAPI rate limit (empty string disables).",
+    )
+    max_text_chars: int = Field(
+        default=20_000,
+        ge=1_024,
+        description="Maximum number of characters accepted for text ingestion payloads.",
+    )
+    max_json_bytes: int = Field(
+        default=262_144,
+        ge=4_096,
+        description="Maximum JSON payload size in bytes for ingestion endpoints.",
+    )
+    max_concurrent_jobs: int = Field(
+        default=5,
+        ge=1,
+        description="Maximum number of concurrent web ingestion jobs per knowledge base.",
+    )
+
     @property
     def cors_kwargs(self) -> dict[str, Any]:
         """Return keyword arguments for configuring CORS middleware."""
