@@ -96,4 +96,4 @@ Travail
 preparation_rncp/build/*.md
 preparation_rncp/build/*.pdf
 .codex/
-.AGENTS.md
+AGENTS.md
