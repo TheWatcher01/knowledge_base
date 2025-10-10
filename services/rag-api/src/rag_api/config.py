@@ -61,7 +61,7 @@ class Settings(BaseSettings):
 
     auth_token: str | None = Field(
         default=None,
-        description="Bearer token expected from clients (mirrors OWUI_TOKEN behaviour).",
+        description="Optional bearer token expected from clients when set.",
     )
 
     allowed_origins: list[str] = Field(

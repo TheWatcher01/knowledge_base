@@ -14,8 +14,8 @@ def verify_bearer_token(
     """
     Validate the Authorization header when a shared token is configured.
 
-    Mirrors the OWUI_TOKEN behaviour: if no token is configured we allow all
-    requests, otherwise we expect a `Bearer <token>` header.
+    If no token is configured we allow all requests, otherwise we expect a
+    `Bearer <token>` header.
     """
 
     expected = settings.auth_token
