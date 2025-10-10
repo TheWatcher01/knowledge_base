@@ -16,12 +16,12 @@ services:
       - RAG_OLLAMA_BASE_URL=http://ollama:11434
       - RAG_OLLAMA_LLM_MODEL=llama3.1
       - RAG_OLLAMA_EMBEDDING_MODEL=mxbai-embed-large
-      - RAG_POSTGRES_DSN=postgresql+asyncpg://kb:kb@postgres:5432/kb
+      - RAG_POSTGRES_DSN=postgresql+psycopg://kb:kb@postgres:5432/kb
       - RAG_MONGODB_URI=mongodb://mongo:27017
       - RAG_MONGO_DB=kbapp
       - RAG_TIKA_BASE_URL=http://tika:9998
       - RAG_SEARXNG_BASE_URL=http://searxng:8080/search
-      - RAG_AUTH_TOKEN=${OWUI_TOKEN:-}
+      - RAG_AUTH_TOKEN=${RAG_AUTH_TOKEN:-}
     networks: [ kbnet ]
 
   ollama:
