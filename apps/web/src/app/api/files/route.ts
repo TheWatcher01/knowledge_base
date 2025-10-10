@@ -5,8 +5,8 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { assertRole, handleAuthError } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
-import { OWUI_BASE, collectionName } from "@/lib/config";
-import { owuiJson } from "@/lib/rag";
+import { RAG_API_BASE, collectionName } from "@/lib/config";
+import { ragApiJson } from "@/lib/rag";
 import { upsertKnowledgeEntry, markEmbedded } from "@/lib/knowledge-store";
 
 const FormSchema = z.object({
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
         });
 
         const shouldAttemptIngestion =
-            OWUI_BASE &&
+            RAG_API_BASE &&
             process.env.MOCK_OPEN_WEBUI !== "true" &&
             mimeType.startsWith("text/");
 
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
             try {
                 const content = buffer.toString("utf8");
                 if (content.trim().length > 0) {
-                    await owuiJson("/api/v1/retrieval/process/text", {
+                    await ragApiJson("/api/v1/retrieval/process/text", {
                         method: "POST",
                         body: JSON.stringify({
                             name: document.id,

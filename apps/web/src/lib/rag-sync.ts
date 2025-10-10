@@ -1,5 +1,5 @@
-import { OWUI_BASE, OWUI_TOKEN, collectionName } from "@/lib/config";
-import { owuiJson, triggerWebIngestion, OWUI_DISABLED_MESSAGE } from "@/lib/rag";
+import { RAG_API_BASE, RAG_API_TOKEN, collectionName } from "@/lib/config";
+import { ragApiJson, triggerWebIngestion, RAG_SERVICE_DISABLED_MESSAGE } from "@/lib/rag";
 import { prisma } from "@/lib/prisma";
 import {
   listKnowledgeEntries,
@@ -18,12 +18,12 @@ export type RagSyncResult = {
 };
 
 export async function ensureCollectionForKnowledgeBase(kbId: string): Promise<RagSyncResult> {
-  if (!OWUI_BASE || !OWUI_TOKEN) {
+  if (!RAG_API_BASE || !RAG_API_TOKEN) {
     return {
       ok: false,
       collectionFound: false,
       reembeddedCount: 0,
-      errors: [OWUI_DISABLED_MESSAGE],
+      errors: [RAG_SERVICE_DISABLED_MESSAGE],
     };
   }
 
@@ -74,7 +74,7 @@ type CollectionCheck = { exists: true; warning?: string } | { exists: false; err
 
 async function checkCollectionExists(collectionName: string): Promise<CollectionCheck> {
   try {
-    await owuiJson("/api/v1/retrieval/query/doc", {
+    await ragApiJson("/api/v1/retrieval/query/doc", {
       method: "POST",
       body: JSON.stringify({
         query: "ping",
@@ -112,7 +112,7 @@ async function reembedEntry(kbId: string, entry: KnowledgeRecord): Promise<Reemb
     }
 
     const ingestion = await triggerWebIngestion({ kbId, url: entry.source });
-    if (!ingestion.ok && ingestion.error !== OWUI_DISABLED_MESSAGE) {
+    if (!ingestion.ok && ingestion.error !== RAG_SERVICE_DISABLED_MESSAGE) {
       return { ok: false, error: ingestion.error };
     }
     return { ok: true };
@@ -124,7 +124,7 @@ async function reembedEntry(kbId: string, entry: KnowledgeRecord): Promise<Reemb
   }
 
   try {
-    await owuiJson(TEXT_INGEST_ENDPOINT, {
+    await ragApiJson(TEXT_INGEST_ENDPOINT, {
       method: "POST",
       body: JSON.stringify({
         name: entry.documentId,

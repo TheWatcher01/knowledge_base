@@ -1,18 +1,18 @@
-import { OWUI_BASE, OWUI_TOKEN, collectionName } from "./config";
+import { RAG_API_BASE, RAG_API_TOKEN, collectionName } from "./config";
 
-export const OWUI_DISABLED_MESSAGE = "RAG service integration is disabled.";
+export const RAG_SERVICE_DISABLED_MESSAGE = "RAG service integration is disabled.";
 
-export type OwuiActionResult =
+export type RagActionResult =
     | { ok: true }
     | { ok: false; error: string };
 
-export async function owuiJson(path: string, init?: RequestInit) {
-    const res = await fetch(`${OWUI_BASE}${path}`, {
+export async function ragApiJson(path: string, init?: RequestInit) {
+    const res = await fetch(`${RAG_API_BASE}${path}`, {
         ...init,
         headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
-            Authorization: `Bearer ${OWUI_TOKEN}`,
+            Authorization: `Bearer ${RAG_API_TOKEN}`,
             ...(init?.headers || {}),
         },
     });
@@ -36,14 +36,14 @@ export async function owuiJson(path: string, init?: RequestInit) {
     }
 }
 
-export async function triggerWebIngestion(params: { kbId: string; url: string }): Promise<OwuiActionResult> {
-    if (!OWUI_BASE || !OWUI_TOKEN) {
-        console.warn("[rag-service] integration disabled: RAG_API_BASE=", OWUI_BASE, "RAG_API_TOKEN=", OWUI_TOKEN ? "***" : undefined);
-        return { ok: false, error: OWUI_DISABLED_MESSAGE };
+export async function triggerWebIngestion(params: { kbId: string; url: string }): Promise<RagActionResult> {
+    if (!RAG_API_BASE || !RAG_API_TOKEN) {
+        console.warn("[rag-service] integration disabled: RAG_API_BASE=", RAG_API_BASE, "RAG_API_TOKEN=", RAG_API_TOKEN ? "***" : undefined);
+        return { ok: false, error: RAG_SERVICE_DISABLED_MESSAGE };
     }
 
     try {
-        await owuiJson("/api/v1/retrieval/process/web", {
+        await ragApiJson("/api/v1/retrieval/process/web", {
             method: "POST",
             body: JSON.stringify({
                 url: params.url,
@@ -59,13 +59,13 @@ export async function triggerWebIngestion(params: { kbId: string; url: string })
     }
 }
 
-export async function deleteFromCollection(params: { kbId: string; documentId: string }): Promise<OwuiActionResult> {
-    if (!OWUI_BASE || !OWUI_TOKEN) {
-        return { ok: false, error: OWUI_DISABLED_MESSAGE };
+export async function deleteFromCollection(params: { kbId: string; documentId: string }): Promise<RagActionResult> {
+    if (!RAG_API_BASE || !RAG_API_TOKEN) {
+        return { ok: false, error: RAG_SERVICE_DISABLED_MESSAGE };
     }
 
     try {
-        await owuiJson("/api/v1/retrieval/delete", {
+        await ragApiJson("/api/v1/retrieval/delete", {
             method: "POST",
             body: JSON.stringify({
                 collection_name: collectionName(params.kbId),

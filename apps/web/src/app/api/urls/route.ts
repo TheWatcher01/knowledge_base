@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UrlStatus } from "@prisma/client";
 import { createUrlContentPlaceholder, updateUrlContentStatus } from "@/lib/url-content";
-import { OWUI_DISABLED_MESSAGE, triggerWebIngestion } from "@/lib/rag";
+import { RAG_SERVICE_DISABLED_MESSAGE, triggerWebIngestion } from "@/lib/rag";
 import { upsertKnowledgeEntry, markEmbedded } from "@/lib/knowledge-store";
 import { assertRole, handleAuthError } from "@/lib/authz";
 
@@ -151,7 +151,7 @@ export async function POST(request: Request) {
       finalStatus = UrlStatus.queued;
     } else {
       ingestionError = ingestion.error;
-      if (ingestion.error !== OWUI_DISABLED_MESSAGE) {
+    if (ingestion.error !== RAG_SERVICE_DISABLED_MESSAGE) {
         finalStatus = UrlStatus.error;
       }
     }

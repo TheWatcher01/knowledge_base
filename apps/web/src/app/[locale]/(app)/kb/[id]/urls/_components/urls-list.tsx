@@ -8,7 +8,7 @@ import { LiveMessage } from "@/components/a11y/live-message";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { OWUI_DISABLED_MESSAGE } from "@/lib/rag";
+import { RAG_SERVICE_DISABLED_MESSAGE } from "@/lib/rag";
 
 const STATUSES = ["draft", "queued", "synced", "error"] as const;
 type UrlStatus = (typeof STATUSES)[number];
@@ -169,7 +169,7 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
     };
 
     if (data.url?.ingestionError) {
-      if (data.url.ingestionError === OWUI_DISABLED_MESSAGE) {
+      if (data.url.ingestionError === RAG_SERVICE_DISABLED_MESSAGE) {
         setIngestionMessage(tForm("ingestionDisabled"));
       } else {
         setIngestionMessage(tForm("ingestionError", { error: data.url.ingestionError }));
@@ -210,7 +210,7 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
     };
 
     if (data.url?.ingestionError) {
-      if (data.url.ingestionError === OWUI_DISABLED_MESSAGE) {
+      if (data.url.ingestionError === RAG_SERVICE_DISABLED_MESSAGE) {
         setIngestionMessage(tForm("ingestionDisabled"));
       } else {
         setIngestionMessage(tForm("ingestionError", { error: data.url.ingestionError }));

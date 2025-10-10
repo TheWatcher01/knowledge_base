@@ -3,8 +3,8 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { owuiJson } from "@/lib/rag";
-import { OWUI_BASE, collectionName } from "@/lib/config";
+import { ragApiJson } from "@/lib/rag";
+import { RAG_API_BASE, collectionName } from "@/lib/config";
 import { upsertKnowledgeEntry, markEmbedded } from "@/lib/knowledge-store";
 import { assertRole, handleAuthError } from "@/lib/authz";
 
@@ -54,9 +54,9 @@ export async function POST(req: NextRequest) {
 
     let ingestionStatus: "success" | "skipped" | "failed" = "skipped";
 
-    if (OWUI_BASE && process.env.MOCK_OPEN_WEBUI !== "true") {
-      try {
-        await owuiJson("/api/v1/retrieval/process/text", {
+    if (RAG_API_BASE && process.env.MOCK_OPEN_WEBUI !== "true") {
+        try {
+            await ragApiJson("/api/v1/retrieval/process/text", {
           method: "POST",
           body: JSON.stringify({
             name: note.id,

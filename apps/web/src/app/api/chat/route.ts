@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 
-import { owuiJson } from "@/lib/rag";
-import { OWUI_BASE, OWUI_TOKEN, collectionName } from "@/lib/config";
+import { ragApiJson } from "@/lib/rag";
+import { RAG_API_BASE, RAG_API_TOKEN, collectionName } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import { assertRole, handleAuthError } from "@/lib/authz";
@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
         let docs: RetrievedDoc[] = [];
 
         try {
-            const response = (await owuiJson("/api/v1/retrieval/query/doc", {
+            const response = (await ragApiJson("/api/v1/retrieval/query/doc", {
                 method: "POST",
                 body: JSON.stringify({
                     query: question,
@@ -197,11 +197,11 @@ export async function POST(req: NextRequest) {
         });
 
         try {
-            const upstream = await fetch(`${OWUI_BASE}/api/v1/chat/completions`, {
+            const upstream = await fetch(`${RAG_API_BASE}/api/v1/chat/completions`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${OWUI_TOKEN}`,
+                    Authorization: `Bearer ${RAG_API_TOKEN}`,
                 },
                 body: JSON.stringify({
                     model: conversation.model ?? model,

@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { OWUI_BASE, collectionName } from "@/lib/config";
-import { owuiJson } from "@/lib/rag";
+import { RAG_API_BASE, collectionName } from "@/lib/config";
+import { ragApiJson } from "@/lib/rag";
 import { assertRole, handleAuthError } from "@/lib/authz";
 import { removeKnowledgeEntriesForKb } from "@/lib/knowledge-store";
 
@@ -27,9 +27,9 @@ export async function DELETE(
             return NextResponse.json({ error: "Not found" }, { status: 404 });
         }
 
-        if (OWUI_BASE && process.env.MOCK_OPEN_WEBUI !== "true") {
+        if (RAG_API_BASE && process.env.MOCK_OPEN_WEBUI !== "true") {
             const deletions = kb.documents.map((document) =>
-                owuiJson("/api/v1/retrieval/delete", {
+                ragApiJson("/api/v1/retrieval/delete", {
                     method: "POST",
                     body: JSON.stringify({
                         collection_name: collectionName(id),

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { owuiJson } from "@/lib/rag";
+import { ragApiJson } from "@/lib/rag";
 
 export async function GET() {
     try {
-        const payload = await owuiJson("/api/v1/models?refresh=true");
+        const payload = await ragApiJson("/api/v1/models?refresh=true");
         let models: unknown = [];
 
         if (Array.isArray(payload)) {

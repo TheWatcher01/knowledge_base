@@ -3,8 +3,8 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 const originalEnv = { ...process.env };
 
 function resetEnv() {
-    process.env.OWUI_BASE = originalEnv.OWUI_BASE;
-    process.env.OWUI_TOKEN = originalEnv.OWUI_TOKEN;
+    process.env.RAG_API_BASE = originalEnv.RAG_API_BASE;
+    process.env.RAG_API_TOKEN = originalEnv.RAG_API_TOKEN;
 }
 
 afterEach(() => {
@@ -14,36 +14,36 @@ afterEach(() => {
 });
 
 describe("rag helpers", () => {
-    test("triggerWebIngestion retourne une erreur quand OWUI est désactivé", async () => {
-        delete process.env.OWUI_BASE;
-        delete process.env.OWUI_TOKEN;
+    test("triggerWebIngestion retourne une erreur quand le service RAG est désactivé", async () => {
+        delete process.env.RAG_API_BASE;
+        delete process.env.RAG_API_TOKEN;
         const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-        const { triggerWebIngestion, OWUI_DISABLED_MESSAGE } = await import("@/lib/rag");
+        const { triggerWebIngestion, RAG_SERVICE_DISABLED_MESSAGE } = await import("@/lib/rag");
         const result = await triggerWebIngestion({ kbId: "kb_42", url: "https://example.com" });
 
-        expect(result).toEqual({ ok: false, error: OWUI_DISABLED_MESSAGE });
+        expect(result).toEqual({ ok: false, error: RAG_SERVICE_DISABLED_MESSAGE });
         expect(warnSpy).toHaveBeenCalled();
     });
 
-    test("triggerWebIngestion réussit quand OWUI répond correctement", async () => {
-        process.env.OWUI_BASE = "http://owui.test";
-        process.env.OWUI_TOKEN = "token-test";
+    test("triggerWebIngestion réussit quand le service RAG répond correctement", async () => {
+        process.env.RAG_API_BASE = "http://rag.test";
+        process.env.RAG_API_TOKEN = "token-test";
         const fetchMock = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue("{}") });
         vi.stubGlobal("fetch", fetchMock);
 
         const { triggerWebIngestion } = await import("@/lib/rag");
         const result = await triggerWebIngestion({ kbId: "kb_99", url: "https://example.com" });
 
-        expect(fetchMock).toHaveBeenCalledWith("http://owui.test/api/v1/retrieval/process/web", expect.objectContaining({
+        expect(fetchMock).toHaveBeenCalledWith("http://rag.test/api/v1/retrieval/process/web", expect.objectContaining({
             method: "POST",
         }));
         expect(result).toEqual({ ok: true });
     });
 
     test("triggerWebIngestion relaie les erreurs de fetch", async () => {
-        process.env.OWUI_BASE = "http://owui.test";
-        process.env.OWUI_TOKEN = "token-test";
+        process.env.RAG_API_BASE = "http://rag.test";
+        process.env.RAG_API_TOKEN = "token-test";
         const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
             ok: false,
@@ -59,15 +59,15 @@ describe("rag helpers", () => {
     });
 
     test("deleteFromCollection appelle le service RAG", async () => {
-        process.env.OWUI_BASE = "http://owui.test";
-        process.env.OWUI_TOKEN = "token-test";
+        process.env.RAG_API_BASE = "http://rag.test";
+        process.env.RAG_API_TOKEN = "token-test";
         const fetchMock = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue("{}") });
         vi.stubGlobal("fetch", fetchMock);
 
         const { deleteFromCollection } = await import("@/lib/rag");
         const result = await deleteFromCollection({ kbId: "kb_1", documentId: "doc_123" });
 
-        expect(fetchMock).toHaveBeenCalledWith("http://owui.test/api/v1/retrieval/delete", expect.objectContaining({
+        expect(fetchMock).toHaveBeenCalledWith("http://rag.test/api/v1/retrieval/delete", expect.objectContaining({
             method: "POST",
         }));
         expect(result).toEqual({ ok: true });

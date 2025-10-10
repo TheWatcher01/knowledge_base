@@ -17,11 +17,11 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 vi.mock("@/lib/rag", () => ({
-    owuiJson: vi.fn(),
+    ragApiJson: vi.fn(),
 }));
 
 vi.mock("@/lib/config", () => ({
-    OWUI_BASE: undefined,
+    RAG_API_BASE: undefined,
     collectionName: vi.fn(),
 }));
 
