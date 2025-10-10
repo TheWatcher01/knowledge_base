@@ -1,4 +1,4 @@
-"""Retrieval ingestion endpoints compatible with Open WebUI semantics."""
+"""Retrieval ingestion endpoints for the RAG service."""
 
 from __future__ import annotations
 
@@ -6,10 +6,13 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from ..config import Settings, get_settings
 from ..dependencies.auth import verify_bearer_token
+from ..services.ingestion import delete_document as delete_document_from_store
+from ..services.ingestion import ingest_text as ingest_text_into_store
 
 router = APIRouter(tags=["retrieval"], dependencies=[Depends(verify_bearer_token)])
 
@@ -56,16 +59,34 @@ async def ingest_text(
     payload: TextIngestRequest,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> IngestResponse:
-    """
-    Store text ingestion requests for later processing.
-
-    This is a synchronous acknowledgement; actual embedding will be wired in a
-    background worker in later iterations.
-    """
+    """Embed the supplied text content into the vector store."""
 
     _ensure_collection_configured(settings)
-    # TODO: enqueue ingestion job (LangChain/LlamaIndex pipeline).
-    return IngestResponse(message=f"Text ingestion queued for {payload.name}.")
+
+    kb_id = _extract_kb_id(payload.collection_name)
+
+    try:
+        await run_in_threadpool(
+            ingest_text_into_store,
+            settings,
+            kb_id=kb_id or "unknown",
+            document_id=payload.name,
+            content=payload.content,
+            collection_name=payload.collection_name,
+            metadata={
+                "ingest_method": "text",
+                "original_name": payload.name,
+            },
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - unexpected ingestion failure
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+
+    return IngestResponse(
+        accepted=True,
+        message=f"Text ingested for document {payload.name}.",
+    )
 
 
 @router.post("/retrieval/process/web", response_model=IngestResponse, summary="Ingest URL")
@@ -88,8 +109,18 @@ async def delete_document(
     """Remove a document from the configured vector store."""
 
     _ensure_collection_configured(settings)
-    # TODO: delete vectors + metadata using LangChain/LlamaIndex APIs.
-    return DeleteResponse(message=f"Deletion accepted for {payload.file_id}.")
+
+    try:
+        await run_in_threadpool(
+            delete_document_from_store,
+            settings,
+            document_id=payload.file_id,
+            collection_name=payload.collection_name,
+        )
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+
+    return DeleteResponse(message=f"Deleted document {payload.file_id}.")
 
 
 def _ensure_collection_configured(settings: Settings) -> None:
@@ -101,8 +132,14 @@ def _ensure_collection_configured(settings: Settings) -> None:
             detail="Ollama service not configured.",
         )
 
-    if settings.postgres_dsn is None and settings.mongo_uri is None:
+    if settings.postgres_dsn is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="No persistence backend configured.",
+            detail="Postgres vector store not configured.",
         )
+
+
+def _extract_kb_id(collection_name: str) -> str | None:
+    if collection_name.startswith("kb_") and len(collection_name) > 3:
+        return collection_name[3:]
+    return None
