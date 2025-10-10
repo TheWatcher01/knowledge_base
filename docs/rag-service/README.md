@@ -16,6 +16,7 @@
 - [ ] Intégration SearxNG comme outil de recherche temps réel, observabilité et logs.
 - [ ] Jeux de tests backend/front + documentation finale.
 - [ ] Historisation des jobs d’ingestion (table dédiée + endpoints d’administration).
+- [ ] Exposer une documentation API (OpenAPI/Swagger) complète pour le service RAG.
 
 ## TODO détaillé
 
@@ -23,6 +24,7 @@
 - Implémenter un loader Tika fiable (gestion des timeouts / retries) et prévoir un fallback Unstructured si Tika échoue.
 - Concevoir la tâche d’ingestion asynchrone pour les URLs (queue robuste, retries, suivi d’état `queued` → `processing` → `synced`).
 - Créer une table dédiée (Postgres) pour historiser finement les jobs (timestamps, erreurs, durée) et exposer un endpoint de consultation.
+- Générer et maintenir un schéma OpenAPI (FastAPI) documenté (annotations, descriptions, exemples) et vérifier l’accessibilité Swagger UI.
 - Ajouter un module de recherche SearxNG (wrapper LangChain) exposé comme outil optionnel dans le chat.
 - Mettre en place un système de logs structurés (JSON) côté FastAPI + intégration Prometheus/OTEL.
 - Écrire des tests pytest (ingestion texte, suppression) et Vitest/Playwright adaptés.
