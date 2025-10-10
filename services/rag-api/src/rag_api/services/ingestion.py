@@ -22,9 +22,16 @@ def _text_splitter() -> SentenceSplitter:
     return SentenceSplitter(chunk_size=512, chunk_overlap=80)
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=None)
 def _embedding_model(base_url: str, model_name: str) -> OllamaEmbedding:
     return OllamaEmbedding(base_url=base_url, model=model_name)
+
+
+def get_embedding_model(settings: AppSettings) -> OllamaEmbedding:
+    if not settings.ollama_base_url:
+        raise ValueError("OLLAMA base URL is required")
+
+    return _embedding_model(settings.ollama_base_url, settings.ollama_embedding_model)
 
 
 def _prepare_documents(
@@ -51,10 +58,7 @@ def ingest_text(
 
     ensure_vector_extension(settings)
 
-    if not settings.ollama_base_url:
-        raise ValueError("OLLAMA base URL is required for ingestion")
-
-    embed_model = _embedding_model(settings.ollama_base_url, settings.ollama_embedding_model)
+    embed_model = get_embedding_model(settings)
     splitter = _text_splitter()
 
     documents = _prepare_documents(
@@ -104,7 +108,7 @@ def delete_document(
     if not settings.ollama_base_url:
         raise ValueError("OLLAMA base URL is required for deletion operations")
 
-    embed_model = _embedding_model(settings.ollama_base_url, settings.ollama_embedding_model)
+    embed_model = get_embedding_model(settings)
     sample_embedding = embed_model.get_text_embedding("placeholder")
     embed_dim = len(sample_embedding)
 
@@ -115,4 +119,3 @@ def delete_document(
     )
 
     vector_store.delete(doc_ids=[document_id])
-

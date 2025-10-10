@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.concurrency import run_in_threadpool
@@ -13,6 +13,7 @@ from ..config import Settings, get_settings
 from ..dependencies.auth import verify_bearer_token
 from ..services.ingestion import delete_document as delete_document_from_store
 from ..services.ingestion import ingest_text as ingest_text_into_store
+from ..services.retrieval import query_documents
 
 router = APIRouter(tags=["retrieval"], dependencies=[Depends(verify_bearer_token)])
 
@@ -30,6 +31,14 @@ class WebIngestRequest(BaseModel):
 
     url: str
     collection_name: str
+
+
+class QueryRequest(BaseModel):
+    """Payload for querying a collection."""
+
+    query: str
+    collection_name: str
+    k: int = Field(default=5, ge=1, le=50)
 
 
 class DeleteRequest(BaseModel):
@@ -52,6 +61,16 @@ class DeleteResponse(BaseModel):
 
     deleted: bool = True
     message: str | None = None
+
+
+class RetrievedDocument(BaseModel):
+    text: str
+    score: float | None = None
+    metadata: Dict[str, Any] | None = None
+
+
+class QueryResponse(BaseModel):
+    docs: List[RetrievedDocument]
 
 
 @router.post("/retrieval/process/text", response_model=IngestResponse, summary="Ingest plain text")
@@ -121,6 +140,31 @@ async def delete_document(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
     return DeleteResponse(message=f"Deleted document {payload.file_id}.")
+
+
+@router.post("/retrieval/query/doc", response_model=QueryResponse, summary="Query collection")
+async def query_collection(
+    payload: QueryRequest,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> QueryResponse:
+    """Return the most relevant documents for the supplied query."""
+
+    _ensure_collection_configured(settings)
+
+    try:
+        docs = await run_in_threadpool(
+            query_documents,
+            settings,
+            collection_name=payload.collection_name,
+            query=payload.query,
+            limit=payload.k,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+
+    return QueryResponse(docs=docs)
 
 
 def _ensure_collection_configured(settings: Settings) -> None:
