@@ -96,4 +96,9 @@ Travail
 preparation_rncp/build/*.md
 preparation_rncp/build/*.pdf
 .codex/
+.vscode/
+*.pyc
+__pycache__/
+services/rag-api/src/rag_api/**/__pycache__/
+services/rag-api/tests/__pycache__/
 AGENTS.md

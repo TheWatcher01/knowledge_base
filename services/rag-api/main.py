@@ -1,9 +1,3 @@
-def main():
-    print("Hello from rag-api!")
-
-
-if __name__ == "__main__":
-    main()
 """Entrypoint for running the RAG API service with uv or uvicorn."""
 
 from __future__ import annotations
@@ -16,6 +10,10 @@ from rag_api.config import get_settings
 
 def main() -> None:
     """Launch the FastAPI application using uvicorn."""
+
+    # Ensure the application can be imported eagerly when using `uv run main.py`
+    create_app()
+
     settings = get_settings()
     uvicorn.run(
         "rag_api.api:app",

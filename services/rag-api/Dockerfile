@@ -9,6 +9,9 @@ COPY main.py ./main.py
 # Installer les dépendances en mode production (pas de dev extras)
 RUN uv sync --frozen --no-dev
 
+# Installer le package rag-api dans l'environnement
+RUN uv pip install . --no-deps
+
 EXPOSE 8000
 ENV RAG_SERVER_HOST=0.0.0.0 \
     RAG_SERVER_PORT=8000

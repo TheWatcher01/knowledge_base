@@ -3,11 +3,16 @@ services:
     build:
       context: ./services/rag-api
     depends_on:
-      - ollama
-      - postgres
-      - mongo
-      - tika
-      - searxng
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+      tika:
+        condition: service_started
+      searxng:
+        condition: service_started
+      ollama:
+        condition: service_started
     ports:
       - "8000:8000"
     environment:
@@ -77,6 +82,12 @@ services:
       POSTGRES_PASSWORD: kb
     ports: [ "5432:5432" ]
     volumes: [ "pg_data:/var/lib/postgresql/data" ]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
     networks: [ kbnet ]
 
   mongo:

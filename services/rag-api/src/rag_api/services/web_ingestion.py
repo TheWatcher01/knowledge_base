@@ -145,4 +145,4 @@ async def ingest_url_document(
     )
 
     LOGGER.info("Ingested URL %s into collection %s", final_url, collection_name)
-
+    return metadata

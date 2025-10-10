@@ -16,6 +16,7 @@ from ..config import Settings, get_settings
 from ..dependencies.auth import verify_bearer_token
 from ..services.ingestion import delete_document as delete_document_from_store
 from ..services.ingestion import ingest_text as ingest_text_into_store
+from ..services.jobs import create_job, get_latest_job, mark_job_completed, mark_job_failed, mark_job_processing
 from ..services.persistence import get_url_status, update_url_status
 from ..services.retrieval import query_documents
 from ..services.web_ingestion import WebIngestionError, ingest_url_document
@@ -134,13 +135,19 @@ async def ingest_web(
     kb_id = _extract_kb_id(payload.collection_name) or "unknown"
     document_id = payload.document_id or _hash_document_id(payload.url)
 
+    job_id, created = create_job(settings, document_id, url=payload.url)
+
+    if not created:
+        return IngestResponse(message=f"A job is already running for {payload.url}.")
+
+    update_url_status(settings, document_id, "queued")
+
     async def _task() -> None:
         try:
-            update_url_status(settings, document_id, "queued")
-        except Exception as exc:  # pragma: no cover
-            LOGGER.warning("[retrieval] failed to mark queued status: %s", exc)
-        try:
-            await ingest_url_document(
+            mark_job_processing(settings, job_id)
+            update_url_status(settings, document_id, "processing")
+
+            metadata = await ingest_url_document(
                 settings,
                 kb_id=kb_id,
                 document_id=document_id,
@@ -148,22 +155,17 @@ async def ingest_web(
                 collection_name=payload.collection_name,
                 ingest_text_fn=ingest_text_into_store,
             )
-            try:
-                update_url_status(settings, document_id, "synced")
-            except Exception as exc:  # pragma: no cover
-                LOGGER.warning("[retrieval] failed to mark synced status: %s", exc)
+
+            mark_job_completed(settings, job_id, metadata=metadata)
+            update_url_status(settings, document_id, "synced")
         except WebIngestionError as exc:
             LOGGER.warning("[retrieval] web ingestion failed for %s: %s", payload.url, exc)
-            try:
-                update_url_status(settings, document_id, "error")
-            except Exception as update_exc:  # pragma: no cover
-                LOGGER.warning("[retrieval] failed to mark error status: %s", update_exc)
+            mark_job_failed(settings, job_id, str(exc))
+            update_url_status(settings, document_id, "error")
         except Exception as exc:  # pragma: no cover
             LOGGER.exception("[retrieval] unexpected failure during web ingestion: %s", exc)
-            try:
-                update_url_status(settings, document_id, "error")
-            except Exception as update_exc:  # pragma: no cover
-                LOGGER.warning("[retrieval] failed to mark error status: %s", update_exc)
+            mark_job_failed(settings, job_id, str(exc))
+            update_url_status(settings, document_id, "error")
 
     asyncio.create_task(_task())
 
@@ -219,15 +221,23 @@ async def query_collection(
 
 @router.get("/retrieval/status/{document_id}", response_model=IngestionStatusResponse, summary="Get ingestion status")
 async def get_ingestion_status(document_id: str, settings: Annotated[Settings, Depends(get_settings)]) -> IngestionStatusResponse:
-    data = get_url_status(settings, document_id)
-    if data is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown document")
+    job = get_latest_job(settings, document_id)
+    if job:
+        return IngestionStatusResponse(
+            document_id=document_id,
+            status=job.get("status", "unknown"),
+            updated_at=job.get("updated_at"),
+        )
 
-    return IngestionStatusResponse(
-        document_id=document_id,
-        status=data.get("status", "unknown"),
-        updated_at=data.get("updated_at"),
-    )
+    data = get_url_status(settings, document_id)
+    if data:
+        return IngestionStatusResponse(
+            document_id=document_id,
+            status=data.get("status", "unknown"),
+            updated_at=data.get("updated_at"),
+        )
+
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown document")
 
 
 def _ensure_collection_configured(settings: Settings) -> None:

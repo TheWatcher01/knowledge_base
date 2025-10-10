@@ -83,6 +83,23 @@ model UrlEntry {
   externalId  String? // id Mongo/NoSQL
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  jobs        UrlIngestionJob[]
+}
+
+model UrlIngestionJob {
+  id           String    @id @default(uuid())
+  documentId   String
+  urlEntry     UrlEntry  @relation(fields: [documentId], references: [documentId], onDelete: Cascade)
+  status       UrlStatus @default(queued)
+  queuedAt     DateTime  @default(now())
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  errorMessage String?
+  metadata     Json?
+  updatedAt    DateTime  @updatedAt
+
+  @@index([documentId])
+  @@map("UrlIngestionJob")
 }
 
 model UsageLog {
