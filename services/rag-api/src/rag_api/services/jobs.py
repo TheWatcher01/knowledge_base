@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ..logging import logger
+
 import json
 import uuid
 from functools import lru_cache
@@ -8,6 +10,8 @@ from typing import Any, Dict, Optional
 import psycopg
 
 from ..config import Settings as AppSettings
+
+log = logger("jobs")
 
 DDL_STATEMENTS = [
     (
@@ -64,7 +68,9 @@ def create_job(settings: AppSettings, document_id: str, *, url: str) -> tuple[st
             )
             row = cur.fetchone()
             if row:
-                return str(row[0]), False
+                job_id = str(row[0])
+                log.info("jobs.already_running", document_id=document_id, job_id=job_id)
+                return job_id, False
 
             job_id = str(uuid.uuid4())
             cur.execute(
@@ -72,6 +78,7 @@ def create_job(settings: AppSettings, document_id: str, *, url: str) -> tuple[st
                 (job_id, document_id, "queued", json.dumps({"url": url})),
             )
 
+    log.info("jobs.created", document_id=document_id, job_id=job_id, url=url)
     return job_id, True
 
 
@@ -83,6 +90,7 @@ def mark_job_processing(settings: AppSettings, job_id: str) -> None:
                 'UPDATE "UrlIngestionJob" SET "status" = %s, "startedAt" = NOW(), "finishedAt" = NULL, "updatedAt" = NOW() WHERE "id" = %s',
                 ("processing", job_id),
             )
+    log.info("jobs.processing", job_id=job_id)
 
 
 def mark_job_completed(settings: AppSettings, job_id: str, metadata: Optional[Dict[str, Any]] = None) -> None:
@@ -100,6 +108,7 @@ def mark_job_completed(settings: AppSettings, job_id: str, metadata: Optional[Di
                     'UPDATE "UrlIngestionJob" SET "status" = %s, "finishedAt" = NOW(), "errorMessage" = NULL, "updatedAt" = NOW() WHERE "id" = %s',
                     ("synced", job_id),
                 )
+    log.info("jobs.completed", job_id=job_id)
 
 
 def mark_job_failed(settings: AppSettings, job_id: str, error_message: str) -> None:
@@ -110,6 +119,7 @@ def mark_job_failed(settings: AppSettings, job_id: str, error_message: str) -> N
                 'UPDATE "UrlIngestionJob" SET "status" = %s, "finishedAt" = NOW(), "errorMessage" = %s, "updatedAt" = NOW() WHERE "id" = %s',
                 ("error", error_message, job_id),
             )
+    log.warning("jobs.failed", job_id=job_id, error=error_message)
 
 
 def get_latest_job(settings: AppSettings, document_id: str) -> Optional[Dict[str, Any]]:

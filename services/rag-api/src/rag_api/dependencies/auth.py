@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from fastapi import Depends, Header, HTTPException, status
 
+from ..logging import logger
+
 from ..config import Settings, get_settings
 
 
@@ -18,11 +20,14 @@ def verify_bearer_token(
     `Bearer <token>` header.
     """
 
+    log = logger("auth")
+
     expected = settings.auth_token
     if expected is None:
         return
 
     if not authorization or not authorization.startswith("Bearer "):
+        log.warning("auth.missing_or_invalid")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid authorization token.",
@@ -30,6 +35,7 @@ def verify_bearer_token(
 
     token = authorization.removeprefix("Bearer ").strip()
     if token != expected:
+        log.warning("auth.invalid_token")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Unauthorized.",

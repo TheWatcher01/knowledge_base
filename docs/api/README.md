@@ -40,3 +40,5 @@ Voir [`docs/chat-persistence-plan.md`](../chat-persistence-plan.md#phase-2-api-b
 - [`GET /api/v1/retrieval/status/:documentId`](../../services/rag-api/src/rag_api/routes/retrieval.py)
 - [`POST /api/v1/retrieval/query/doc`](../../services/rag-api/src/rag_api/routes/retrieval.py)
 - [`POST /api/v1/chat/completions`](../../services/rag-api/src/rag_api/routes/chat.py)
+
+- [`GET /metrics`](../../services/rag-api/src/rag_api/api.py)

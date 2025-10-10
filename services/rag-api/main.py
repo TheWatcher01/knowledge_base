@@ -11,12 +11,9 @@ from rag_api.config import get_settings
 def main() -> None:
     """Launch the FastAPI application using uvicorn."""
 
-    # Ensure the application can be imported eagerly when using `uv run main.py`
-    create_app()
-
     settings = get_settings()
     uvicorn.run(
-        "rag_api.api:app",
+        "rag_api.api:create_app",
         host=settings.server_host,
         port=settings.server_port,
         reload=settings.reload,

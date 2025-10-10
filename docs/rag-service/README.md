@@ -13,7 +13,8 @@
 - [ ] Ingestion URL : crawl via SearxNG, extraction Tika, pipeline asynchrone.
 - [ ] Suppression & synchronisation complète (`rag-sync`) avec alignement vecteurs/métadonnées.
 - [ ] Endpoint chat streaming (ChatOllama + SSE) avec fallback Prisma.
-- [ ] Intégration SearxNG comme outil de recherche temps réel, observabilité et logs.
+- [ ] Intégration SearxNG comme outil de recherche temps réel.
+- [ ] Observabilité & sécurité : logs structurés, métriques Prometheus, rate limiting.
 - [ ] Jeux de tests backend/front + documentation finale.
 - [ ] Historisation des jobs d’ingestion (table dédiée + endpoints d’administration).
 - [ ] Exposer une documentation API (OpenAPI/Swagger) complète pour le service RAG.

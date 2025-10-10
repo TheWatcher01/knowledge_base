@@ -16,12 +16,13 @@ from ..config import Settings, get_settings
 from ..dependencies.auth import verify_bearer_token
 from ..services.ingestion import delete_document as delete_document_from_store
 from ..services.ingestion import ingest_text as ingest_text_into_store
+from ..logging import logger
 from ..services.jobs import create_job, get_latest_job, mark_job_completed, mark_job_failed, mark_job_processing
 from ..services.persistence import get_url_status, update_url_status
 from ..services.retrieval import query_documents
 from ..services.web_ingestion import WebIngestionError, ingest_url_document
 
-LOGGER = logging.getLogger(__name__)
+log = logger("retrieval")
 
 router = APIRouter(tags=["retrieval"], dependencies=[Depends(verify_bearer_token)])
 
@@ -159,11 +160,11 @@ async def ingest_web(
             mark_job_completed(settings, job_id, metadata=metadata)
             update_url_status(settings, document_id, "synced")
         except WebIngestionError as exc:
-            LOGGER.warning("[retrieval] web ingestion failed for %s: %s", payload.url, exc)
+            log.warning("retrieval.web_ingestion_failed", url=payload.url, error=str(exc))
             mark_job_failed(settings, job_id, str(exc))
             update_url_status(settings, document_id, "error")
         except Exception as exc:  # pragma: no cover
-            LOGGER.exception("[retrieval] unexpected failure during web ingestion: %s", exc)
+            log.exception("retrieval.web_ingestion_unexpected_error", url=payload.url, error=str(exc))
             mark_job_failed(settings, job_id, str(exc))
             update_url_status(settings, document_id, "error")
 
