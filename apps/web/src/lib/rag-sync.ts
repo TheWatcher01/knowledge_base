@@ -111,7 +111,7 @@ async function reembedEntry(kbId: string, entry: KnowledgeRecord): Promise<Reemb
       return { ok: false, error: `Missing URL for document ${entry.documentId}` };
     }
 
-    const ingestion = await triggerWebIngestion({ kbId, url: entry.source });
+    const ingestion = await triggerWebIngestion({ kbId, url: entry.source, documentId: entry.documentId });
     if (!ingestion.ok && ingestion.error !== RAG_SERVICE_DISABLED_MESSAGE) {
       return { ok: false, error: ingestion.error };
     }

@@ -33,7 +33,8 @@
 - Cas d’usage :
   - Chat streaming (`/api/v1/chat/completions`) depuis `apps/web/src/app/api/chat/route.ts`.
   - Ingestion texte/fichiers (`/api/v1/retrieval/process/text`) pour notes et fichiers.
-  - Ingestion web (`/api/v1/retrieval/process/web`) et suppression (`/api/v1/retrieval/delete`) pour synchroniser les connaissances.
+- Ingestion web (`/api/v1/retrieval/process/web`) et suppression (`/api/v1/retrieval/delete`) pour synchroniser les connaissances.
+  - L’endpoint web accepte désormais un `document_id` (doc Prisma) pour garantir la suppression future.
   - Vérification de collection et relance des embeddings via `rag-sync`.
 - Fallback local déjà en place (chargement Prisma/Mongo lorsque la collection RAG est indisponible).
 

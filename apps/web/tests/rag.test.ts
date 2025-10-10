@@ -20,7 +20,7 @@ describe("rag helpers", () => {
         const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
         const { triggerWebIngestion, RAG_SERVICE_DISABLED_MESSAGE } = await import("@/lib/rag");
-        const result = await triggerWebIngestion({ kbId: "kb_42", url: "https://example.com" });
+        const result = await triggerWebIngestion({ kbId: "kb_42", url: "https://example.com", documentId: "doc_42" });
 
         expect(result).toEqual({ ok: false, error: RAG_SERVICE_DISABLED_MESSAGE });
         expect(warnSpy).toHaveBeenCalled();
@@ -33,11 +33,13 @@ describe("rag helpers", () => {
         vi.stubGlobal("fetch", fetchMock);
 
         const { triggerWebIngestion } = await import("@/lib/rag");
-        const result = await triggerWebIngestion({ kbId: "kb_99", url: "https://example.com" });
+        const result = await triggerWebIngestion({ kbId: "kb_99", url: "https://example.com", documentId: "doc_99" });
 
         expect(fetchMock).toHaveBeenCalledWith("http://rag.test/api/v1/retrieval/process/web", expect.objectContaining({
             method: "POST",
         }));
+        const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+        expect(body.document_id).toBe("doc_99");
         expect(result).toEqual({ ok: true });
     });
 
@@ -51,7 +53,7 @@ describe("rag helpers", () => {
         }));
 
         const { triggerWebIngestion } = await import("@/lib/rag");
-        await expect(triggerWebIngestion({ kbId: "kb_77", url: "https://example.com" })).resolves.toEqual({
+        await expect(triggerWebIngestion({ kbId: "kb_77", url: "https://example.com", documentId: "doc_77" })).resolves.toEqual({
             ok: false,
             error: "KO",
         });

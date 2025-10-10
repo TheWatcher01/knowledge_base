@@ -145,7 +145,11 @@ export async function POST(request: Request) {
       },
     });
 
-    const ingestion = await triggerWebIngestion({ kbId: record.document.kbId, url: record.entry.url });
+    const ingestion = await triggerWebIngestion({
+        kbId: record.document.kbId,
+        url: record.entry.url,
+        documentId: record.document.id,
+    });
 
     if (ingestion.ok) {
       finalStatus = UrlStatus.queued;

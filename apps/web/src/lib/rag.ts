@@ -36,7 +36,7 @@ export async function ragApiJson(path: string, init?: RequestInit) {
     }
 }
 
-export async function triggerWebIngestion(params: { kbId: string; url: string }): Promise<RagActionResult> {
+export async function triggerWebIngestion(params: { kbId: string; url: string; documentId: string }): Promise<RagActionResult> {
     if (!RAG_API_BASE || !RAG_API_TOKEN) {
         console.warn("[rag-service] integration disabled: RAG_API_BASE=", RAG_API_BASE, "RAG_API_TOKEN=", RAG_API_TOKEN ? "***" : undefined);
         return { ok: false, error: RAG_SERVICE_DISABLED_MESSAGE };
@@ -48,6 +48,7 @@ export async function triggerWebIngestion(params: { kbId: string; url: string })
             body: JSON.stringify({
                 url: params.url,
                 collection_name: collectionName(params.kbId),
+                document_id: params.documentId,
             }),
         });
 

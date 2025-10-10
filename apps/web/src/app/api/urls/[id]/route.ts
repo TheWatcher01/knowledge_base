@@ -250,7 +250,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const shouldTriggerIngestion = urlChanged || parsedBody.data.status === UrlStatus.queued;
 
     if (shouldTriggerIngestion) {
-      const ingestion = await triggerWebIngestion({ kbId: record.document.kbId, url: record.entry.url });
+      const ingestion = await triggerWebIngestion({
+        kbId: record.document.kbId,
+        url: record.entry.url,
+        documentId: record.document.id,
+      });
 
       let finalStatus = record.entry.status;
       if (ingestion.ok) {
