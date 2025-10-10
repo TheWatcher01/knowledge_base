@@ -21,6 +21,7 @@
 - Définir le format de stockage Mongo pour les métadonnées (chunks, statut d’ingestion, timestamps).
 - Implémenter un loader Tika fiable (gestion des timeouts / retries) et prévoir un fallback Unstructured si Tika échoue.
 - Concevoir la tâche d’ingestion asynchrone pour les URLs (queue ou background task) avec suivi d’état (`queued`, `processing`, `synced`).
+- Étudier la création d’une table dédiée (Postgres/Mongo) pour historiser les statuts d’ingestion au-delà du champ `UrlEntry.status`.
 - Ajouter un module de recherche SearxNG (wrapper LangChain) exposé comme outil optionnel dans le chat.
 - Mettre en place un système de logs structurés (JSON) côté FastAPI + intégration Prometheus/OTEL.
 - Écrire des tests pytest (ingestion texte, suppression) et Vitest/Playwright adaptés.

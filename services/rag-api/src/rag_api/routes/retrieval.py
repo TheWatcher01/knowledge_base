@@ -16,8 +16,9 @@ from ..config import Settings, get_settings
 from ..dependencies.auth import verify_bearer_token
 from ..services.ingestion import delete_document as delete_document_from_store
 from ..services.ingestion import ingest_text as ingest_text_into_store
+from ..services.persistence import get_url_status, update_url_status
 from ..services.retrieval import query_documents
-from ..services.web_ingestion import INGESTION_STATUS, IngestionStatus, WebIngestionError, ingest_url_document
+from ..services.web_ingestion import WebIngestionError, ingest_url_document
 
 LOGGER = logging.getLogger(__name__)
 
@@ -83,7 +84,7 @@ class QueryResponse(BaseModel):
 class IngestionStatusResponse(BaseModel):
     document_id: str
     status: str
-    info: Dict[str, Any] | None = None
+    updated_at: str | None = None
 
 
 @router.post("/retrieval/process/text", response_model=IngestResponse, summary="Ingest plain text")
@@ -134,7 +135,10 @@ async def ingest_web(
     document_id = payload.document_id or _hash_document_id(payload.url)
 
     async def _task() -> None:
-        await INGESTION_STATUS.set_status(document_id, "processing")
+        try:
+            update_url_status(settings, document_id, "queued")
+        except Exception as exc:  # pragma: no cover
+            LOGGER.warning("[retrieval] failed to mark queued status: %s", exc)
         try:
             await ingest_url_document(
                 settings,
@@ -144,17 +148,24 @@ async def ingest_web(
                 collection_name=payload.collection_name,
                 ingest_text_fn=ingest_text_into_store,
             )
-            await INGESTION_STATUS.set_status(document_id, "synced")
+            try:
+                update_url_status(settings, document_id, "synced")
+            except Exception as exc:  # pragma: no cover
+                LOGGER.warning("[retrieval] failed to mark synced status: %s", exc)
         except WebIngestionError as exc:
             LOGGER.warning("[retrieval] web ingestion failed for %s: %s", payload.url, exc)
-            await INGESTION_STATUS.set_status(document_id, "error", info={"message": str(exc)})
+            try:
+                update_url_status(settings, document_id, "error")
+            except Exception as update_exc:  # pragma: no cover
+                LOGGER.warning("[retrieval] failed to mark error status: %s", update_exc)
         except Exception as exc:  # pragma: no cover
             LOGGER.exception("[retrieval] unexpected failure during web ingestion: %s", exc)
-            await INGESTION_STATUS.set_status(document_id, "error", info={"message": str(exc)})
+            try:
+                update_url_status(settings, document_id, "error")
+            except Exception as update_exc:  # pragma: no cover
+                LOGGER.warning("[retrieval] failed to mark error status: %s", update_exc)
 
     asyncio.create_task(_task())
-
-    asyncio.create_task(INGESTION_STATUS.set_status(document_id, "queued"))
 
     return IngestResponse(message=f"Web ingestion queued for {payload.url}.")
 
@@ -207,15 +218,15 @@ async def query_collection(
 
 
 @router.get("/retrieval/status/{document_id}", response_model=IngestionStatusResponse, summary="Get ingestion status")
-async def get_ingestion_status(document_id: str) -> IngestionStatusResponse:
-    data = await INGESTION_STATUS.get_status(document_id)
+async def get_ingestion_status(document_id: str, settings: Annotated[Settings, Depends(get_settings)]) -> IngestionStatusResponse:
+    data = get_url_status(settings, document_id)
     if data is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown document")
 
     return IngestionStatusResponse(
         document_id=document_id,
         status=data.get("status", "unknown"),
-        info=data.get("info"),
+        updated_at=data.get("updated_at"),
     )
 
 

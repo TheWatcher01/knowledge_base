@@ -146,27 +146,3 @@ async def ingest_url_document(
 
     LOGGER.info("Ingested URL %s into collection %s", final_url, collection_name)
 
-
-class IngestionStatus:
-    def __init__(self) -> None:
-        self._store: Dict[str, Dict[str, Any]] = {}
-        self._lock = asyncio.Lock()
-
-    async def set_status(self, document_id: str, status: str, *, info: Dict[str, Any] | None = None) -> None:
-        async with self._lock:
-            payload = self._store.setdefault(document_id, {})
-            payload.update({
-                "status": status,
-                "updated_at": asyncio.get_event_loop().time(),
-            })
-            if info:
-                payload.setdefault("info", {}).update(info)
-
-    async def get_status(self, document_id: str) -> Dict[str, Any] | None:
-        async with self._lock:
-            if document_id not in self._store:
-                return None
-            return dict(self._store[document_id])
-
-
-INGESTION_STATUS = IngestionStatus()
