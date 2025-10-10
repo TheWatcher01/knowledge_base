@@ -6,15 +6,10 @@ from fastapi import FastAPI
 
 from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
-
-from fastapi.responses import JSONResponse
 
 from .config import Settings, get_settings
 from .logging import configure_logging, logger
 from .routes import chat, health, retrieval
-from .rate_limit import configure_default_limits, limiter
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -31,16 +26,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     app.add_middleware(CORSMiddleware, **settings.cors_kwargs)
-    configure_default_limits(settings.rate_limit)
-    app.state.limiter = limiter
-    app.add_exception_handler(  # type: ignore[arg-type]
-        RateLimitExceeded,
-        lambda request, exc: JSONResponse(
-            status_code=429,
-            content={"detail": "Rate limit exceeded."},
-        ),
-    )
-    app.add_middleware(SlowAPIMiddleware)
 
     app.include_router(health.router)
     app.include_router(chat.router, prefix="/api/v1")

@@ -284,27 +284,13 @@
     "updateError": "Impossible de mettre à jour le lien.",
     "resync": "Relancer l’ingestion",
     "queuedTooltip": "En cours d’ingestion. Actualisez plus tard ou modifiez le lien si besoin.",
-    "errorTooltip": "Échec de l’ingestion. Vérifiez l’URL puis utilisez «Modifier» pour relancer.",
-    "history": "Historique",
-    "close": "Fermer"
+    "errorTooltip": "Échec de l’ingestion. Vérifiez l’URL puis utilisez «Modifier» pour relancer."
   },
     "urlStatuses": {
       "draft": "Brouillon",
       "queued": "En attente",
       "synced": "Synchronisé",
       "error": "Erreur"
-    },
-    "urlHistory": {
-      "title": "Historique d’ingestion",
-      "description": "Suivez les dernières opérations effectuées sur {url}.",
-      "loading": "Chargement de l’historique…",
-      "empty": "Aucune opération enregistrée pour ce lien.",
-      "loadError": "Impossible de charger l’historique.",
-      "queuedAt": "Mise en file le {date} · {time}",
-      "startedAt": "Début le {date} · {time}",
-      "finishedAt": "Terminé le {date} · {time}",
-      "updatedAt": "Mis à jour le {date} · {time}",
-      "error": "Erreur : {error}"
     },
     "chat": {
       "title": "Assistant IA",

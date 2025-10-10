@@ -77,44 +77,4 @@ describe("UrlRow", () => {
         await renderRow("synced");
         expect(screen.queryByRole("button", { name: "kb.urlActions.resync" })).not.toBeInTheDocument();
     });
-
-    test("affiche l'historique lors de l'ouverture du dialogue", async () => {
-        const user = await renderRow("draft");
-
-        const payload = {
-            document: {
-                id: "doc-1",
-                kbId: "kb-1",
-                title: "Titre",
-                url: "https://example.com",
-                status: "queued",
-                updatedAt: new Date().toISOString(),
-            },
-            jobs: [
-                {
-                    id: "job-1",
-                    status: "queued",
-                    queuedAt: new Date().toISOString(),
-                    startedAt: null,
-                    finishedAt: null,
-                    errorMessage: null,
-                    metadata: null,
-                    updatedAt: new Date().toISOString(),
-                },
-            ],
-        };
-
-        const fetchMock = vi.fn().mockResolvedValue({
-            ok: true,
-            text: () => Promise.resolve(JSON.stringify(payload)),
-        });
-        vi.stubGlobal("fetch", fetchMock);
-
-        await user.click(screen.getByRole("button", { name: "kb.urlActions.history" }));
-
-        await waitFor(() => {
-            expect(fetchMock).toHaveBeenCalledWith("/api/urls/doc-1/history");
-            expect(screen.getByText("kb.urlHistory.queuedAt")).toBeInTheDocument();
-        });
-    });
 });
