@@ -55,6 +55,43 @@ uv run main.py
 - `RAG_SEARXNG_BASE_URL`, `RAG_TIKA_BASE_URL` : services optionnels pour la recherche web et l’extraction.
 - `RAG_AUTH_TOKEN` : token Bearer attendu côté frontend.
 - `RAG_RELOAD` : si `true`, active l’autoreload (développement).
+- `RAG_RATE_LIMIT` : limite globale SlowAPI appliquée à tous les endpoints (`60/minute` par défaut, chaîne vide pour désactiver).
+- `RAG_MAX_TEXT_CHARS` : taille maximale (caractères) d’un document texte ingéré (défaut : 20 000).
+- `RAG_MAX_JSON_BYTES` : taille maximale (octets) d’un payload JSON (défaut : 262 144).
+- `RAG_MAX_CONCURRENT_JOBS` : nombre maximum de jobs d’ingestion web simultanés par base (`5`).
+
+## ⚙️ Endpoints clés
+
+- `POST /api/v1/retrieval/process/text` — ingestion texte (rate limit 5/min, 413 si charges > limites).
+- `POST /api/v1/retrieval/process/web` — ingestion URL asynchrone (rate limit 3/min, 429 si file pleine).
+- `POST /api/v1/retrieval/delete` — suppression d’un document (rate limit 10/min).
+- `POST /api/v1/retrieval/query/doc` — requêtes vectorielles (rate limit 60/min).
+- `GET /api/v1/retrieval/status/{documentId}` — statut le plus récent d’une ingestion.
+- `GET /api/v1/retrieval/jobs?documentId=…|kbId=…` — historique des jobs (limité à 100 entrées).
+- `GET /api/v1/retrieval/jobs/{jobId}` — détail d’un job (timestamps, métadonnées, erreurs).
+- `POST /api/v1/chat/completions` — streaming SSE propulsé par Ollama (rate limit 30/min).
+
+## 🛡️ Rate limiting & garde-fous
+
+- SlowAPI utilise le jeton Bearer comme clé de throttling (sinon l’adresse IP).
+- `RAG_RATE_LIMIT` définit une limite globale ; chaque endpoint critique ajoute en plus sa propre dépendance (`5/min`, `3/min`, etc.).
+- Les payloads dépassant `RAG_MAX_TEXT_CHARS` ou `RAG_MAX_JSON_BYTES` renvoient `413 Content Too Large`.
+- L’ingestion web renvoie `429 Too Many Requests` lorsque `RAG_MAX_CONCURRENT_JOBS` est atteint pour une KB donnée.
+- Les logs structlog et les métriques Prometheus (`prometheus_fastapi_instrumentator`) exposent les informations de quota (`rate.limit.hit`).
+
+## ✅ Tests recommandés
+
+```bash
+# Côté service FastAPI
+cd services/rag-api
+uv run pytest
+
+# Côté web (dialogue historique + UI)
+cd apps/web
+pnpm --filter web exec -- vitest run tests/urls-list.test.tsx
+```
+
+Avant d’exécuter les tests Vitest globaux, regénérez Prisma : `pnpm --filter web prisma generate`.
 
 ## 🗂️ Structure du module
 

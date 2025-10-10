@@ -14,9 +14,9 @@
 - [ ] Suppression & synchronisation complète (`rag-sync`) avec alignement vecteurs/métadonnées.
 - [ ] Endpoint chat streaming (ChatOllama + SSE) avec fallback Prisma.
 - [ ] Intégration SearxNG comme outil de recherche temps réel.
-- [ ] Observabilité & sécurité : logs structurés, métriques Prometheus, rate limiting.
+- [x] Observabilité & sécurité : logs structurés, métriques Prometheus, rate limiting.
 - [ ] Jeux de tests backend/front + documentation finale.
-- [ ] Historisation des jobs d’ingestion (table dédiée + endpoints d’administration).
+- [x] Historisation des jobs d’ingestion (table dédiée + endpoints d’administration).
 - [ ] Exposer une documentation API (OpenAPI/Swagger) complète pour le service RAG.
 
 ## TODO détaillé
@@ -30,6 +30,18 @@
 - Mettre en place un système de logs structurés (JSON) côté FastAPI + intégration Prometheus/OTEL.
 - Écrire des tests pytest (ingestion texte, suppression) et Vitest/Playwright adaptés.
 - Documenter le playbook de déploiement (Docker Compose, initialisation PGVector, chargement modèles Ollama).
+
+## Historique d’ingestion (volet 4.1)
+
+- API FastAPI : `GET /api/v1/retrieval/jobs` (filtre `documentId` / `kbId`, limite 100) et `GET /api/v1/retrieval/jobs/{jobId}` exposent les timestamps (`queuedAt`, `startedAt`, `finishedAt`), métadonnées et erreurs éventuelles.
+- Next.js : `GET /api/urls/[id]/history` alimente un dialogue « Historique » (timeline, détails, accessibilité) dans la liste des URLs.
+- UI : relance d’ingestion depuis la même carte, messages localisés (`queued`, `error`), tests Vitest mis à jour (`tests/urls-list.test.tsx`).
+
+## Observabilité & sécurité (volet 4.2)
+
+- SlowAPI configuré via `RAG_RATE_LIMIT` + dépendances par endpoint (`5/min` texte, `3/min` web, `10/min` delete, `60/min` query, `30/min` chat).
+- Gardes payload : `RAG_MAX_TEXT_CHARS` (20 000) et `RAG_MAX_JSON_BYTES` (256 KB) renvoient `413 Content Too Large` ; la file web respecte `RAG_MAX_CONCURRENT_JOBS` (429 sinon).
+- Tests dédiés (`services/rag-api/tests/test_retrieval_api.py`) vérifient les dépassements et les endpoints jobs ; instrumentation structlog + Prometheus déjà intégrée.
 
 ## Intégration actuelle d’Open WebUI
 
