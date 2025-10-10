@@ -10,6 +10,7 @@ from typing import Any, Dict, Tuple
 import httpx
 
 from ..config import Settings as AppSettings
+from .search import SearchNotConfigured, search_web
 
 LOGGER = logging.getLogger(__name__)
 
@@ -118,6 +119,21 @@ async def ingest_url_document(
     if title:
         metadata["title"] = title
 
+    # Optionally enrich with search snippets for additional context
+    search_snippets = []
+    try:
+        results = await search_web(settings, title or url, max_results=3)
+        for item in results:
+            snippet = item.get("content")
+            if snippet:
+                search_snippets.append(_normalize_text(snippet))
+        if search_snippets:
+            metadata["search_snippets"] = search_snippets
+    except SearchNotConfigured:
+        pass
+    except httpx.HTTPError as exc:  # pragma: no cover
+        LOGGER.warning("SearxNG lookup failed for %s: %s", url, exc)
+
     await asyncio.to_thread(
         ingest_text_fn,
         settings,
@@ -130,3 +146,27 @@ async def ingest_url_document(
 
     LOGGER.info("Ingested URL %s into collection %s", final_url, collection_name)
 
+
+class IngestionStatus:
+    def __init__(self) -> None:
+        self._store: Dict[str, Dict[str, Any]] = {}
+        self._lock = asyncio.Lock()
+
+    async def set_status(self, document_id: str, status: str, *, info: Dict[str, Any] | None = None) -> None:
+        async with self._lock:
+            payload = self._store.setdefault(document_id, {})
+            payload.update({
+                "status": status,
+                "updated_at": asyncio.get_event_loop().time(),
+            })
+            if info:
+                payload.setdefault("info", {}).update(info)
+
+    async def get_status(self, document_id: str) -> Dict[str, Any] | None:
+        async with self._lock:
+            if document_id not in self._store:
+                return None
+            return dict(self._store[document_id])
+
+
+INGESTION_STATUS = IngestionStatus()

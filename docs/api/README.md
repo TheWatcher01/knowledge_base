@@ -31,3 +31,12 @@ Voir [`docs/chat-persistence-plan.md`](../chat-persistence-plan.md#phase-2-api-b
 - [`POST /api/urls`](../../apps/web/src/app/api/urls/route.ts)
 - [`PATCH /api/urls/:id`](../../apps/web/src/app/api/urls/[id]/route.ts)
 - [`DELETE /api/urls/:id`](../../apps/web/src/app/api/urls/[id]/route.ts)
+
+### RAG Service
+
+- [`POST /api/v1/retrieval/process/text`](../../services/rag-api/src/rag_api/routes/retrieval.py)
+- [`POST /api/v1/retrieval/process/web`](../../services/rag-api/src/rag_api/routes/retrieval.py)
+- [`POST /api/v1/retrieval/delete`](../../services/rag-api/src/rag_api/routes/retrieval.py)
+- [`GET /api/v1/retrieval/status/:documentId`](../../services/rag-api/src/rag_api/routes/retrieval.py)
+- [`POST /api/v1/retrieval/query/doc`](../../services/rag-api/src/rag_api/routes/retrieval.py)
+- [`POST /api/v1/chat/completions`](../../services/rag-api/src/rag_api/routes/chat.py)
