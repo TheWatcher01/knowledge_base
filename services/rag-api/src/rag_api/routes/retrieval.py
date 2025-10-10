@@ -8,16 +8,26 @@ import logging
 from datetime import datetime
 from typing import Annotated, Any, Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from ..config import Settings, get_settings
 from ..dependencies.auth import verify_bearer_token
+from ..rate_limit import limit_dependency
 from ..services.ingestion import delete_document as delete_document_from_store
 from ..services.ingestion import ingest_text as ingest_text_into_store
 from ..logging import logger
-from ..services.jobs import create_job, get_latest_job, mark_job_completed, mark_job_failed, mark_job_processing
+from ..services.jobs import (
+    create_job,
+    count_active_jobs,
+    get_job,
+    get_latest_job,
+    list_jobs,
+    mark_job_completed,
+    mark_job_failed,
+    mark_job_processing,
+)
 from ..services.persistence import get_url_status, update_url_status
 from ..services.retrieval import query_documents
 from ..services.web_ingestion import WebIngestionError, ingest_url_document
@@ -25,6 +35,12 @@ from ..services.web_ingestion import WebIngestionError, ingest_url_document
 log = logger("retrieval")
 
 router = APIRouter(tags=["retrieval"], dependencies=[Depends(verify_bearer_token)])
+
+
+text_ingest_guard = limit_dependency("5/minute")
+web_ingest_guard = limit_dependency("3/minute")
+delete_guard = limit_dependency("10/minute")
+query_guard = limit_dependency("60/minute")
 
 
 class TextIngestRequest(BaseModel):
@@ -89,16 +105,56 @@ class IngestionStatusResponse(BaseModel):
     updated_at: str | None = None
 
 
+class UrlIngestionJob(BaseModel):
+    id: str
+    document_id: str
+    kb_id: str
+    status: str
+    queued_at: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    error_message: str | None = None
+    metadata: Dict[str, Any] | None = None
+    updated_at: str | None = None
+    url: str | None = None
+    url_status: str | None = None
+    url_updated_at: str | None = None
+    document_title: str | None = None
+
+
+class JobListResponse(BaseModel):
+    jobs: List[UrlIngestionJob]
+
+
+class JobDetailResponse(UrlIngestionJob):
+    pass
+
+
 @router.post("/retrieval/process/text", response_model=IngestResponse, summary="Ingest plain text")
 async def ingest_text(
+    request: Request,
     payload: TextIngestRequest,
-    settings: Annotated[Settings, Depends(get_settings)],
+    settings: Settings = Depends(get_settings),
+    _: None = Depends(text_ingest_guard),
 ) -> IngestResponse:
     """Embed the supplied text content into the vector store."""
 
     _ensure_collection_configured(settings)
 
     kb_id = _extract_kb_id(payload.collection_name)
+
+    if len(payload.content) > settings.max_text_chars:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Text payload exceeds allowed size.",
+        )
+
+    payload_size = len(payload.model_dump_json().encode("utf-8"))
+    if payload_size > settings.max_json_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Ingestion payload too large.",
+        )
 
     try:
         await run_in_threadpool(
@@ -126,8 +182,10 @@ async def ingest_text(
 
 @router.post("/retrieval/process/web", response_model=IngestResponse, summary="Ingest URL")
 async def ingest_web(
+    request: Request,
     payload: WebIngestRequest,
-    settings: Annotated[Settings, Depends(get_settings)],
+    settings: Settings = Depends(get_settings),
+    _: None = Depends(web_ingest_guard),
 ) -> IngestResponse:
     """Trigger scraping + embedding for a URL."""
 
@@ -135,6 +193,20 @@ async def ingest_web(
 
     kb_id = _extract_kb_id(payload.collection_name) or "unknown"
     document_id = payload.document_id or _hash_document_id(payload.url)
+
+    payload_size = len(payload.model_dump_json().encode("utf-8"))
+    if payload_size > settings.max_json_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Ingestion payload too large.",
+        )
+
+    active_jobs = count_active_jobs(settings, kb_id=kb_id if kb_id != "unknown" else None)
+    if active_jobs >= settings.max_concurrent_jobs:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Web ingestion queue is full. Try again later.",
+        )
 
     job_id, created = create_job(settings, document_id, url=payload.url)
 
@@ -175,8 +247,10 @@ async def ingest_web(
 
 @router.post("/retrieval/delete", response_model=DeleteResponse, summary="Delete document")
 async def delete_document(
+    request: Request,
     payload: DeleteRequest,
-    settings: Annotated[Settings, Depends(get_settings)],
+    settings: Settings = Depends(get_settings),
+    _: None = Depends(delete_guard),
 ) -> DeleteResponse:
     """Remove a document from the configured vector store."""
 
@@ -197,8 +271,10 @@ async def delete_document(
 
 @router.post("/retrieval/query/doc", response_model=QueryResponse, summary="Query collection")
 async def query_collection(
+    request: Request,
     payload: QueryRequest,
-    settings: Annotated[Settings, Depends(get_settings)],
+    settings: Settings = Depends(get_settings),
+    _: None = Depends(query_guard),
 ) -> QueryResponse:
     """Return the most relevant documents for the supplied query."""
 
@@ -239,6 +315,46 @@ async def get_ingestion_status(document_id: str, settings: Annotated[Settings, D
         )
 
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown document")
+
+
+@router.get("/retrieval/jobs", response_model=JobListResponse, summary="List ingestion jobs")
+async def list_ingestion_jobs(
+    settings: Annotated[Settings, Depends(get_settings)],
+    document_id: Annotated[str | None, Query(alias="documentId")] = None,
+    kb_id: Annotated[str | None, Query(alias="kbId")] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> JobListResponse:
+    try:
+        jobs = await run_in_threadpool(
+            list_jobs,
+            settings,
+            document_id=document_id,
+            kb_id=kb_id,
+            limit=limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+
+    return JobListResponse(jobs=jobs)
+
+
+@router.get(
+    "/retrieval/jobs/{job_id}",
+    response_model=JobDetailResponse,
+    summary="Get single ingestion job",
+)
+async def get_ingestion_job(job_id: str, settings: Annotated[Settings, Depends(get_settings)]) -> JobDetailResponse:
+    try:
+        job = await run_in_threadpool(get_job, settings, job_id)
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+
+    return JobDetailResponse(**job)
 
 
 def _ensure_collection_configured(settings: Settings) -> None:

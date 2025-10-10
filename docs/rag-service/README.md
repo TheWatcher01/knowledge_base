@@ -14,9 +14,9 @@
 - [ ] Suppression & synchronisation complète (`rag-sync`) avec alignement vecteurs/métadonnées.
 - [ ] Endpoint chat streaming (ChatOllama + SSE) avec fallback Prisma.
 - [ ] Intégration SearxNG comme outil de recherche temps réel.
-- [ ] Observabilité & sécurité : logs structurés, métriques Prometheus, rate limiting.
+- [x] Observabilité & sécurité : logs structurés, métriques Prometheus, rate limiting (partiel).
 - [ ] Jeux de tests backend/front + documentation finale.
-- [ ] Historisation des jobs d’ingestion (table dédiée + endpoints d’administration).
+- [x] Historisation des jobs d’ingestion (table dédiée + endpoints d’administration).
 - [ ] Exposer une documentation API (OpenAPI/Swagger) complète pour le service RAG.
 
 ## TODO détaillé
@@ -27,9 +27,28 @@
 - Créer une table dédiée (Postgres) pour historiser finement les jobs (timestamps, erreurs, durée) et exposer un endpoint de consultation.
 - Générer et maintenir un schéma OpenAPI (FastAPI) documenté (annotations, descriptions, exemples) et vérifier l’accessibilité Swagger UI.
 - Ajouter un module de recherche SearxNG (wrapper LangChain) exposé comme outil optionnel dans le chat.
-- Mettre en place un système de logs structurés (JSON) côté FastAPI + intégration Prometheus/OTEL.
-- Écrire des tests pytest (ingestion texte, suppression) et Vitest/Playwright adaptés.
 - Documenter le playbook de déploiement (Docker Compose, initialisation PGVector, chargement modèles Ollama).
+
+## Historique d’ingestion (API + UI)
+
+- Nouvelle route `GET /api/v1/retrieval/jobs` (filtrage `documentId`/`kbId`, limite 100) et `GET /api/v1/retrieval/jobs/{jobId}` exposent les métadonnées `queuedAt / startedAt / finishedAt`, erreurs et recherche enrichie.
+- Côté Next.js, `GET /api/urls/[id]/history` renvoie les jobs prisma et alimente un dialog « Historique » dans la liste des URLs (timeline, erreurs, accessibilité ARIA, i18n FR/EN).
+- Les interfaces surfacent les messages `queued`/`error` et permettent de relancer l’ingestion depuis le même composant.
+
+## Rate limiting & garde-fous
+
+- Intégration SlowAPI : clé = jeton Bearer sinon IP. Valeur globale configurée via `RAG_RATE_LIMIT` (désactivable en vidant la variable).
+- Quotas dédiés : texte `5/min`, web `3/min`, delete `10/min`, query `60/min`, chat `30/min`. Dépendances FastAPI garantissent l’exécution avant la logique métier.
+- Gardes payload : 413 si `content` texte > `RAG_MAX_TEXT_CHARS` (20 000 par défaut) ou JSON > `RAG_MAX_JSON_BYTES` (256 KB). Web ingestion renvoie 429 lorsque `RAG_MAX_CONCURRENT_JOBS` (5) est atteint sur une KB.
+- Structlog JSON + Prometheus instrumentator en place pour corréler quotas (journal `rate.limit.hit`, métriques standard HTTP).
+
+## Campagne de tests recommandée (point 4.3)
+
+- `cd services/rag-api && uv run pytest` : couvre routes d’ingestion, jobs, cas 413/429.
+- `cd apps/web && pnpm --filter web exec -- vitest run tests/urls-list.test.tsx` : UI historique / resync.
+- `cd apps/web && pnpm test chat-panel.a11y.test.tsx chat-panel.kb-switch.test.tsx` : garder la non-régression RSC/chat.
+- `cd apps/web && pnpm test:e2e` (Playwright) avant release lorsqu’on touche au flux d’ingestion.
+- Attention : tests `users-lib` nécessitent Prisma généré ou mocks (`pnpm prisma:generate`) ; à lancer hors executions ciblées.
 
 ## Intégration actuelle d’Open WebUI
 
