@@ -6,6 +6,15 @@ import { useRouter } from "next/navigation";
 
 import { LiveMessage } from "@/components/a11y/live-message";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RAG_SERVICE_DISABLED_MESSAGE } from "@/lib/rag";
@@ -28,6 +37,29 @@ type UrlWithLabels = UrlListEntry & {
   createdTimeLabel: string;
   updatedDateLabel: string;
   updatedTimeLabel: string;
+};
+
+type UrlHistoryEntry = {
+  id: string;
+  status: UrlStatus | string;
+  queuedAt: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  errorMessage: string | null;
+  metadata: Record<string, unknown> | null;
+  updatedAt: string;
+};
+
+type UrlHistoryResponse = {
+  document: {
+    id: string;
+    kbId: string;
+    title: string | null;
+    url: string;
+    status: UrlStatus | string;
+    updatedAt: string;
+  };
+  jobs: UrlHistoryEntry[];
 };
 
 export function UrlsList({ urls, canEdit }: { urls: UrlListEntry[]; canEdit: boolean }) {
@@ -69,6 +101,8 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
   const tForm = useTranslations("kb.urlForm");
   const tActions = useTranslations("kb.urlActions");
   const tStatuses = useTranslations("kb.urlStatuses");
+  const tHistory = useTranslations("kb.urlHistory");
+  const formatter = useFormatter();
 
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(url.title ?? "");
@@ -78,6 +112,10 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
   const [busy, setBusy] = useState<"save" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ingestionMessage, setIngestionMessage] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyEntries, setHistoryEntries] = useState<UrlHistoryEntry[] | null>(null);
   const canResync = canEdit && !isEditing && url.status === "error";
 
   const titleFieldId = useId();
@@ -93,6 +131,9 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
     setDescription(url.description ?? "");
     setStatus(url.status);
     setIngestionMessage(null);
+    setHistoryEntries(null);
+    setHistoryError(null);
+    setHistoryOpen(false);
   }, [url.id, url.title, url.url, url.description, url.status]);
 
   function resetForm() {
@@ -100,6 +141,76 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
     setCurrentUrl(url.url);
     setDescription(url.description ?? "");
     setStatus(url.status);
+  }
+
+  async function loadHistory() {
+    setHistoryLoading(true);
+    try {
+      const response = await fetch(`/api/urls/${url.id}/history`);
+      const body = await response.text();
+
+      if (!response.ok) {
+        let message: string | undefined;
+        try {
+          const parsed = JSON.parse(body) as { error?: string } | null;
+          if (parsed && typeof parsed.error === "string") {
+            message = parsed.error;
+          }
+        } catch {
+          // ignore JSON parse errors
+        }
+        throw new Error(message ?? `${tHistory("loadError")} (${response.status})`);
+      }
+
+      let parsed: UrlHistoryResponse;
+      try {
+        parsed = JSON.parse(body) as UrlHistoryResponse;
+      } catch {
+        throw new Error(tHistory("loadError"));
+      }
+
+      setHistoryEntries(parsed.jobs ?? []);
+    } catch (err) {
+      setHistoryEntries([]);
+      const message = err instanceof Error ? err.message : String(err);
+      setHistoryError(message || tHistory("loadError"));
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  function openHistory() {
+    setHistoryError(null);
+    if ((historyEntries === null || historyError) && !historyLoading) {
+      void loadHistory();
+    }
+    setHistoryOpen(true);
+  }
+
+  function handleHistoryOpenChange(open: boolean) {
+    setHistoryOpen(open);
+    if (!open) {
+      setHistoryError(null);
+    }
+  }
+
+  function formatTimestamp(value: string | null) {
+    if (!value) {
+      return null;
+    }
+
+    const date = new Date(value);
+    return {
+      date: formatter.dateTime(date, { dateStyle: "medium" }),
+      time: formatter.dateTime(date, { timeStyle: "short" }),
+    };
+  }
+
+  function resolveStatusLabel(value: UrlStatus | string) {
+    if (STATUSES.includes(value as UrlStatus)) {
+      return tStatuses(value as UrlStatus);
+    }
+    return value;
   }
 
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
@@ -399,6 +510,16 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
             variant="outline"
             size="sm"
             className="rounded-full px-4"
+            onClick={openHistory}
+            disabled={busy !== null}
+          >
+            {tActions("history")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-full px-4"
             onClick={() => {
               if (!canEdit) {
                 return;
@@ -434,6 +555,65 @@ function UrlRow({ url, canEdit }: { url: UrlWithLabels; canEdit: boolean }) {
           ) : null}
         </div>
       ) : null}
+
+      <Dialog open={historyOpen} onOpenChange={handleHistoryOpenChange}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{tHistory("title")}</DialogTitle>
+            <DialogDescription>{tHistory("description", { url: url.url })}</DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+            {historyLoading ? (
+              <p className="text-sm text-muted-foreground">{tHistory("loading")}</p>
+            ) : historyError ? (
+              <p className="text-sm text-red-500">{historyError}</p>
+            ) : historyEntries && historyEntries.length > 0 ? (
+              <ul className="space-y-3">
+                {historyEntries.map((entry) => {
+                  const queued = formatTimestamp(entry.queuedAt);
+                  const started = formatTimestamp(entry.startedAt);
+                  const finished = formatTimestamp(entry.finishedAt);
+                  const updated = formatTimestamp(entry.updatedAt);
+
+                  return (
+                    <li key={entry.id} className="rounded-xl border border-border/40 bg-muted/30 p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-foreground">{resolveStatusLabel(entry.status)}</span>
+                        {updated ? (
+                          <span className="text-[11px] text-muted-foreground">
+                            {tHistory("updatedAt", { date: updated.date, time: updated.time })}
+                          </span>
+                        ) : null}
+                      </div>
+                      <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        {queued ? <div>{tHistory("queuedAt", { date: queued.date, time: queued.time })}</div> : null}
+                        {started ? <div>{tHistory("startedAt", { date: started.date, time: started.time })}</div> : null}
+                        {finished ? <div>{tHistory("finishedAt", { date: finished.date, time: finished.time })}</div> : null}
+                      </dl>
+                      {entry.errorMessage ? (
+                        <p className="mt-3 text-xs text-red-500">
+                          {tHistory("error", { error: entry.errorMessage })}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">{tHistory("empty")}</p>
+            )}
+          </div>
+
+          <DialogFooter className="mt-4">
+            <DialogClose asChild>
+              <Button type="button" variant="outline" size="sm">
+                {tActions("close")}
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {error ? (
         <LiveMessage

@@ -284,13 +284,27 @@
     "updateError": "Couldn't update the link.",
     "resync": "Requeue ingestion",
     "queuedTooltip": "Ingestion in progress. Refresh later or edit the link if needed.",
-    "errorTooltip": "Ingestion failed. Check the URL then use “Edit” to retry."
+    "errorTooltip": "Ingestion failed. Check the URL then use “Edit” to retry.",
+    "history": "History",
+    "close": "Close"
   },
     "urlStatuses": {
       "draft": "Draft",
       "queued": "Queued",
       "synced": "Synced",
       "error": "Error"
+    },
+    "urlHistory": {
+      "title": "Ingestion history",
+      "description": "Recent operations recorded for {url}.",
+      "loading": "Loading history…",
+      "empty": "No operations recorded for this link yet.",
+      "loadError": "Unable to load history.",
+      "queuedAt": "Queued on {date} · {time}",
+      "startedAt": "Started on {date} · {time}",
+      "finishedAt": "Finished on {date} · {time}",
+      "updatedAt": "Updated on {date} · {time}",
+      "error": "Error: {error}"
     },
     "chat": {
       "title": "AI Assistant",
