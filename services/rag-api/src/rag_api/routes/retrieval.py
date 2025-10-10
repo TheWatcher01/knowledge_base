@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
+import logging
 from datetime import datetime
 from typing import Annotated, Any, Dict, List
 
@@ -14,6 +17,9 @@ from ..dependencies.auth import verify_bearer_token
 from ..services.ingestion import delete_document as delete_document_from_store
 from ..services.ingestion import ingest_text as ingest_text_into_store
 from ..services.retrieval import query_documents
+from ..services.web_ingestion import WebIngestionError, ingest_url_document
+
+LOGGER = logging.getLogger(__name__)
 
 router = APIRouter(tags=["retrieval"], dependencies=[Depends(verify_bearer_token)])
 
@@ -31,6 +37,7 @@ class WebIngestRequest(BaseModel):
 
     url: str
     collection_name: str
+    document_id: str | None = Field(default=None, description="Optional document identifier")
 
 
 class QueryRequest(BaseModel):
@@ -116,7 +123,27 @@ async def ingest_web(
     """Trigger scraping + embedding for a URL."""
 
     _ensure_collection_configured(settings)
-    # TODO: enqueue web ingestion job leveraging SearxNG & Tika.
+
+    kb_id = _extract_kb_id(payload.collection_name) or "unknown"
+    document_id = payload.document_id or _hash_document_id(payload.url)
+
+    async def _task() -> None:
+        try:
+            await ingest_url_document(
+                settings,
+                kb_id=kb_id,
+                document_id=document_id,
+                url=payload.url,
+                collection_name=payload.collection_name,
+                ingest_text_fn=ingest_text_into_store,
+            )
+        except WebIngestionError as exc:
+            LOGGER.warning("[retrieval] web ingestion failed for %s: %s", payload.url, exc)
+        except Exception as exc:  # pragma: no cover
+            LOGGER.exception("[retrieval] unexpected failure during web ingestion: %s", exc)
+
+    asyncio.create_task(_task())
+
     return IngestResponse(message=f"Web ingestion queued for {payload.url}.")
 
 
@@ -187,3 +214,7 @@ def _extract_kb_id(collection_name: str) -> str | None:
     if collection_name.startswith("kb_") and len(collection_name) > 3:
         return collection_name[3:]
     return None
+
+
+def _hash_document_id(url: str) -> str:
+    return "url_" + hashlib.sha1(url.encode("utf-8", "ignore")).hexdigest()
