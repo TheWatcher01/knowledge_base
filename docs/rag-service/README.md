@@ -10,7 +10,7 @@
 - [x] Initialisation du service FastAPI (`rag-api`), Dockerfile et configuration `uv`.
 - [x] Migration du front Next.js vers les variables `RAG_API_*` et helpers `rag.ts`.
 - [x] Ingestion texte synchrone : chunking, embeddings Ollama, stockage PGVector.
-- [ ] Ingestion URL : crawl via SearxNG, extraction Tika, pipeline asynchrone.
+- [x] Ingestion URL : crawl via SearxNG, extraction Tika, pipeline asynchrone.
 - [ ] Suppression & synchronisation complète (`rag-sync`) avec alignement vecteurs/métadonnées.
 - [ ] Endpoint chat streaming (ChatOllama + SSE) avec fallback Prisma.
 - [ ] Intégration SearxNG comme outil de recherche temps réel.
@@ -22,14 +22,22 @@
 ## TODO détaillé
 
 - Définir le format de stockage Mongo pour les métadonnées (chunks, statut d’ingestion, timestamps).
-- Implémenter un loader Tika fiable (gestion des timeouts / retries) et prévoir un fallback Unstructured si Tika échoue.
-- Concevoir la tâche d’ingestion asynchrone pour les URLs (queue robuste, retries, suivi d’état `queued` → `processing` → `synced`).
-- Créer une table dédiée (Postgres) pour historiser finement les jobs (timestamps, erreurs, durée) et exposer un endpoint de consultation.
+- Durcir le loader Tika (timeouts, retries, fallback Unstructured) pour sécuriser l’extraction.
+- Renforcer la tâche d’ingestion asynchrone (priorités, retries, purge des jobs obsolètes).
+- Optimiser la table `UrlIngestionJob` (indexation, rétention) et enrichir l’API de consultation si besoin.
 - Générer et maintenir un schéma OpenAPI (FastAPI) documenté (annotations, descriptions, exemples) et vérifier l’accessibilité Swagger UI.
 - Ajouter un module de recherche SearxNG (wrapper LangChain) exposé comme outil optionnel dans le chat.
 - Mettre en place un système de logs structurés (JSON) côté FastAPI + intégration Prometheus/OTEL.
-- Écrire des tests pytest (ingestion texte, suppression) et Vitest/Playwright adaptés.
+- Étendre les tests (pytest delete/chat, tests web Vitest & Playwright pour la pipeline).
 - Documenter le playbook de déploiement (Docker Compose, initialisation PGVector, chargement modèles Ollama).
+
+## Pipeline web actuelle
+
+- `pipelines/web.py` introduit `UrlPipelineTask`/`UrlPipelineResult` pour lancer des rafales d’URLs (collection + `kbId` + `documentId`).
+- Pour chaque tâche, la pipeline crée un job `UrlIngestionJob`, met à jour `UrlEntry` (`queued` → `processing` → `synced|error`) et délègue l’extraction à `ingest_url_document`.
+- `ingest_url_document` télécharge la page, extrait le texte via Tika, récupère le titre, enrichit les métadonnées avec SearxNG (snippets) puis appelle `ingest_text_into_store` (Ollama embeddings → PGVector).
+- Les helpers `_safe_update_url_status`/`_safe_mark_job_*` garantissent la robustesse lorsque Postgres n’est pas disponible.
+- Les tests `services/rag-api/tests/test_web_pipeline.py` couvrent les scénarios succès, job déjà en cours et erreurs d’ingestion.
 
 ## Historique d’ingestion (volet 4.1)
 
@@ -41,7 +49,7 @@
 
 - SlowAPI configuré via `RAG_RATE_LIMIT` + dépendances par endpoint (`5/min` texte, `3/min` web, `10/min` delete, `60/min` query, `30/min` chat).
 - Gardes payload : `RAG_MAX_TEXT_CHARS` (20 000) et `RAG_MAX_JSON_BYTES` (256 KB) renvoient `413 Content Too Large` ; la file web respecte `RAG_MAX_CONCURRENT_JOBS` (429 sinon).
-- Tests dédiés (`services/rag-api/tests/test_retrieval_api.py`) vérifient les dépassements et les endpoints jobs ; instrumentation structlog + Prometheus déjà intégrée.
+- Tests dédiés (`services/rag-api/tests/test_retrieval_api.py`, `services/rag-api/tests/test_web_pipeline.py`) vérifient les dépassements, la pipeline web et les endpoints jobs ; instrumentation structlog + Prometheus déjà intégrée.
 
 ## Intégration actuelle d’Open WebUI
 

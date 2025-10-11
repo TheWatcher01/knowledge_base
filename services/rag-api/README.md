@@ -10,7 +10,7 @@ Ce service FastAPI prend le relais d’Open WebUI pour la partie RAG : ingestio
 | --- | --- |
 | ✅ | Création du squelette FastAPI + configuration uv / Docker |
 | ✅ | Ingestion texte (LlamaIndex : chunking + embeddings Ollama + PGVector) |
-| ⬜️ | Ingestion URL (SearxNG + Tika) et pipeline asynchrone |
+| ✅ | Ingestion URL (SearxNG + Tika) et pipeline asynchrone |
 | ⬜️ | Suppression / resynchronisation complète des KB (`rag-sync`) |
 | ⬜️ | Endpoint chat streaming (ChatOllama + SSE) avec fallback Prisma |
 | ⬜️ | Intégration SearxNG comme outil de recherche live + observabilité |
@@ -20,10 +20,10 @@ Ce service FastAPI prend le relais d’Open WebUI pour la partie RAG : ingestio
 
 - Mutualiser un pool Postgres psycopg pour éviter les connexions répétées.
 - Ajouter un loader Tika résilient (timeouts, retries, fallback Unstructured).
-- Mettre en place une file de traitement pour les crawls URL volumineux.
-- Implémenter la suppression des chunks + métadonnées dans PGVector.
+- Consolider la file de traitement pour les crawls URL volumineux (priorités, retries, déduplication).
+- Finaliser la suppression des chunks + métadonnées dans PGVector.
 - Instrumenter les logs (JSON) et exposer des métriques Prometheus / OTEL.
-- Couvrir les endpoints FastAPI avec pytest (ingestion, delete, chat).
+- Étendre la couverture de tests (pytest delete/chat, Vitest & Playwright côté web).
 - Rédiger le playbook de déploiement (pgvector init, modèles Ollama, secrets).
 
 ---
@@ -79,12 +79,25 @@ uv run main.py
 - L’ingestion web renvoie `429 Too Many Requests` lorsque `RAG_MAX_CONCURRENT_JOBS` est atteint pour une KB donnée.
 - Les logs structlog et les métriques Prometheus (`prometheus_fastapi_instrumentator`) exposent les informations de quota (`rate.limit.hit`).
 
+## 🕸️ Pipeline d’ingestion web
+
+La pipeline web est désormais orchestrée par `pipelines/web.py` et repose sur trois étapes clés :
+
+1. **Découverte** — `discover_urls` interroge SearxNG (LangChain `SearxSearchWrapper`) pour proposer une liste d’URLs.
+2. **Traitement** — `run_pipeline` gère des `UrlPipelineTask`, crée/relit les jobs `UrlIngestionJob`, met à jour les statuts `UrlEntry` (`queued` → `processing` → `synced|error`) et collecte les résultats (`UrlPipelineResult`).
+3. **Extraction & ingestion** — `ingest_url_document` télécharge l’URL, extrait le texte via Tika, récupère le titre, ajoute des snippets Searx si disponibles puis pousse le contenu vers `ingest_text_into_store` (Ollama embeddings + PGVector).
+
+Les helpers `_safe_update_url_status`/`_safe_mark_job_*` maintiennent la robustesse en cas de indisponibilité Postgres. Chaque exécution retourne les métadonnées enrichies (titre, content-type, URL finale, snippets) exploitables côté orchestrateur ou UI.
+
 ## ✅ Tests recommandés
 
 ```bash
 # Côté service FastAPI
 cd services/rag-api
 uv run pytest
+
+# Scénarios orchestrateur web
+uv run pytest tests/test_web_pipeline.py
 
 # Côté web (dialogue historique + UI)
 cd apps/web
