@@ -110,6 +110,15 @@ async def pull_model(
     return {"status": "pulled", "name": model_name, "summary": summary.strip()}
 
 
+@router.get("/models/defaults", summary="Get default chat and embedding models")
+async def get_model_defaults(settings: Annotated[Settings, Depends(get_settings)]) -> dict[str, str | None]:
+    _ensure_ollama_configured(settings)
+    return {
+        "chat_model": settings.ollama_llm_model,
+        "embedding_model": settings.ollama_embedding_model,
+    }
+
+
 @router.delete("/models/{name}", summary="Delete an Ollama model")
 async def delete_model(name: str, settings: Annotated[Settings, Depends(get_settings)]) -> dict[str, str]:
     _ensure_ollama_configured(settings)

@@ -64,7 +64,10 @@
       "description": "Installez de nouveaux modèles, vérifiez leur présence sur le serveur Ollama et définissez les valeurs par défaut pour le chat et l’ingestion.",
       "actions": {
         "install": "Installer un modèle",
-        "refresh": "Actualiser la liste"
+        "refresh": "Actualiser la liste",
+        "setChat": "Définir pour le chat",
+        "setEmbedding": "Définir pour l’ingestion",
+        "delete": "Supprimer"
       },
       "table": {
         "title": "Modèles installés",
@@ -72,7 +75,8 @@
         "name": "Nom",
         "size": "Taille",
         "modified": "Mis à jour",
-        "digest": "Digest"
+        "digest": "Digest",
+        "actions": "Actions"
       },
       "empty": "Aucun modèle installé pour le moment.",
       "loadError": "Impossible de charger la liste des modèles : {error}",
@@ -80,7 +84,14 @@
       "installing": "Installation en cours…",
       "refreshing": "Actualisation…",
       "installSuccess": "{name} installé avec succès",
-      "installError": "Installation impossible : {error}"
+      "installError": "Installation impossible : {error}",
+      "deleteConfirm": "Supprimer le modèle \"{name}\" ?",
+      "deleteSuccess": "{name} supprimé",
+      "deleteError": "Suppression impossible : {error}",
+      "defaultsSuccess": "Modèles par défaut mis à jour",
+      "defaultsError": "Impossible de mettre à jour les modèles par défaut : {error}",
+      "badgeChat": "Chat",
+      "badgeEmbedding": "Ingestion"
     }
   },
   "kb": {

@@ -45,5 +45,21 @@ test.describe('Admin modèles', () => {
 
         // Attendre que le bouton repasse à l'état normal
         await expect(page.getByRole('button', { name: 'Installation en cours…' })).toBeHidden({ timeout: 20000 });
+
+        const setChatButton = page.getByRole('button', { name: /Définir pour le chat/ }).first();
+        if (await setChatButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+            await setChatButton.click();
+        }
+
+        const setEmbeddingButton = page.getByRole('button', { name: /Définir pour l’ingestion/ }).first();
+        if (await setEmbeddingButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+            await setEmbeddingButton.click();
+        }
+
+        const deleteButton = page.getByRole('button', { name: /Supprimer/ }).first();
+        if (await deleteButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+            page.once('dialog', (dialog) => dialog.accept().catch(() => undefined));
+            await deleteButton.click();
+        }
     });
 });

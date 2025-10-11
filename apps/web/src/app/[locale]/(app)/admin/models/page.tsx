@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { listModels } from "@/lib/models";
+import { getModelDefaults, listModels } from "@/lib/models";
 import { getTranslations } from "next-intl/server";
 import ModelTable from "@/components/admin/models/ModelTable";
 
@@ -20,6 +20,7 @@ export default async function AdminModelsPage({ params }: PageProps) {
   const t = await getTranslations({ locale, namespace: "admin.models" });
 
   let initialModels: Awaited<ReturnType<typeof listModels>> = [];
+  let initialDefaults = await getModelDefaults().catch(() => ({ chat_model: null, embedding_model: null }));
   let initialError: string | null = null;
 
   try {
@@ -36,7 +37,11 @@ export default async function AdminModelsPage({ params }: PageProps) {
         <p className="mt-2 max-w-2xl text-base text-muted-foreground">{t("description")}</p>
       </div>
 
-      <ModelTable initialModels={initialModels} initialError={initialError ?? undefined} />
+      <ModelTable
+        initialModels={initialModels}
+        initialDefaults={initialDefaults}
+        initialError={initialError ?? undefined}
+      />
     </div>
   );
 }

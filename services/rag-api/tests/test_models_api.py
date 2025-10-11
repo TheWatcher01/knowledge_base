@@ -121,3 +121,21 @@ async def test_update_model_defaults_requires_payload(monkeypatch):
 
     assert response.status_code == 400
     assert "Provide" in response.text
+
+
+@pytest.mark.asyncio
+async def test_get_model_defaults(monkeypatch):
+    settings = _DummySettings()
+    settings.ollama_base_url = "http://ollama:11434"
+    settings.ollama_llm_model = "llama3"
+    settings.ollama_embedding_model = "nomic-embed"
+
+    monkeypatch.setattr("rag_api.routes.models.get_settings", lambda: settings)
+
+    async with _client(settings) as client:
+        response = await client.get("/api/v1/models/defaults")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["chat_model"] == "llama3"
+    assert body["embedding_model"] == "nomic-embed"

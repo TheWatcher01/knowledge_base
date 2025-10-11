@@ -64,7 +64,10 @@
       "description": "Install new models, verify those available on the Ollama server, and choose defaults for chat and embedding.",
       "actions": {
         "install": "Install model",
-        "refresh": "Refresh list"
+        "refresh": "Refresh list",
+        "setChat": "Set for chat",
+        "setEmbedding": "Set for ingestion",
+        "delete": "Delete"
       },
       "table": {
         "title": "Installed models",
@@ -72,7 +75,8 @@
         "name": "Name",
         "size": "Size",
         "modified": "Updated",
-        "digest": "Digest"
+        "digest": "Digest",
+        "actions": "Actions"
       },
       "empty": "No models installed yet.",
       "loadError": "Unable to fetch models: {error}",
@@ -80,7 +84,14 @@
       "installing": "Installing…",
       "refreshing": "Refreshing…",
       "installSuccess": "{name} installed",
-      "installError": "Installation failed: {error}"
+      "installError": "Installation failed: {error}",
+      "deleteConfirm": "Delete model \"{name}\"?",
+      "deleteSuccess": "{name} deleted",
+      "deleteError": "Failed to delete model: {error}",
+      "defaultsSuccess": "Default models updated",
+      "defaultsError": "Could not update default models: {error}",
+      "badgeChat": "Chat",
+      "badgeEmbedding": "Ingestion"
     }
   },
   "kb": {
