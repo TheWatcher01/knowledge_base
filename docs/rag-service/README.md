@@ -22,6 +22,7 @@
 - [ ] Jeux de tests backend/front + documentation finale.
 - [x] Historisation des jobs d’ingestion (table dédiée + endpoints d’administration).
 - [ ] Exposer une documentation API (OpenAPI/Swagger) complète pour le service RAG.
+- [ ] Finaliser la pipeline GitHub Actions (lancement Next.js/Playwright, services externes, secrets).
 
 ## TODO détaillé
 
@@ -35,6 +36,7 @@
 - Mettre en place un système de logs structurés (JSON) côté FastAPI + intégration Prometheus/OTEL.
 - Étendre les tests (pytest delete/chat, tests web Vitest & Playwright pour la pipeline).
 - Documenter le playbook de déploiement (Docker Compose, initialisation PGVector, chargement modèles Ollama).
+- Finaliser la configuration CI (secrets/variables GitHub, services Postgres/Mongo pour Playwright).
 - Script de backfill Prisma (`pnpm --filter web exec -- node scripts/backfill-url-status.mjs [--dry-run]`) pour réaligner `UrlEntry.status` avec le dernier job connu.
 - Scénarios de vérification : lancer `pnpm --filter web exec -- node scripts/seed-kb-sample.mjs`, exécuter le backfill (dry-run puis réel) et contrôler la timeline UI + `rag-sync`.
 

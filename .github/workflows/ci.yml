@@ -57,35 +57,8 @@ jobs:
             ${{ runner.os }}-pnpm-
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter web exec prisma generate
-      - run: pnpm --filter web exec next build
-        env:
-          NEXTAUTH_URL: http://localhost:3001
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-          MONGODB_URI: mongodb://localhost:27017
-          MONGODB_DB: test
-          AUTH_SECRET: test-secret
-          RAG_API_BASE: http://localhost:8000
-          RAG_API_TOKEN: test-token
-      - run: pnpm --filter web exec next start --port 3001 &
-        env:
-          NEXTAUTH_URL: http://localhost:3001
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-          MONGODB_URI: mongodb://localhost:27017
-          MONGODB_DB: test
-          AUTH_SECRET: test-secret
-          RAG_API_BASE: http://localhost:8000
-          RAG_API_TOKEN: test-token
-      - run: pnpm dlx wait-on http://localhost:3001
       - run: pnpm --filter web exec -- playwright install --with-deps
       - run: pnpm --filter web exec -- playwright test --reporter=list
-        env:
-          NEXTAUTH_URL: http://localhost:3001
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-          MONGODB_URI: mongodb://localhost:27017
-          MONGODB_DB: test
-          AUTH_SECRET: test-secret
-          RAG_API_BASE: http://localhost:8000
-          RAG_API_TOKEN: test-token
 
   pytest:
     runs-on: ubuntu-latest
