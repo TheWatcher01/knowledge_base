@@ -8,6 +8,9 @@ from typing import Any, Literal
 from pydantic import Field, HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .logging import logger
+from .services.model_preferences import get_model_preferences
+
 
 class Settings(BaseSettings):
     """Application runtime settings sourced from environment variables."""
@@ -100,7 +103,26 @@ class Settings(BaseSettings):
         }
 
 
+log = logger("config")
+
+
 @lru_cache
 def get_settings() -> Settings:
     """Return a cached Settings instance."""
-    return Settings()  # type: ignore[call-arg]
+    settings = Settings()  # type: ignore[call-arg]
+
+    if settings.postgres_dsn:
+        try:
+            preferences = get_model_preferences(settings)
+        except Exception as exc:  # pragma: no cover - defensive logging only
+            log.warning("settings.model_preferences.load_failed", error=str(exc))
+        else:
+            chat_default = preferences.get("chat_model")
+            embed_default = preferences.get("embedding_model")
+
+            if chat_default:
+                settings.ollama_llm_model = chat_default
+            if embed_default:
+                settings.ollama_embedding_model = embed_default
+
+    return settings
