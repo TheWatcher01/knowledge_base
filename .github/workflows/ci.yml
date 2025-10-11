@@ -15,12 +15,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
       - uses: pnpm/action-setup@v2
         with:
           version: 9
+          run_install: false
+      - uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml', 'apps/web/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web exec prisma generate
       - run: pnpm --filter web exec vitest run
+        env:
+          NEXTAUTH_URL: http://localhost:3001
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          MONGODB_URI: mongodb://localhost:27017
+          MONGODB_DB: test
+          AUTH_SECRET: test-secret
+          RAG_API_BASE: http://localhost:8000
+          RAG_API_TOKEN: test-token
 
   playwright:
     runs-on: ubuntu-latest
@@ -30,13 +45,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
       - uses: pnpm/action-setup@v2
         with:
           version: 9
+          run_install: false
+      - uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml', 'apps/web/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
       - run: pnpm install --frozen-lockfile
-      - run: npx playwright install --with-deps
+      - run: pnpm --filter web exec prisma generate
+      - run: pnpm --filter web exec -- playwright install --with-deps
       - run: pnpm --filter web exec -- playwright test --reporter=list
+        env:
+          NEXTAUTH_URL: http://localhost:3001
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          MONGODB_URI: mongodb://localhost:27017
+          MONGODB_DB: test
+          AUTH_SECRET: test-secret
+          RAG_API_BASE: http://localhost:8000
+          RAG_API_TOKEN: test-token
 
   pytest:
     runs-on: ubuntu-latest
@@ -45,6 +75,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: uv pip install --requirement services/rag-api/requirements.txt
+      - run: pip install uv
       - run: uv run pytest tests/test_models_api.py
         working-directory: services/rag-api
