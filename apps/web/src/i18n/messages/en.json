@@ -84,14 +84,43 @@
       "installing": "Installing…",
       "refreshing": "Refreshing…",
       "installSuccess": "{name} installed",
+      "installQueued": "Pull started for {name}",
+      "installSummary": "Ollama summary: {summary}",
+      "installUnknownError": "Unknown error",
       "installError": "Installation failed: {error}",
       "deleteConfirm": "Delete model \"{name}\"?",
       "deleteSuccess": "{name} deleted",
       "deleteError": "Failed to delete model: {error}",
       "defaultsSuccess": "Default models updated",
       "defaultsError": "Could not update default models: {error}",
+      "actionErrorBanner": "Last error: {error}",
       "badgeChat": "Chat",
-      "badgeEmbedding": "Ingestion"
+      "badgeEmbedding": "Ingestion",
+      "jobs": {
+        "title": "Ollama Downloads",
+        "subtitle": "Monitor ongoing pulls and recent activity.",
+        "refresh": "Refresh",
+        "refreshing": "Refreshing…",
+        "activeTitle": "In progress",
+        "empty": "No download in progress.",
+        "recentTitle": "Recent activity",
+        "recentEmpty": "No recent download.",
+        "status": {
+          "queued": "Queued",
+          "running": "Running",
+          "succeeded": "Completed",
+          "failed": "Failed"
+        },
+        "queuedAt": "Queued at {time}",
+        "updatedAt": "Updated at {time}",
+        "finishedAt": "Completed at {time}",
+        "failedAt": "Failed at {time}",
+        "summary": "Summary: {summary}",
+        "error": "Error: {error}",
+        "noSummary": "No summary returned by Ollama.",
+        "unknownTime": "unknown time",
+        "unknownError": "unknown error"
+      }
     }
   },
   "kb": {

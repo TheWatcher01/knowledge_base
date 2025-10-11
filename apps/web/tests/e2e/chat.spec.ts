@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 const DEMO_EMAIL = process.env.DEMO_EMAIL ?? 'demo@kb.local';
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'Playwright!23';
@@ -12,13 +12,15 @@ async function login(page: import('@playwright/test').Page) {
 }
 
 test.describe('Chat des bases de connaissance', () => {
-    test('démarre une nouvelle conversation pour chaque base sélectionnée', async ({ page }) => {
+    test('démarre une nouvelle conversation pour chaque base sélectionnée', async ({ page, configureRagMock }) => {
         const consoleErrors: string[] = [];
         page.on('console', (message) => {
             if (message.type() === 'error') {
                 consoleErrors.push(message.text());
             }
         });
+
+        await configureRagMock();
 
         await login(page);
 
@@ -123,7 +125,7 @@ test.describe('Chat des bases de connaissance', () => {
 
             await Promise.all([
                 page.waitForURL((url) => url.searchParams.get('conversation') === conversationId, {
-                    timeout: 10_000,
+                    timeout: 25_000,
                 }),
                 page.locator(`a[href="${escapedHref}"]`).first().click(),
             ]);

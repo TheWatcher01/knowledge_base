@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 const DEMO_EMAIL = process.env.DEMO_EMAIL ?? 'demo@kb.local';
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'Playwright!23';
@@ -12,54 +12,47 @@ async function login(page: import('@playwright/test').Page) {
 }
 
 test.describe('Admin modèles', () => {
-    test('affiche la liste et permet de lancer une installation', async ({ page }) => {
+test.use({ ragMockDefaults: { failModels: ['demo-chat', 'llama3.1:8b'] } });
+
+test.describe('Admin modèles', () => {
+    test('affiche les erreurs renvoyées par le service RAG', async ({ page }) => {
+
         await login(page);
 
         await page.goto('/fr/admin/models');
         await expect(page.getByRole('heading', { level: 1, name: 'Gestion des modèles Ollama' })).toBeVisible();
+        await expect(page.getByTestId('ollama-jobs-section')).toBeVisible();
 
-        // Vérifier que le tableau apparaît
         const table = page.locator('[data-slot="table"]');
         await expect(table).toBeVisible();
-
-        // Cliquer sur rafraîchir
-        await page.getByRole('button', { name: /Actualiser la liste|Actualisation…/ }).click();
-
         const rows = table.locator('tbody tr');
         const emptyState = page.getByText('Aucun modèle installé pour le moment.');
-        const errorState = page.getByText(/Impossible de charger la liste des modèles/);
-
         await expect(async () => {
-            if (await rows.first().isVisible()) return;
+            if ((await rows.count()) > 0) return;
             if (await emptyState.isVisible()) return;
-            if (await errorState.isVisible()) return;
-            throw new Error('no state visible');
+            throw new Error('aucun état visible');
         }).toPass({ timeout: 8000 });
 
-        // Lancer l’installation : saisir rapidement un modèle inexistant pour tester le flux d’erreur
-        const modelName = `playwright-test-${Date.now()}`;
-        page.once('dialog', (dialog) => {
-            dialog.accept(modelName).catch(() => undefined);
-        });
+        page.once('dialog', (dialog) => dialog.accept('demo-chat').catch(() => undefined));
         await page.getByRole('button', { name: 'Installer un modèle' }).click();
 
-        // Attendre que le bouton repasse à l'état normal
-        await expect(page.getByRole('button', { name: 'Installation en cours…' })).toBeHidden({ timeout: 20000 });
+        await page.getByTestId('ollama-jobs-refresh').click();
+        await expect(page.getByTestId('ollama-job-recent')).toContainText('demo-chat', { timeout: 15_000 });
+        await expect(page.getByText("Dernière erreur : Model 'demo-chat' failed")).toBeVisible({ timeout: 15_000 });
 
-        const setChatButton = page.getByRole('button', { name: /Définir pour le chat/ }).first();
-        if (await setChatButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-            await setChatButton.click();
-        }
+        const snapshotBeforeDefaults = await page.request.get('/api/test/rag-mock/state');
+        const beforeState = (await snapshotBeforeDefaults.json()) as { defaults: { chat_model: string | null } };
+        expect(beforeState.defaults.chat_model).toBeNull();
 
-        const setEmbeddingButton = page.getByRole('button', { name: /Définir pour l’ingestion/ }).first();
-        if (await setEmbeddingButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-            await setEmbeddingButton.click();
-        }
+        await table
+            .locator('tbody tr')
+            .filter({ hasText: 'llama3.1:8b' })
+            .getByRole('button', { name: 'Définir pour le chat' })
+            .first()
+            .click();
 
-        const deleteButton = page.getByRole('button', { name: /Supprimer/ }).first();
-        if (await deleteButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-            page.once('dialog', (dialog) => dialog.accept().catch(() => undefined));
-            await deleteButton.click();
-        }
+        const snapshotAfterDefaults = await page.request.get('/api/test/rag-mock/state');
+        const afterState = (await snapshotAfterDefaults.json()) as { defaults: { chat_model: string | null } };
+        expect(afterState.defaults.chat_model).toBeNull();
     });
 });

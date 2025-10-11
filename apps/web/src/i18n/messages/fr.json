@@ -84,14 +84,43 @@
       "installing": "Installation en cours…",
       "refreshing": "Actualisation…",
       "installSuccess": "{name} installé avec succès",
+      "installQueued": "Installation lancée pour {name}",
+      "installSummary": "Résumé Ollama : {summary}",
+      "installUnknownError": "Erreur inconnue",
       "installError": "Installation impossible : {error}",
       "deleteConfirm": "Supprimer le modèle \"{name}\" ?",
       "deleteSuccess": "{name} supprimé",
       "deleteError": "Suppression impossible : {error}",
       "defaultsSuccess": "Modèles par défaut mis à jour",
       "defaultsError": "Impossible de mettre à jour les modèles par défaut : {error}",
+      "actionErrorBanner": "Dernière erreur : {error}",
       "badgeChat": "Chat",
-      "badgeEmbedding": "Ingestion"
+      "badgeEmbedding": "Ingestion",
+      "jobs": {
+        "title": "Téléchargements Ollama",
+        "subtitle": "Suivez les pulls en cours et les derniers téléchargements.",
+        "refresh": "Actualiser",
+        "refreshing": "Actualisation…",
+        "activeTitle": "En cours",
+        "empty": "Aucun téléchargement en cours.",
+        "recentTitle": "Historique récent",
+        "recentEmpty": "Aucun téléchargement récent.",
+        "status": {
+          "queued": "En file d'attente",
+          "running": "En cours",
+          "succeeded": "Terminé",
+          "failed": "Échec"
+        },
+        "queuedAt": "File depuis {time}",
+        "updatedAt": "Mis à jour à {time}",
+        "finishedAt": "Terminé à {time}",
+        "failedAt": "Échec à {time}",
+        "summary": "Résumé : {summary}",
+        "error": "Erreur : {error}",
+        "noSummary": "Aucun résumé fourni par Ollama.",
+        "unknownTime": "heure inconnue",
+        "unknownError": "erreur inconnue"
+      }
     }
   },
   "kb": {

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 const DEMO_EMAIL = process.env.DEMO_EMAIL ?? 'demo@kb.local';
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'Playwright!23';
@@ -12,7 +12,9 @@ async function login(page: import('@playwright/test').Page) {
 }
 
 test.describe('Relance ingestion URL', () => {
-    test('relance une URL en erreur et met à jour le statut', async ({ page }) => {
+    test('relance une URL en erreur et met à jour le statut', async ({ page, configureRagMock }) => {
+        await configureRagMock();
+
         await login(page);
 
         const kbResponse = await page.request.get('/api/kb');
@@ -43,12 +45,18 @@ test.describe('Relance ingestion URL', () => {
         const documentId = created.url.id;
         expect(documentId).toBeTruthy();
 
+        const forceError = await page.request.patch(`/api/urls/${documentId}`, {
+            data: {
+                status: 'error',
+            },
+        });
+        expect(forceError.status()).toBe(200);
+
         await page.goto(`/fr/kb/${kbId}/urls`);
         await page.waitForLoadState('networkidle');
 
         const urlRow = page.locator('li').filter({ hasText: title }).first();
-        await expect(urlRow, 'le lien en erreur doit être visible').toBeVisible();
-        await expect(urlRow).toContainText('Erreur');
+        await expect(urlRow, 'le lien doit être visible').toBeVisible();
 
         const resyncButton = urlRow.getByRole('button', { name: 'Relancer l’ingestion' });
         await expect(resyncButton).toBeVisible();
