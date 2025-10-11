@@ -34,6 +34,12 @@ def get_embedding_model(settings: AppSettings) -> OllamaEmbedding:
     return _embedding_model(settings.ollama_base_url, settings.ollama_embedding_model)
 
 
+def clear_embedding_cache() -> None:
+    """Clear cached embedding model instances (after config changes)."""
+
+    _embedding_model.cache_clear()
+
+
 def _prepare_documents(
     document_id: str,
     content: str,

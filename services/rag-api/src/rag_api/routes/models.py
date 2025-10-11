@@ -10,6 +10,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..config import Settings, get_settings
+from ..services.ingestion import clear_embedding_cache
 from ..dependencies.auth import verify_bearer_token
 from ..logging import logger
 
@@ -107,3 +108,47 @@ async def pull_model(
 
     log.info("models.pull.completed", name=model_name)
     return {"status": "pulled", "name": model_name, "summary": summary.strip()}
+
+
+@router.delete("/models/{name}", summary="Delete an Ollama model")
+async def delete_model(name: str, settings: Annotated[Settings, Depends(get_settings)]) -> dict[str, str]:
+    _ensure_ollama_configured(settings)
+
+    if not name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Model name is required")
+
+    log.info("models.delete.start", name=name)
+    _run_ollama_command("ollama", "delete", name)
+    log.info("models.delete.completed", name=name)
+    return {"status": "deleted", "name": name}
+
+
+@router.patch("/models/defaults", summary="Update default chat or embedding models")
+async def update_model_defaults(
+    payload: dict[str, str | None],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, str | None]:
+    _ensure_ollama_configured(settings)
+
+    chat_model = payload.get("chat_model")
+    embedding_model = payload.get("embedding_model")
+
+    if chat_model is None and embedding_model is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide chat_model and/or embedding_model",
+        )
+
+    if chat_model is not None:
+        settings.ollama_llm_model = chat_model
+        log.info("models.defaults.chat", model=chat_model)
+
+    if embedding_model is not None:
+        settings.ollama_embedding_model = embedding_model
+        clear_embedding_cache()
+        log.info("models.defaults.embedding", model=embedding_model)
+
+    return {
+        "chat_model": settings.ollama_llm_model,
+        "embedding_model": settings.ollama_embedding_model,
+    }

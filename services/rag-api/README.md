@@ -75,6 +75,8 @@ uv run main.py
 - `POST /api/v1/chat/completions` — streaming SSE propulsé par Ollama (rate limit 30/min).
 - `GET /api/v1/models` — liste des modèles Ollama installés.
 - `POST /api/v1/models/pull` — installation d’un modèle Ollama.
+- `DELETE /api/v1/models/{name}` — suppression d’un modèle du serveur Ollama.
+- `PATCH /api/v1/models/defaults` — mise à jour des modèles par défaut (chat / embeddings).
 
 ## 🛡️ Rate limiting & garde-fous
 

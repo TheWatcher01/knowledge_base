@@ -62,3 +62,62 @@ async def test_pull_model_success(monkeypatch):
     body = response.json()
     assert body["status"] == "pulled"
     assert body["name"] == "llama3.1:8b"
+
+
+@pytest.mark.asyncio
+async def test_delete_model_success(monkeypatch):
+    settings = _DummySettings()
+    settings.ollama_base_url = "http://ollama:11434"
+
+    monkeypatch.setattr("rag_api.routes.models.get_settings", lambda: settings)
+    monkeypatch.setattr("rag_api.routes.models._run_ollama_command", lambda *args, **kwargs: "")
+
+    async with _client(settings) as client:
+        response = await client.delete("/api/v1/models/test-model")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "deleted"
+
+
+@pytest.mark.asyncio
+async def test_update_model_defaults(monkeypatch):
+    settings = _DummySettings()
+    settings.ollama_base_url = "http://ollama:11434"
+    settings.ollama_llm_model = "llama3"
+    settings.ollama_embedding_model = "nomic-embed"
+
+    monkeypatch.setattr("rag_api.routes.models.get_settings", lambda: settings)
+    cleared = {"value": False}
+
+    def _clear():
+        cleared["value"] = True
+
+    monkeypatch.setattr("rag_api.routes.models.clear_embedding_cache", _clear)
+
+    async with _client(settings) as client:
+        response = await client.patch(
+            "/api/v1/models/defaults",
+            json={"chat_model": "llama3.1", "embedding_model": "text-embed"},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["chat_model"] == "llama3.1"
+    assert body["embedding_model"] == "text-embed"
+    assert settings.ollama_llm_model == "llama3.1"
+    assert settings.ollama_embedding_model == "text-embed"
+    assert cleared["value"] is True
+
+
+@pytest.mark.asyncio
+async def test_update_model_defaults_requires_payload(monkeypatch):
+    settings = _DummySettings()
+    settings.ollama_base_url = "http://ollama:11434"
+
+    monkeypatch.setattr("rag_api.routes.models.get_settings", lambda: settings)
+
+    async with _client(settings) as client:
+        response = await client.patch("/api/v1/models/defaults", json={})
+
+    assert response.status_code == 400
+    assert "Provide" in response.text
