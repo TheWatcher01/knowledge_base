@@ -17,6 +17,7 @@
 - [ ] Fallback embeddings (SentenceTransformers) pour tolérance aux pannes Ollama.
 - [ ] Support multi-fournisseurs LLM (OpenAI, Azure, Mistral…) avec bascule runtime.
 - [ ] UI de gestion des modèles Ollama (liste, installation, suppression, choix par défaut).
+- [ ] Basculer l’UI Next.js sur les endpoints RAG réels (suppression du mock Playwright et des routes `/api/test/rag-mock`).
 - [x] Observabilité & sécurité : logs structurés, métriques Prometheus, rate limiting.
 - [ ] Jeux de tests backend/front + documentation finale.
 - [x] Historisation des jobs d’ingestion (table dédiée + endpoints d’administration).
@@ -30,6 +31,7 @@
 - Optimiser la table `UrlIngestionJob` (indexation, rétention) et enrichir l’API de consultation si besoin.
 - Générer et maintenir un schéma OpenAPI (FastAPI) documenté (annotations, descriptions, exemples) et vérifier l’accessibilité Swagger UI.
 - Ajouter un module de recherche SearxNG (wrapper LangChain) exposé comme outil optionnel dans le chat.
+- Préparer la migration des tests E2E vers le service RAG effectif (stratégie de fixtures vs. mocks, données de test Ollama).
 - Mettre en place un système de logs structurés (JSON) côté FastAPI + intégration Prometheus/OTEL.
 - Étendre les tests (pytest delete/chat, tests web Vitest & Playwright pour la pipeline).
 - Documenter le playbook de déploiement (Docker Compose, initialisation PGVector, chargement modèles Ollama).
