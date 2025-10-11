@@ -5,7 +5,8 @@
 
 ## 🎯 Résumé Exécutif
 
-**Recommandation**: Utiliser **LlamaIndex** comme backbone principal pour l'ingestion et l'indexation, avec LangChain pour les fonctionnalités complémentaires (agents, outils, intégrations spécifiques).
+**Recommandation**: Utiliser **LlamaIndex** comme backbone principal pour l'ingestion et l'indexation,
+avec LangChain pour les fonctionnalités complémentaires (agents, outils, intégrations spécifiques).
 
 ### Points Clés
 
@@ -29,7 +30,7 @@ from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
 documents = SimpleDirectoryReader("data/").load_data()
 index = VectorStoreIndex.from_documents(documents)  # Tout automatique!
 query_engine = index.as_query_engine()
-```
+```text
 
 **Caractéristiques**:
 
@@ -158,7 +159,7 @@ vectorstore = FAISS.from_documents(chunks, embeddings)
 
 ### Ingestion & Indexation (Core RAG)
 
-**✅ LlamaIndex recommandé**
+#### ✅ LlamaIndex recommandé
 
 **Raisons**:
 
@@ -187,7 +188,7 @@ index = VectorStoreIndex.from_documents(
 
 ### Outils & Agents (Complémentaire)
 
-**✅ LangChain recommandé**
+#### ✅ LangChain recommandé
 
 **Raisons**:
 
@@ -223,7 +224,7 @@ agent = initialize_agent(tools, llm, agent="zero-shot-react-description")
 
 ### Stack Hybride (Best of Both Worlds)
 
-```
+```erd
 ┌─────────────────────────────────────────────┐
 │           Application Layer                 │
 │  (Next.js, FastAPI, Streamlit, etc.)       │
@@ -287,13 +288,13 @@ agent = initialize_agent(tools, llm, agent="zero-shot-react-description")
 
 ### ⚠️ Éviter la Duplication
 
-**Ne PAS faire**:
+#### Ne PAS faire
 
 - ❌ Utiliser LlamaIndex ET LangChain pour le même pipeline d'ingestion
 - ❌ Dupliquer les vector stores entre les deux frameworks
 - ❌ Maintenir deux systèmes de retrieval parallèles
 
-**Faire**:
+#### Faire
 
 - ✅ LlamaIndex pour ingestion → LangChain consomme via retriever
 - ✅ Partager le même vector store (ex: Qdrant)
