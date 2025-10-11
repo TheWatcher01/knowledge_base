@@ -12,7 +12,8 @@
     "nav": {
       "dashboard": "Tableau de bord",
       "kbs": "Bases de connaissance",
-      "adminUsers": "Utilisateurs"
+      "adminUsers": "Utilisateurs",
+      "adminModels": "Modèles"
     },
     "status": {
       "loading": "Chargement...",
@@ -55,6 +56,31 @@
       "submitting": "Inscription en cours...",
       "success": "Inscription réussie ! Vous pouvez maintenant vous connecter.",
       "error": "Échec de l'inscription"
+    }
+  },
+  "admin": {
+    "models": {
+      "title": "Gestion des modèles Ollama",
+      "description": "Installez de nouveaux modèles, vérifiez leur présence sur le serveur Ollama et définissez les valeurs par défaut pour le chat et l’ingestion.",
+      "actions": {
+        "install": "Installer un modèle",
+        "refresh": "Actualiser la liste"
+      },
+      "table": {
+        "title": "Modèles installés",
+        "subtitle": "Liste des modèles disponibles côté Ollama.",
+        "name": "Nom",
+        "size": "Taille",
+        "modified": "Mis à jour",
+        "digest": "Digest"
+      },
+      "empty": "Aucun modèle installé pour le moment.",
+      "loadError": "Impossible de charger la liste des modèles : {error}",
+      "installPrompt": "Nom du modèle à installer (ex. llama3.1:8b)",
+      "installing": "Installation en cours…",
+      "refreshing": "Actualisation…",
+      "installSuccess": "{name} installé avec succès",
+      "installError": "Installation impossible : {error}"
     }
   },
   "kb": {

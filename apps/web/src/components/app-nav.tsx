@@ -9,7 +9,7 @@ import { useTranslations } from "next-intl";
 
 type NavItem = {
   href: string;
-  labelKey: "dashboard" | "kbs" | "adminUsers";
+  labelKey: "dashboard" | "kbs" | "adminUsers" | "adminModels";
 };
 
 const BASE_NAV_ITEMS: NavItem[] = [
@@ -34,6 +34,7 @@ export function AppNav({
   const navItems: NavItem[] = [...BASE_NAV_ITEMS];
   if (userRole === "ADMIN") {
     navItems.push({ href: "/admin/users", labelKey: "adminUsers" });
+    navItems.push({ href: "/admin/models", labelKey: "adminModels" });
   }
 
   return (

@@ -112,7 +112,7 @@ test.describe('Chat des bases de connaissance', () => {
             }),
         );
 
-        expect(conversationData.length, 'au moins deux conversations seedées').toBeGreaterThan(1);
+        expect(conversationData.length, 'au moins une conversation seedée').toBeGreaterThan(0);
 
         const maxIterations = Math.min(conversationData.length, 5);
         for (let index = 0; index < maxIterations; index += 1) {

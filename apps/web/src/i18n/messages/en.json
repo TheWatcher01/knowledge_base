@@ -12,7 +12,8 @@
     "nav": {
       "dashboard": "Dashboard",
       "kbs": "Knowledge Bases",
-      "adminUsers": "Users"
+      "adminUsers": "Users",
+      "adminModels": "Models"
     },
     "status": {
       "loading": "Loading...",
@@ -55,6 +56,31 @@
       "submitting": "Registering...",
       "success": "Registration successful! You can now log in.",
       "error": "Failed to register"
+    }
+  },
+  "admin": {
+    "models": {
+      "title": "Manage Ollama Models",
+      "description": "Install new models, verify those available on the Ollama server, and choose defaults for chat and embedding.",
+      "actions": {
+        "install": "Install model",
+        "refresh": "Refresh list"
+      },
+      "table": {
+        "title": "Installed models",
+        "subtitle": "Models currently available on Ollama.",
+        "name": "Name",
+        "size": "Size",
+        "modified": "Updated",
+        "digest": "Digest"
+      },
+      "empty": "No models installed yet.",
+      "loadError": "Unable to fetch models: {error}",
+      "installPrompt": "Model name to install (e.g. llama3.1:8b)",
+      "installing": "Installing…",
+      "refreshing": "Refreshing…",
+      "installSuccess": "{name} installed",
+      "installError": "Installation failed: {error}"
     }
   },
   "kb": {
