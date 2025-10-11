@@ -24,13 +24,11 @@ from ..services.jobs import (
     get_job,
     get_latest_job,
     list_jobs,
-    mark_job_completed,
     mark_job_failed,
-    mark_job_processing,
 )
 from ..services.persistence import get_url_status, update_url_status
 from ..services.retrieval import query_documents
-from ..services.web_ingestion import WebIngestionError, ingest_url_document
+from ..pipelines.web import UrlPipelineTask, run_pipeline
 
 log = logger("retrieval")
 
@@ -197,24 +195,27 @@ async def ingest_web(
 
     async def _task() -> None:
         try:
-            mark_job_processing(settings, job_id)
-            update_url_status(settings, document_id, "processing")
-
-            metadata = await ingest_url_document(
+            results = await run_pipeline(
                 settings,
-                kb_id=kb_id,
-                document_id=document_id,
-                url=payload.url,
-                collection_name=payload.collection_name,
+                [
+                    UrlPipelineTask(
+                        url=payload.url,
+                        collection_name=payload.collection_name,
+                        kb_id=kb_id,
+                        document_id=document_id,
+                        job_id=job_id,
+                    )
+                ],
                 ingest_text_fn=ingest_text_into_store,
             )
 
-            mark_job_completed(settings, job_id, metadata=metadata)
-            update_url_status(settings, document_id, "synced")
-        except WebIngestionError as exc:
-            log.warning("retrieval.web_ingestion_failed", url=payload.url, error=str(exc))
-            mark_job_failed(settings, job_id, str(exc))
-            update_url_status(settings, document_id, "error")
+            for result in results:
+                if result.status == "error":
+                    log.warning(
+                        "retrieval.web_ingestion_failed",
+                        url=result.url,
+                        error=result.error,
+                    )
         except Exception as exc:  # pragma: no cover
             log.exception("retrieval.web_ingestion_unexpected_error", url=payload.url, error=str(exc))
             mark_job_failed(settings, job_id, str(exc))

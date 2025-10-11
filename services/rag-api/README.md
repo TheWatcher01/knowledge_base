@@ -14,6 +14,8 @@ Ce service FastAPI prend le relais d’Open WebUI pour la partie RAG : ingestio
 | ⬜️ | Suppression / resynchronisation complète des KB (`rag-sync`) |
 | ⬜️ | Endpoint chat streaming (ChatOllama + SSE) avec fallback Prisma |
 | ⬜️ | Intégration SearxNG comme outil de recherche live + observabilité |
+| ⬜️ | Fallback embeddings (SentenceTransformers) lorsque Ollama n’est pas disponible |
+| ⬜️ | Support multi-fournisseurs LLM (OpenAI, Azure, Mistral) avec sélection runtime |
 | ⬜️ | Jeux de tests (pytest + Vitest/Playwright) et documentation finale |
 
 ## ✅ À faire ensuite
@@ -87,7 +89,14 @@ La pipeline web est désormais orchestrée par `pipelines/web.py` et repose sur 
 2. **Traitement** — `run_pipeline` gère des `UrlPipelineTask`, crée/relit les jobs `UrlIngestionJob`, met à jour les statuts `UrlEntry` (`queued` → `processing` → `synced|error`) et collecte les résultats (`UrlPipelineResult`).
 3. **Extraction & ingestion** — `ingest_url_document` télécharge l’URL, extrait le texte via Tika, récupère le titre, ajoute des snippets Searx si disponibles puis pousse le contenu vers `ingest_text_into_store` (Ollama embeddings + PGVector).
 
-Les helpers `_safe_update_url_status`/`_safe_mark_job_*` maintiennent la robustesse en cas de indisponibilité Postgres. Chaque exécution retourne les métadonnées enrichies (titre, content-type, URL finale, snippets) exploitables côté orchestrateur ou UI.
+Les helpers `_safe_update_url_status`/`_safe_mark_job_*` maintiennent la robustesse en cas de indisponibilité Postgres. Chaque exécution retourne les métadonnées enrichies (titre, content-type, URL finale, snippets) exploitables côté orchestrateur ou UI. Les appels réseau sont désormais protégés par un retry exponentiel et un fallback HTML→texte lorsque Tika est indisponible.
+
+**Observabilité** : la pipeline journalise chaque transition (`pipeline.queued`, `pipeline.synced`, `pipeline.job_failed`) avec `job_id`, `kb_id` et métadonnées pour faciliter la corrélation dans les logs structlog.
+
+**Scripts utiles** :
+
+- `pnpm --filter web exec -- node scripts/seed-kb-sample.mjs` — peupler une base de démonstration (notes/fichiers/URLs) côté Prisma.
+- `pnpm --filter web exec -- node scripts/backfill-url-status.mjs --dry-run` — vérifier la cohérence `UrlEntry.status` ↔ dernier job sans modifier la base (retirer `--dry-run` pour appliquer).
 
 ## ✅ Tests recommandés
 

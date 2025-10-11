@@ -178,7 +178,14 @@ async function ensureKnowledgeEntries(kbId: string): Promise<KnowledgeRecord[]> 
     where: { kbId },
     include: {
       fileAsset: true,
-      urlEntry: true,
+      urlEntry: {
+        include: {
+          jobs: {
+            orderBy: { queuedAt: "desc" },
+            take: 1,
+          },
+        },
+      },
     },
   });
 
@@ -211,6 +218,23 @@ async function ensureKnowledgeEntries(kbId: string): Promise<KnowledgeRecord[]> 
           : null,
       });
     } else if (doc.type === "url" && doc.urlEntry) {
+      const latestJob = doc.urlEntry.jobs?.[0] ?? null;
+      const rawJobMetadata = (latestJob?.metadata ?? null) as Record<string, unknown> | null;
+      const searchSnippetsValue = rawJobMetadata ? rawJobMetadata["search_snippets"] : undefined;
+      const searchSnippets = Array.isArray(searchSnippetsValue) ? searchSnippetsValue : undefined;
+
+      const jobMetadata = latestJob
+        ? {
+            id: latestJob.id,
+            status: latestJob.status,
+            queuedAt: latestJob.queuedAt?.toISOString() ?? null,
+            startedAt: latestJob.startedAt?.toISOString() ?? null,
+            finishedAt: latestJob.finishedAt?.toISOString() ?? null,
+            errorMessage: latestJob.errorMessage ?? null,
+            metadata: rawJobMetadata,
+          }
+        : null;
+
       await upsertKnowledgeEntry({
         kbId,
         documentId: doc.id,
@@ -220,6 +244,9 @@ async function ensureKnowledgeEntries(kbId: string): Promise<KnowledgeRecord[]> 
         source: doc.urlEntry.url,
         metadata: {
           status: doc.urlEntry.status,
+          description: doc.urlEntry.description,
+          lastJob: jobMetadata,
+          searchSnippets,
         },
       });
     }

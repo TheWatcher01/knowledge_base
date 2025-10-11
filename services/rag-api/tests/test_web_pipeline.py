@@ -71,6 +71,51 @@ async def test_run_pipeline_success(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_run_pipeline_with_precreated_job(monkeypatch):
+    settings = _StubSettings(postgres_dsn="postgresql+psycopg://user:pass@localhost/db")
+
+    statuses: list[str] = []
+    job_calls: list[str] = []
+
+    def fake_create_job(*args, **kwargs):  # noqa: ANN001, D417
+        raise AssertionError("create_job should not be invoked when job_id is provided")
+
+    def fake_mark_processing(settings, job_id):  # noqa: ANN001
+        job_calls.append(f"processing:{job_id}")
+
+    def fake_mark_completed(settings, job_id, metadata=None):  # noqa: ANN001, D417
+        job_calls.append(f"completed:{job_id}")
+
+    async def fake_ingest_url_document(settings, **kwargs):  # noqa: ANN001, ANN003
+        return {"title": "Example", "source_url": kwargs["url"]}
+
+    def fake_update_status(settings, document_id, status):  # noqa: ANN001
+        statuses.append(status)
+
+    monkeypatch.setattr("rag_api.pipelines.web.create_job", fake_create_job)
+    monkeypatch.setattr("rag_api.pipelines.web.mark_job_processing", fake_mark_processing)
+    monkeypatch.setattr("rag_api.pipelines.web.mark_job_completed", fake_mark_completed)
+    monkeypatch.setattr("rag_api.pipelines.web.update_url_status", fake_update_status)
+    monkeypatch.setattr("rag_api.pipelines.web.ingest_url_document", fake_ingest_url_document)
+
+    task = UrlPipelineTask(
+        url="https://example.com",
+        collection_name="kb_123",
+        document_id="doc-123",
+        job_id="job-precreated",
+    )
+
+    results = await run_pipeline(settings, [task])
+
+    assert len(results) == 1
+    result = results[0]
+    assert result.job_id == "job-precreated"
+    assert result.status == "synced"
+    assert statuses == ["queued", "processing", "synced"]
+    assert "completed:job-precreated" in job_calls
+
+
+@pytest.mark.asyncio
 async def test_run_pipeline_skips_when_job_running(monkeypatch):
     settings = _StubSettings(postgres_dsn="postgresql+psycopg://user:pass@localhost/db")
 

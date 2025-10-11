@@ -101,6 +101,57 @@ async def test_web_ingestion_rejects_when_queue_full(monkeypatch, client_factory
 
 
 @pytest.mark.asyncio
+async def test_web_ingestion_triggers_pipeline(monkeypatch, client_factory):
+    run_calls: list[dict[str, Any]] = []
+    statuses: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(
+        "rag_api.routes.retrieval.count_active_jobs",
+        lambda settings, kb_id=None: 0,
+    )
+
+    monkeypatch.setattr(
+        "rag_api.routes.retrieval.create_job",
+        lambda settings, document_id, url: ("job-123", True),
+    )
+
+    async def fake_run_pipeline(settings, tasks, *, ingest_text_fn):  # noqa: ANN001
+        run_calls.append({"tasks": tasks})
+        statuses.append((tasks[0].document_id, "pipeline"))
+        return [
+            {
+                "url": tasks[0].url,
+                "document_id": tasks[0].document_id,
+                "job_id": "job-123",
+                "status": "synced",
+                "metadata": {"title": "Example"},
+                "error": None,
+            }
+        ]
+
+    monkeypatch.setattr("rag_api.routes.retrieval.run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(
+        "rag_api.routes.retrieval.update_url_status",
+        lambda settings, document_id, status: statuses.append((document_id, status)),
+    )
+
+    async with client_factory() as test_client:
+        response = await test_client.post(
+            "/api/v1/retrieval/process/web",
+            json={
+                "url": "https://example.com",
+                "collection_name": "kb_123",
+            },
+        )
+
+    assert response.status_code == 200
+    assert "queued" in response.json()["message"].lower()
+    assert run_calls, "pipeline should have been invoked"
+    assert (run_calls[0]["tasks"][0].job_id) == "job-123"
+    assert ("job-123" in {task.job_id for task in run_calls[0]["tasks"]})
+
+
+@pytest.mark.asyncio
 async def test_list_jobs_success(monkeypatch, client):
     monkeypatch.setattr(
         "rag_api.routes.retrieval.list_jobs",

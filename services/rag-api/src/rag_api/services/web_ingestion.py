@@ -24,14 +24,39 @@ class WebIngestionError(Exception):
     """Raised when web ingestion fails."""
 
 
-async def fetch_url_content(url: str, *, timeout: float = 20.0) -> Tuple[bytes, str, str | None]:
+async def fetch_url_content(
+    url: str,
+    *,
+    timeout: float = 20.0,
+    retries: int = 2,
+    backoff_base: float = 0.5,
+) -> Tuple[bytes, str, str | None]:
     """Fetch a URL and return raw bytes, final URL and content-type."""
 
-    async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as client:
-        response = await client.get(url, headers={"User-Agent": DEFAULT_USER_AGENT})
-        response.raise_for_status()
-        content_type = response.headers.get("content-type")
-        return response.content, str(response.url), content_type
+    last_error: httpx.HTTPError | None = None
+
+    for attempt in range(retries + 1):
+        try:
+            async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as client:
+                response = await client.get(url, headers={"User-Agent": DEFAULT_USER_AGENT})
+                response.raise_for_status()
+                content_type = response.headers.get("content-type")
+                return response.content, str(response.url), content_type
+        except httpx.HTTPError as exc:  # pragma: no cover - network failure
+            last_error = exc
+            LOGGER.warning(
+                "web_ingestion.fetch_retry url=%s attempt=%s/%s error=%s",
+                url,
+                attempt + 1,
+                retries,
+                exc,
+            )
+            if attempt == retries:
+                break
+            await asyncio.sleep(backoff_base * (2 ** attempt))
+
+    assert last_error is not None  # for mypy
+    raise last_error
 
 
 async def extract_text_with_tika(
@@ -40,6 +65,8 @@ async def extract_text_with_tika(
     html_bytes: bytes,
     content_type: str | None,
     timeout: float = 30.0,
+    retries: int = 2,
+    allow_plaintext_fallback: bool = True,
 ) -> str:
     """Extract plain text from HTML using the configured Tika server."""
 
@@ -52,12 +79,33 @@ async def extract_text_with_tika(
         "Content-Type": content_type or "text/html; charset=utf-8",
     }
 
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        response = await client.put(url, headers=headers, content=html_bytes)
-        response.raise_for_status()
-        text = response.text
+    last_error: httpx.HTTPError | None = None
 
-    return _normalize_text(text)
+    for attempt in range(retries + 1):
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.put(url, headers=headers, content=html_bytes)
+                response.raise_for_status()
+                text = response.text
+            return _normalize_text(text)
+        except httpx.HTTPError as exc:  # pragma: no cover - network failure
+            last_error = exc
+            LOGGER.warning(
+                "web_ingestion.tika_retry attempt=%s/%s error=%s",
+                attempt + 1,
+                retries,
+                exc,
+            )
+            if attempt == retries:
+                break
+            await asyncio.sleep(0.5 * (attempt + 1))
+
+    if allow_plaintext_fallback:
+        LOGGER.warning("web_ingestion.tika_fallback error=%s", last_error)
+        return _fallback_extract_text(html_bytes)
+
+    assert last_error is not None
+    raise WebIngestionError(f"Tika extraction failed after retries: {last_error}") from last_error
 
 
 def extract_title(html_bytes: bytes) -> str | None:
@@ -78,6 +126,21 @@ def extract_title(html_bytes: bytes) -> str | None:
 
 def _normalize_text(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip()
+
+
+def _fallback_extract_text(html_bytes: bytes) -> str:
+    """Very small HTML → text fallback used when Tika is unavailable."""
+
+    try:
+        html = html_bytes.decode("utf-8", errors="ignore")
+    except Exception:  # pragma: no cover
+        return ""
+
+    # Strip scripts/styles
+    html = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", html, flags=re.IGNORECASE | re.DOTALL)
+    # Remove all remaining tags
+    text = re.sub(r"<[^>]+>", " ", html)
+    return _normalize_text(text)
 
 
 async def ingest_url_document(

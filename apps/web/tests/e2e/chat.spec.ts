@@ -39,18 +39,26 @@ test.describe('Chat des bases de connaissance', () => {
             navChatLink.click(),
         ]);
         await page.waitForLoadState('networkidle');
-        await expect(page.getByRole('textbox', { name: 'Message' })).toBeEnabled();
+
+        const modelCombobox = page.getByRole('combobox', { name: 'Modèles disponibles pour le chat' });
+        if (await modelCombobox.count()) {
+            await modelCombobox.click();
+            const llamaModelOption = page.getByRole('option', { name: 'llama3.1:8b' }).first();
+            await expect(llamaModelOption, 'llama3.1:8b doit être disponible').toBeVisible();
+            await llamaModelOption.click();
+            await expect(modelCombobox).toHaveText(/llama3\.1:8b/i);
+        } else {
+            const modelInput = page.getByLabel('Modèles disponibles pour le chat');
+            await expect(modelInput).toBeVisible();
+            await modelInput.fill('llama3.1:8b');
+            await modelInput.blur();
+        }
+
+        const messageTextarea = page.getByRole('textbox', { name: 'Message' });
+        await expect(messageTextarea, 'le champ message doit être activé une fois le modèle renseigné').toBeEnabled({ timeout: 10_000 });
         await expect(page.getByRole('heading', { name: 'Nouvelle conversation' })).toBeVisible();
 
-        const modelTrigger = page.getByRole('combobox', { name: 'Modèles disponibles pour le chat' });
-        await modelTrigger.click();
-        const llamaModelOption = page.getByRole('option', { name: 'llama3.1:8b' }).first();
-        await expect(llamaModelOption, 'llama3.1:8b doit être disponible').toBeVisible();
-        await llamaModelOption.click();
-        await expect(modelTrigger).toHaveText(/llama3\.1:8b/i);
-
         const messageText = `Conversation de test ${Date.now()}`;
-        const messageTextarea = page.getByRole('textbox', { name: 'Message' });
         await messageTextarea.fill(messageText);
         await page.getByRole('button', { name: 'Envoyer' }).click();
 
@@ -74,9 +82,8 @@ test.describe('Chat des bases de connaissance', () => {
             }, { message: 'conversation should be saved in history' })
             .toBeTruthy();
 
-        await expect(page.getByTestId('chat-conversation-title')).toHaveText(messageText, {
-            timeout: 15_000,
-        });
+        await expect(page.locator('a[href*="/chat?conversation="]').filter({ hasText: messageText }).first())
+            .toBeVisible({ timeout: 15_000 });
 
         const reopenChatLink = page.getByRole('link', { name: 'Chat', exact: true }).first();
         await Promise.all([

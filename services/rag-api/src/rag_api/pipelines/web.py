@@ -42,6 +42,7 @@ class UrlPipelineTask:
     collection_name: str
     kb_id: str | None = None
     document_id: str | None = None
+    job_id: str | None = None
 
 
 @dataclass
@@ -112,10 +113,10 @@ async def run_pipeline(
         document_id = task.document_id or _hash_document_id(task.url)
         kb_id = task.kb_id or _extract_kb_id(task.collection_name) or "unknown"
 
-        job_id: str | None = None
-        job_created = False
+        job_id: str | None = task.job_id
+        job_created = job_id is not None
 
-        if settings.postgres_dsn:
+        if job_id is None and settings.postgres_dsn:
             try:
                 job_id, job_created = create_job(settings, document_id, url=task.url)
             except Exception as exc:  # pragma: no cover - psycopg failure
@@ -130,10 +131,10 @@ async def run_pipeline(
 
         if job_id and not job_created:
             log.info(
-                "pipeline.job_already_running",
-                url=task.url,
-                document_id=document_id,
-                job_id=job_id,
+                "pipeline.job_already_running url=%s document_id=%s job_id=%s",
+                task.url,
+                document_id,
+                job_id,
             )
             results.append(
                 UrlPipelineResult(
@@ -148,6 +149,13 @@ async def run_pipeline(
 
         if job_id:
             _safe_update_url_status(settings, document_id, "queued")
+            log.info(
+                "pipeline.queued url=%s document_id=%s job_id=%s kb_id=%s",
+                task.url,
+                document_id,
+                job_id,
+                kb_id,
+            )
 
         metadata: dict[str, Any] | None = None
 
@@ -178,12 +186,19 @@ async def run_pipeline(
                     metadata=metadata,
                 )
             )
+            log.info(
+                "pipeline.synced url=%s document_id=%s job_id=%s kb_id=%s",
+                task.url,
+                document_id,
+                job_id,
+                kb_id,
+            )
         except WebIngestionError as exc:
             log.warning(
-                "pipeline.web_ingestion_failed",
-                url=task.url,
-                document_id=document_id,
-                error=str(exc),
+                "pipeline.web_ingestion_failed url=%s document_id=%s error=%s",
+                task.url,
+                document_id,
+                exc,
             )
             if job_id:
                 _safe_mark_job_failed(settings, job_id, str(exc))
@@ -197,12 +212,20 @@ async def run_pipeline(
                     error=str(exc),
                 )
             )
+            log.warning(
+                "pipeline.job_failed url=%s document_id=%s job_id=%s kb_id=%s error=%s",
+                task.url,
+                document_id,
+                job_id,
+                kb_id,
+                exc,
+            )
         except Exception as exc:  # pragma: no cover - unexpected failure
             log.exception(
-                "pipeline.unexpected_error",
-                url=task.url,
-                document_id=document_id,
-                error=str(exc),
+                "pipeline.unexpected_error url=%s document_id=%s error=%s",
+                task.url,
+                document_id,
+                exc,
             )
             if job_id:
                 _safe_mark_job_failed(settings, job_id, str(exc))

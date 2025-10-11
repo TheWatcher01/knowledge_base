@@ -14,6 +14,8 @@
 - [ ] Suppression & synchronisation complète (`rag-sync`) avec alignement vecteurs/métadonnées.
 - [ ] Endpoint chat streaming (ChatOllama + SSE) avec fallback Prisma.
 - [ ] Intégration SearxNG comme outil de recherche temps réel.
+- [ ] Fallback embeddings (SentenceTransformers) pour tolérance aux pannes Ollama.
+- [ ] Support multi-fournisseurs LLM (OpenAI, Azure, Mistral…) avec bascule runtime.
 - [x] Observabilité & sécurité : logs structurés, métriques Prometheus, rate limiting.
 - [ ] Jeux de tests backend/front + documentation finale.
 - [x] Historisation des jobs d’ingestion (table dédiée + endpoints d’administration).
@@ -30,14 +32,17 @@
 - Mettre en place un système de logs structurés (JSON) côté FastAPI + intégration Prometheus/OTEL.
 - Étendre les tests (pytest delete/chat, tests web Vitest & Playwright pour la pipeline).
 - Documenter le playbook de déploiement (Docker Compose, initialisation PGVector, chargement modèles Ollama).
+- Script de backfill Prisma (`pnpm --filter web exec -- node scripts/backfill-url-status.mjs [--dry-run]`) pour réaligner `UrlEntry.status` avec le dernier job connu.
+- Scénarios de vérification : lancer `pnpm --filter web exec -- node scripts/seed-kb-sample.mjs`, exécuter le backfill (dry-run puis réel) et contrôler la timeline UI + `rag-sync`.
 
 ## Pipeline web actuelle
 
 - `pipelines/web.py` introduit `UrlPipelineTask`/`UrlPipelineResult` pour lancer des rafales d’URLs (collection + `kbId` + `documentId`).
 - Pour chaque tâche, la pipeline crée un job `UrlIngestionJob`, met à jour `UrlEntry` (`queued` → `processing` → `synced|error`) et délègue l’extraction à `ingest_url_document`.
 - `ingest_url_document` télécharge la page, extrait le texte via Tika, récupère le titre, enrichit les métadonnées avec SearxNG (snippets) puis appelle `ingest_text_into_store` (Ollama embeddings → PGVector).
-- Les helpers `_safe_update_url_status`/`_safe_mark_job_*` garantissent la robustesse lorsque Postgres n’est pas disponible.
-- Les tests `services/rag-api/tests/test_web_pipeline.py` couvrent les scénarios succès, job déjà en cours et erreurs d’ingestion.
+- Les helpers `_safe_update_url_status`/`_safe_mark_job_*` garantissent la robustesse lorsque Postgres n’est pas disponible, tandis que `fetch_url_content` / `extract_text_with_tika` utilisent un retry exponentiel et un fallback HTML→texte optionnel si Tika ne répond pas.
+- Les tests `services/rag-api/tests/test_web_pipeline.py` et `services/rag-api/tests/test_web_ingestion.py` couvrent les scénarios succès, job déjà en cours, erreurs d’ingestion et fallback Tika.
+- Événements structlog dédiés (`pipeline.queued`, `pipeline.synced`, `pipeline.job_failed`) pour alimenter l’observabilité.
 
 ## Historique d’ingestion (volet 4.1)
 
