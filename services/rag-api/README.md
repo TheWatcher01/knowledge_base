@@ -16,6 +16,7 @@ Ce service FastAPI prend le relais d’Open WebUI pour la partie RAG : ingestio
 | ⬜️ | Intégration SearxNG comme outil de recherche live + observabilité |
 | ⬜️ | Fallback embeddings (SentenceTransformers) lorsque Ollama n’est pas disponible |
 | ⬜️ | Support multi-fournisseurs LLM (OpenAI, Azure, Mistral) avec sélection runtime |
+| ⬜️ | UI/Endpoints de gestion des modèles (listing/pull/delete/defaults) |
 | ⬜️ | Jeux de tests (pytest + Vitest/Playwright) et documentation finale |
 
 ## ✅ À faire ensuite
@@ -72,6 +73,8 @@ uv run main.py
 - `GET /api/v1/retrieval/jobs?documentId=…|kbId=…` — historique des jobs (limité à 100 entrées).
 - `GET /api/v1/retrieval/jobs/{jobId}` — détail d’un job (timestamps, métadonnées, erreurs).
 - `POST /api/v1/chat/completions` — streaming SSE propulsé par Ollama (rate limit 30/min).
+- `GET /api/v1/models` — liste des modèles Ollama installés.
+- `POST /api/v1/models/pull` — installation d’un modèle Ollama.
 
 ## 🛡️ Rate limiting & garde-fous
 

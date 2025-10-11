@@ -16,6 +16,7 @@
 - [ ] Intégration SearxNG comme outil de recherche temps réel.
 - [ ] Fallback embeddings (SentenceTransformers) pour tolérance aux pannes Ollama.
 - [ ] Support multi-fournisseurs LLM (OpenAI, Azure, Mistral…) avec bascule runtime.
+- [ ] UI de gestion des modèles Ollama (liste, installation, suppression, choix par défaut).
 - [x] Observabilité & sécurité : logs structurés, métriques Prometheus, rate limiting.
 - [ ] Jeux de tests backend/front + documentation finale.
 - [x] Historisation des jobs d’ingestion (table dédiée + endpoints d’administration).
