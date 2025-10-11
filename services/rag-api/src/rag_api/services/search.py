@@ -4,50 +4,47 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-import httpx
+import asyncio
 
 from ..config import Settings as AppSettings
+from ..tools.searx import create_searx_wrapper
 
 
 class SearchNotConfigured(Exception):
     """Raised when SearxNG is not configured."""
 
 
-async def search_web(settings: AppSettings, query: str, *, timeout: float = 15.0, max_results: int = 5) -> List[Dict[str, Any]]:
-    """Perform a web search using SearxNG and return the results."""
+async def search_web(
+    settings: AppSettings,
+    query: str,
+    *,
+    max_results: int = 5,
+) -> List[Dict[str, Any]]:
+    """Perform a web search using SearxNG (via LangChain wrapper)."""
 
     if not settings.searxng_base_url:
         raise SearchNotConfigured("SearxNG not configured (RAG_SEARXNG_BASE_URL missing)")
 
-    url = settings.searxng_base_url
-    params = {
-        "q": query,
-        "format": "json",
-        "safesearch": 1,
-        "engines": "general",
-        "language": "fr",
-    }
+    wrapper = create_searx_wrapper(host=settings.searxng_base_url, num_results=max_results)
 
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-        response = await client.get(url, params=params)
-        response.raise_for_status()
-        payload = response.json()
-
-    results = payload.get("results", []) if isinstance(payload, dict) else []
-    if not isinstance(results, list):
+    def _run() -> List[Dict[str, Any]]:
+        raw = wrapper.run(query)
+        if isinstance(raw, str):
+            return [{"title": None, "content": raw, "url": None}]
+        if isinstance(raw, list):
+            return raw  # langchain already returns structured list
         return []
 
+    results = await asyncio.to_thread(_run)
+
     simplified: List[Dict[str, Any]] = []
-    for result in results[:max_results]:
-        if not isinstance(result, dict):
-            continue
-        simplified.append(
-            {
-                "title": result.get("title"),
-                "content": result.get("content"),
-                "url": result.get("url"),
-            }
-        )
-
+    for item in results[:max_results]:
+        if isinstance(item, dict):
+            simplified.append(
+                {
+                    "title": item.get("title"),
+                    "content": item.get("content") or item.get("snippet"),
+                    "url": item.get("url"),
+                }
+            )
     return simplified
-
