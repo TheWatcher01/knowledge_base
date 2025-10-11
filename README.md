@@ -1,102 +1,191 @@
 # 📘 Knowledge Base Platform
 
-A **full-stack Knowledge Base application** built with **Next.js (App Router)**, **TailwindCSS / shadcn/ui**, **Prisma**, and **Auth.js**.
-The platform allows users to **create, ingest, and query knowledge bases** through a modern web interface, while delegating RAG (Retrieval-Augmented Generation) and LLM processing to an in-house FastAPI service powered by Ollama, LlamaIndex et LangChain.
+Knowledge Base est une application **Next.js 15.5.3 / React 19.1** soutenue par
+**Prisma 6** et un service **FastAPI RAG**. Elle permet aux équipes de **créer,
+ingérer et interroger** leurs bases de connaissances tout en pilotant les
+modèles Ollama depuis une interface moderne.
 
 ---
 
-## 🚀 Features
+## 🚀 Highlights
 
-* **User Authentication** with [Auth.js](https://authjs.dev/) (credentials provider, bcrypt, JWT).
-* **Dashboard** for managing personal Knowledge Bases (CRUD).
-* **Knowledge Base content ingestion**:
-
-  * Notes (text CRUD).
-  * Files (uploaded, parsed via [Apache Tika](https://tika.apache.org/), ingested in RAG).
-  * URLs (indexed with [SearxNG](https://docs.searxng.org/), ingested in RAG).
-* **Chat interface**: query your knowledge base with streaming completions via the RAG API (FastAPI + Ollama).
-* **Backend logging**: track usage and events (MongoDB).
-* **Dockerized services**: PostgreSQL, MongoDB, Tika, SearxNG, Ollama, RAG API service.
-
----
-
-## 🛠️ Tech Stack
-
-* **Frontend / Backend**: [Next.js 14](https://nextjs.org/) (App Router)
-* **UI**: [TailwindCSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
-* **Authentication**: [Auth.js](https://authjs.dev/)
-* **Database**: PostgreSQL + [Prisma ORM](https://www.prisma.io/)
-* **NoSQL Logging**: MongoDB
-* **RAG / LLM**: FastAPI service (`services/rag-api`) + [Ollama](https://ollama.com/), orchestrated with [LlamaIndex](https://www.llamaindex.ai/) & [LangChain](https://www.langchain.com/)
-* **File Parsing**: [Apache Tika](https://tika.apache.org/)
-* **Web Crawling**: [SearxNG](https://docs.searxng.org/)
-* **Deployment**: Docker Compose
+- Authentification complète (Auth.js credentials, RBAC) et tableau de bord
+  multi-KB.
+- Ingestion notes/fichiers/URLs avec pipeline asynchrone (Tika, SearxNG,
+  PGVector) et historisation des jobs.
+- Chat persistant façon ChatGPT avec mock RAG embarqué et transition planifiée
+  vers le service FastAPI temps réel.
+- Console admin « Ollama jobs » pour suivre les pulls de modèles et l’état du
+  backend.
+- Observabilité activée (logs structurés, métriques Prometheus) et
+  documentation fonctionnelle en cours de finalisation.
 
 ---
 
-## 📂 Monorepo Structure
+## 🛠️ Architecture
+
+- **Frontend** : Next.js App Router + Tailwind CSS 4/shadcn-ui, React Query,
+  internationalisation `next-intl`.
+- **Backend** : API routes Next.js pour l’UI + service `services/rag-api`
+  (FastAPI, PostgreSQL, MongoDB, Ollama).
+- **Persistance** : PostgreSQL (Prisma 6), PGVector pour les embeddings,
+  MongoDB pour les logs/events.
+- **Ingestion** : Apache Tika pour l’extraction, SearxNG pour l’enrichissement,
+  workers async gérés par FastAPI.
+- **Ops** : Docker Compose pour l’écosystème (Postgres, Mongo, Tika, SearxNG,
+  Ollama, RAG API), scripts PNPM pour le développement.
+
+---
+
+## 📂 Monorepo
 
 ```bash
 knowledge_base/
 ├── apps/
-│   └── web/           # Next.js frontend / backend (App Router)
+│   └── web/           # Next.js frontend & API routes (App Router)
 ├── services/
-│   └── rag-api/       # FastAPI microservice (Ollama, LlamaIndex, LangChain)
-├── docs/              # Guides & migration notes (incl. RAG service plan)
-├── compose.yml        # Docker services: Postgres, Mongo, Tika, SearxNG, Ollama, RAG API
-└── screenshot/        # Assets & previews
+│   └── rag-api/       # FastAPI RAG service (ingestion, chat, jobs)
+├── docs/              # Guides, roadmap et procédures d’exploitation
+├── compose.yml        # Docker Compose : Postgres, Mongo, Tika, SearxNG, Ollama
+└── tmp/               # Scripts de seed/tests (mock RAG, Playwright, etc.)
 ```
 
 ---
 
 ## ⚡ Getting Started
 
-### Prerequisites
+### Prérequis
 
-* Node.js 20+
-* PNPM
-* Docker + Docker Compose
-
+- Node.js 20+
+- pnpm 9+
+- Python 3.12+ (pour le service RAG)
+- Docker + Docker Compose (recommandé pour lancer la stack complète)
+  
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/TheWatcher01/knowledge_base.git
 cd knowledge_base
 
-# Install dependencies
 pnpm install
+pnpm --filter web exec prisma generate
 ```
 
-### Development
+### Lancer l’environnement
 
 ```bash
-# Start Docker services (DBs, Tika, SearxNG, Ollama, RAG API)
+# Services externes (Postgres, Mongo, Ollama, etc.)
 docker compose up -d
 
-# Start the web app
-cd apps/web
-pnpm dev
+# Front + API Next.js (mock RAG inclus)
+pnpm --filter web dev        # http://localhost:3001
+
+# (Optionnel) Service FastAPI RAG réel
+uv run uvicorn rag_api.main:app --reload --port 8000
 ```
 
-The app will be available at:
-👉 [http://localhost:3000](http://localhost:3000)
+> Le mock RAG reste activé par défaut côté front ; basculer vers l’API FastAPI
+> après finalisation de l’endpoint chat streaming.
 
 ---
 
-## 📌 Roadmap
+## ✅ Feature Overview
 
-* [x] User authentication (register, login).
-* [x] Dashboard with Knowledge Base CRUD.
-* [ ] Notes CRUD with ingestion.
-* [ ] File uploads → Tika → ingestion.
-* [ ] URL ingestion via SearxNG.
-* [ ] Chat interface (SSE streaming).
-* [ ] Usage logs (MongoDB).
-* [ ] Documentation (MCD/MLD, C4 diagrams, user guide).
+### Authentification & accès
+
+- Connexion/inscription via Auth.js avec mots de passe bcryptés et sessions JWT.
+- Rôles `ADMIN`, `EDITOR`, `VIEWER` avec enforcement serveur + UI contextuelle.
+- Middleware et helpers Prisma pour sécuriser chaque KB.
+
+### Bases de connaissance & contenu
+
+- CRUD sur les KB avec métriques (documents, dates, propriétaires).
+- Notes Markdown, fichiers (upload/remplacement), URLs avec relance
+  d’ingestion.
+- Pipeline d’ingestion asynchrone : suivi des statuts (`queued`, `processing`,
+  `synced`, `error`).
+
+### Chat & RAG
+
+- Conversations persistantes, renommage, suppression, deep-link
+  `?conversation=`.
+- Streaming SSE via API Next.js + mock RAG (fixtures Playwright,
+  tests Vitest).
+- Service FastAPI prêt pour l’ingestion et les jobs de modèles
+  (pull/install) avant la bascule chat.
+
+### Administration & observabilité
+
+- Tableau de bord des modèles Ollama (jobs planifiés, statut, erreurs).
+- Logs structurés (structlog), métriques Prometheus, endpoints de supervision.
+- Documentation fonctionnelle : `docs/rag-service/README.md`,
+  `docs/FEATURES.md`, guides QA & utilisateur.
 
 ---
 
-## 📖 License
+## 🧪 Tests & QA
 
-This project is open-source and available under the **MIT License**.
+```bash
+# Tests unitaires & intégration web
+pnpm --filter web exec vitest run
+
+# Tests E2E (Playwright)
+pnpm --filter web exec -- playwright test
+
+# Tests service RAG (pytest)
+uv run pytest tests/test_models_api.py
+```
+
+Avant tout commit : lint (`pnpm --filter web lint`), markdownlint,
+build (`pnpm --filter web build`).
+
+---
+
+## 🚧 Current Priorities
+
+1. Finaliser `rag-sync` et l’endpoint chat streaming FastAPI puis
+   basculer l’UI sur ce flux (retrait du mock).
+2. Stabiliser la CI GitHub Actions (services Next.js/RAG, secrets,
+   base de données) pour faire passer la suite Playwright.
+3. Étendre la couverture tests/doc (OpenAPI, guides de déploiement) et
+   durcir le pipeline ingestion (Mongo format, Tika resiliency).
+
+---
+
+## 🗺️ Roadmap
+
+### ✅ Réalisé
+
+- Service FastAPI initialisé, ingestion texte/URLs, historisation des
+  jobs.
+- Migration du front vers `RAG_API_*`, mock RAG intégré côté Next.js.
+- Tableau de bord Ollama + observabilité (logs, métriques).
+
+### ⏳ En cours
+
+- Synchronisation complète vecteurs/métadonnées (`rag-sync`).
+- Endpoint chat streaming avec fallback Prisma.
+- Documentation API détaillée + guides de déploiement.
+
+### 🔜 À venir
+
+- Intégration SearxNG temps réel dans le chat.
+- Fallback embeddings (SentenceTransformers) & multi-fournisseurs LLM.
+- Pipeline CI end-to-end avec Playwright sur environnement
+  provisionné.
+
+---
+
+## 📚 Documentation utile
+
+- `docs/rag-service/README.md` – plan de remplacement d’Open WebUI et
+  TODO détaillé.
+- `docs/FEATURES.md` – inventaire fonctionnel complet.
+- `docs/user-guide/README.md` – guide utilisateur.
+- `docs/qa/` – checklists et fixtures QA.
+
+---
+
+## 📖 Licence
+
+Ce projet est open-source et distribué sous licence **MIT**.
