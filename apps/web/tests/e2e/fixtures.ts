@@ -1,4 +1,5 @@
 import { test as base } from '@playwright/test';
+import { enableRagMock, resetRagMockState } from '../../src/lib/rag-mock';
 
 type RagMockOptions = {
     failModels?: string[];
@@ -12,16 +13,14 @@ type RagMockFixture = {
 export const test = base.extend<RagMockFixture>({
     ragMockDefaults: [{}, { option: true }],
     configureRagMock: [
-        async ({ request, ragMockDefaults }, use) => {
+        async ({ ragMockDefaults }, use) => {
             const apply = async (options?: RagMockOptions) => {
+                enableRagMock();
                 const payload: RagMockOptions = {
                     ...(ragMockDefaults ?? {}),
                     ...(options ?? {}),
                 };
-
-                await request.post('/api/test/rag-mock/reset', {
-                    data: payload,
-                });
+                resetRagMockState(payload);
             };
 
             await apply();

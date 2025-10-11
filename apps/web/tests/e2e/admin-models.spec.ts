@@ -11,12 +11,11 @@ async function login(page: import('@playwright/test').Page) {
     await page.waitForURL('**/fr/dashboard');
 }
 
-test.describe('Admin modèles', () => {
 test.use({ ragMockDefaults: { failModels: ['demo-chat', 'llama3.1:8b'] } });
 
 test.describe('Admin modèles', () => {
-    test('affiche les erreurs renvoyées par le service RAG', async ({ page }) => {
-
+    test('affiche les erreurs renvoyées par le service RAG', async ({ page, configureRagMock }) => {
+        await configureRagMock();
         await login(page);
 
         await page.goto('/fr/admin/models');
