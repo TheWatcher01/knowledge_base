@@ -14,6 +14,7 @@ from .config import Settings, get_settings
 from .logging import configure_logging, logger
 from .rate_limit import configure_default_limits, limiter
 from .routes import chat, health, retrieval, models
+from .scheduler import start_scheduler, stop_scheduler
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -46,6 +47,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(retrieval.router, prefix="/api/v1")
 
     Instrumentator().instrument(app).expose(app, include_in_schema=False)
+
+    @app.on_event("startup")
+    async def _start_scheduler():  # pragma: no cover - startup hook
+        start_scheduler(app, settings)
+
+    @app.on_event("shutdown")
+    async def _stop_scheduler():  # pragma: no cover - shutdown hook
+        await stop_scheduler(app)
 
     log.info("application.started", host=settings.server_host, port=settings.server_port)
 

@@ -91,6 +91,19 @@ class Settings(BaseSettings):
         ge=1,
         description="Maximum number of concurrent web ingestion jobs per knowledge base.",
     )
+    web_base_url: HttpUrl | None = Field(
+        default=None,
+        description="Base URL of the Next.js application used for background sync callbacks.",
+    )
+    sync_service_token: str | None = Field(
+        default=None,
+        description="Shared bearer token allowing background reconciliation calls to the web app.",
+    )
+    sync_interval_seconds: int = Field(
+        default=0,
+        ge=0,
+        description="Interval in seconds for the automatic knowledge base reconciliation job (0 disables).",
+    )
 
     @property
     def cors_kwargs(self) -> dict[str, Any]:
