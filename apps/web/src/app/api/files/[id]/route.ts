@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { assertRole, handleAuthError } from "@/lib/authz";
 import { removeKnowledgeEntry, upsertKnowledgeEntry, markNeedsEmbedding } from "@/lib/knowledge-store";
+import { scheduleRagSync } from "@/lib/rag-sync-scheduler";
 
 const ParamsSchema = z.object({
     id: z.string().uuid(),
@@ -216,6 +217,7 @@ export async function PATCH(
 
         if (hasFile || textContent !== undefined) {
             await markNeedsEmbedding(existing.id);
+            scheduleRagSync(existing.kbId, { delayMs: 1_000 });
         }
 
         return NextResponse.json(

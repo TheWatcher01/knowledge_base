@@ -3,10 +3,11 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ragApiJson } from "@/lib/rag";
+import { isRagMockEnabled, ragApiJson } from "@/lib/rag";
 import { RAG_API_BASE, collectionName } from "@/lib/config";
 import { upsertKnowledgeEntry, markEmbedded } from "@/lib/knowledge-store";
 import { assertRole, handleAuthError } from "@/lib/authz";
+import { scheduleRagSync } from "@/lib/rag-sync-scheduler";
 
 const Body = z.object({
   kbId: z.string().uuid(),
@@ -53,10 +54,11 @@ export async function POST(req: NextRequest) {
     });
 
     let ingestionStatus: "success" | "skipped" | "failed" = "skipped";
+    const ragMockActive = isRagMockEnabled();
 
-    if (RAG_API_BASE && process.env.MOCK_OPEN_WEBUI !== "true") {
-        try {
-            await ragApiJson("/api/v1/retrieval/process/text", {
+    if (RAG_API_BASE && !ragMockActive) {
+      try {
+        await ragApiJson("/api/v1/retrieval/process/text", {
           method: "POST",
           body: JSON.stringify({
             name: note.id,
@@ -70,10 +72,15 @@ export async function POST(req: NextRequest) {
         console.warn("[api/notebook] RAG service unavailable, note created without ingestion.", error);
         ingestionStatus = "failed";
       }
-    } else if (process.env.MOCK_OPEN_WEBUI === "true") {
+    } else if (ragMockActive) {
       ingestionStatus = "skipped";
     } else {
       ingestionStatus = "failed";
+    }
+
+    if (!ragMockActive) {
+      const delay = ingestionStatus === "success" ? 1_000 : 5_000;
+      scheduleRagSync(kbId, { delayMs: delay });
     }
 
     return NextResponse.json({

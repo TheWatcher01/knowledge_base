@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RAG_API_BASE, collectionName } from "@/lib/config";
-import { ragApiJson } from "@/lib/rag";
+import { isRagMockEnabled, ragApiJson } from "@/lib/rag";
 import { assertRole, handleAuthError } from "@/lib/authz";
 import { removeKnowledgeEntriesForKb } from "@/lib/knowledge-store";
 
@@ -27,7 +27,7 @@ export async function DELETE(
             return NextResponse.json({ error: "Not found" }, { status: 404 });
         }
 
-        if (RAG_API_BASE && process.env.MOCK_OPEN_WEBUI !== "true") {
+        if (RAG_API_BASE && !isRagMockEnabled()) {
             const deletions = kb.documents.map((document) =>
                 ragApiJson("/api/v1/retrieval/delete", {
                     method: "POST",

@@ -5,9 +5,10 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UrlStatus } from "@prisma/client";
 import { createUrlContentPlaceholder, updateUrlContentStatus } from "@/lib/url-content";
-import { RAG_SERVICE_DISABLED_MESSAGE, deleteFromCollection, triggerWebIngestion } from "@/lib/rag";
+import { RAG_SERVICE_DISABLED_MESSAGE, deleteFromCollection, triggerWebIngestion, isRagMockEnabled } from "@/lib/rag";
 import { upsertKnowledgeEntry, markNeedsEmbedding, markEmbedded, removeKnowledgeEntry } from "@/lib/knowledge-store";
 import { assertRole, handleAuthError } from "@/lib/authz";
+import { scheduleRagSync } from "@/lib/rag-sync-scheduler";
 
 const ParamsSchema = z.object({
   id: z.string().uuid(),
@@ -247,6 +248,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       await markNeedsEmbedding(record.document.id);
     }
 
+    const ragMockActive = isRagMockEnabled();
     const shouldTriggerIngestion = urlChanged || parsedBody.data.status === UrlStatus.queued;
 
     if (shouldTriggerIngestion) {
@@ -287,6 +289,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     if (entry.status === UrlStatus.queued) {
       await markEmbedded(record.document.id);
+      if (!ragMockActive) {
+        scheduleRagSync(record.document.kbId, { delayMs: 2_000 });
+      }
     }
 
     return NextResponse.json(
@@ -304,6 +309,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
           ingestionError,
         },
       },
+      { status: 200 },
     );
   } catch (error) {
     return handleAuthError(error);

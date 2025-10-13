@@ -23,6 +23,10 @@ function shouldUseRagMock(): boolean {
     return Boolean((window as { __RAG_MOCK_ENABLED?: boolean }).__RAG_MOCK_ENABLED);
 }
 
+export function isRagMockEnabled(): boolean {
+    return shouldUseRagMock();
+}
+
 async function performMock(path: string, init?: RequestInit) {
     if (isServer) {
         enableRagMockInternal();

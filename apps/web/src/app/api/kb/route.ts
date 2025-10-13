@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assertRole, handleAuthError } from "@/lib/authz";
+import { scheduleRagSync } from "@/lib/rag-sync-scheduler";
 
 const CreateBody = z.object({
     name: z.string().min(1),
@@ -43,6 +44,8 @@ export async function POST(request: NextRequest) {
                 ownerId: session!.user.id,
             },
         });
+
+        scheduleRagSync(kb.id, { delayMs: 1_000 });
 
         return NextResponse.json({ knowledgeBase: kb }, { status: 201 });
     } catch (error) {

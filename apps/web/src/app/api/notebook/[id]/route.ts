@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { assertRole, handleAuthError } from "@/lib/authz";
 import { markNeedsEmbedding, upsertKnowledgeEntry, removeKnowledgeEntry } from "@/lib/knowledge-store";
+import { scheduleRagSync } from "@/lib/rag-sync-scheduler";
 
 const UpdateBody = z.object({
     title: z.string().min(1),
@@ -48,6 +49,7 @@ export async function PATCH(
             content,
         });
         await markNeedsEmbedding(note.id);
+        scheduleRagSync(note.kbId, { delayMs: 1_000 });
 
         return NextResponse.json({ note: updated });
     } catch (error) {

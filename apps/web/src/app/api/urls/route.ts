@@ -5,9 +5,10 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UrlStatus } from "@prisma/client";
 import { createUrlContentPlaceholder, updateUrlContentStatus } from "@/lib/url-content";
-import { RAG_SERVICE_DISABLED_MESSAGE, triggerWebIngestion } from "@/lib/rag";
+import { RAG_SERVICE_DISABLED_MESSAGE, triggerWebIngestion, isRagMockEnabled } from "@/lib/rag";
 import { upsertKnowledgeEntry, markEmbedded } from "@/lib/knowledge-store";
 import { assertRole, handleAuthError } from "@/lib/authz";
+import { scheduleRagSync } from "@/lib/rag-sync-scheduler";
 
 const OptionalTitle = z.preprocess(
   (value) => {
@@ -145,17 +146,19 @@ export async function POST(request: Request) {
       },
     });
 
+    const ragMockActive = isRagMockEnabled();
+
     const ingestion = await triggerWebIngestion({
-        kbId: record.document.kbId,
-        url: record.entry.url,
-        documentId: record.document.id,
+      kbId: record.document.kbId,
+      url: record.entry.url,
+      documentId: record.document.id,
     });
 
     if (ingestion.ok) {
       finalStatus = UrlStatus.queued;
     } else {
       ingestionError = ingestion.error;
-    if (ingestion.error !== RAG_SERVICE_DISABLED_MESSAGE) {
+      if (ingestion.error !== RAG_SERVICE_DISABLED_MESSAGE) {
         finalStatus = UrlStatus.error;
       }
     }
@@ -182,6 +185,9 @@ export async function POST(request: Request) {
 
     if (entry.status === UrlStatus.queued) {
       await markEmbedded(record.document.id);
+      if (!ragMockActive) {
+        scheduleRagSync(record.document.kbId, { delayMs: 2_000 });
+      }
     }
 
     return NextResponse.json(

@@ -6,8 +6,9 @@ import { authOptions } from "@/lib/auth";
 import { assertRole, handleAuthError } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { RAG_API_BASE, collectionName } from "@/lib/config";
-import { ragApiJson } from "@/lib/rag";
+import { isRagMockEnabled, ragApiJson } from "@/lib/rag";
 import { upsertKnowledgeEntry, markEmbedded } from "@/lib/knowledge-store";
+import { scheduleRagSync } from "@/lib/rag-sync-scheduler";
 
 const FormSchema = z.object({
     kbId: z.string().uuid(),
@@ -98,9 +99,10 @@ export async function POST(request: Request) {
             },
         });
 
+        const ragMockActive = isRagMockEnabled();
         const shouldAttemptIngestion =
             RAG_API_BASE &&
-            process.env.MOCK_OPEN_WEBUI !== "true" &&
+            !ragMockActive &&
             mimeType.startsWith("text/");
 
         if (shouldAttemptIngestion) {
@@ -123,10 +125,15 @@ export async function POST(request: Request) {
                 ingestionStatus = "failed";
                 ingestionError = error instanceof Error ? error.message : String(error);
             }
-        } else if (process.env.MOCK_OPEN_WEBUI === "true") {
+        } else if (ragMockActive) {
             ingestionStatus = "skipped";
         } else {
             ingestionStatus = "failed";
+        }
+
+        if (!ragMockActive) {
+            const delay = ingestionStatus === "success" ? 1_000 : 5_000;
+            scheduleRagSync(kbId, { delayMs: delay });
         }
 
         return NextResponse.json(
