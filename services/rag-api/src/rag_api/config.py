@@ -42,17 +42,21 @@ class Settings(BaseSettings):
         description="Default embedding model served by Ollama.",
     )
 
+    embedding_backend: Literal["auto", "ollama", "huggingface"] = Field(
+        default="auto",
+        description="Embedding backend selection (auto tries Ollama first, then HuggingFace).",
+    )
     enable_fallback_embeddings: bool = Field(
         default=True,
-        description="Enable fallback embeddings when Ollama is indisponible.",
+        description="Enable SentenceTransformers fallback when Ollama is unavailable or not selected.",
     )
     fallback_embedding_model: str = Field(
         default="sentence-transformers/all-MiniLM-L6-v2",
-        description="Fallback SentenceTransformers model utilisé si Ollama échoue.",
+        description="SentenceTransformers model used when the fallback backend is active.",
     )
     fallback_embedding_device: str | None = Field(
         default=None,
-        description="Optionnel : périphérique pour SentenceTransformers (ex: cuda, cpu).",
+        description="Preferred device for SentenceTransformers (leave empty for auto detection).",
     )
 
     postgres_dsn: str | None = Field(

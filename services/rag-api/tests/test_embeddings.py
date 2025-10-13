@@ -10,6 +10,7 @@ def _base_settings(**overrides):
         "ollama_embedding_model": "mxbai-embed-large",
         "enable_fallback_embeddings": True,
         "fallback_embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+        "embedding_backend": "auto",
     }
     params.update(overrides)
     return Settings(**params)
@@ -55,6 +56,7 @@ def test_fallback_when_ollama_fails(monkeypatch):
 
     monkeypatch.setattr(embedding_provider, "_ollama_embedding", failing_ollama)
     monkeypatch.setattr(embedding_provider, "_huggingface_embedding", lambda *_: sentinel)
+    monkeypatch.setattr(embedding_provider, "_detect_hf_device", lambda *_: "cpu")
 
     settings = _base_settings()
     backend = embedding_provider.get_embedding_backend(settings)
@@ -66,8 +68,20 @@ def test_error_when_no_backend(monkeypatch):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(embedding_provider, "_ollama_embedding", failing_ollama)
+    monkeypatch.setattr(embedding_provider, "_detect_hf_device", lambda *_: "cpu")
 
     settings = _base_settings(enable_fallback_embeddings=False)
 
     with pytest.raises(ValueError):
         embedding_provider.get_embedding_backend(settings)
+
+
+def test_huggingface_forced(monkeypatch):
+    sentinel = object()
+
+    monkeypatch.setattr(embedding_provider, "_huggingface_embedding", lambda model, device: (model, device))
+    monkeypatch.setattr(embedding_provider, "_detect_hf_device", lambda *_: "cuda")
+
+    settings = _base_settings(embedding_backend="huggingface", fallback_embedding_device=None)
+    backend = embedding_provider.get_embedding_backend(settings)
+    assert backend == (settings.fallback_embedding_model, "cuda")

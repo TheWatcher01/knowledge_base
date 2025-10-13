@@ -35,25 +35,60 @@ def _huggingface_embedding(model: str, device: str | None) -> HuggingFaceEmbeddi
     return HuggingFaceEmbedding(model_name=model, **kwargs)
 
 
-def get_embedding_backend(settings: AppSettings) -> BaseEmbedding:
-    """Return the embedding backend, falling back to HuggingFace when Ollama n'est pas disponible."""
+def _detect_hf_device(settings: AppSettings) -> str | None:
+    if settings.fallback_embedding_device:
+        return settings.fallback_embedding_device
 
+    try:  # pragma: no branch - optional dependency
+        import torch
+
+        if torch.cuda.is_available():  # type: ignore[attr-defined]
+            return "cuda"
+    except ImportError:  # pragma: no cover - torch optional
+        LOGGER.debug("torch not installed, defaulting HuggingFace device to cpu")
+
+    return "cpu"
+
+
+def get_embedding_backend(settings: AppSettings) -> BaseEmbedding:
+    """Return embedding backend according to configuration and availability."""
+
+    mode = settings.embedding_backend.lower()
+
+    def _try_ollama() -> BaseEmbedding:
+        if not settings.ollama_base_url:
+            raise ValueError("Ollama base URL not configured")
+        return _ollama_embedding(settings.ollama_base_url, settings.ollama_embedding_model)
+
+    def _try_huggingface() -> BaseEmbedding:
+        if not settings.enable_fallback_embeddings:
+            raise ValueError("HuggingFace fallback disabled")
+        model = settings.fallback_embedding_model
+        device = _detect_hf_device(settings)
+        return _huggingface_embedding(model, device)
+
+    if mode == "ollama":
+        return _try_ollama()
+
+    if mode == "huggingface":
+        return _try_huggingface()
+
+    # auto mode
     if settings.ollama_base_url:
         try:
-            return _ollama_embedding(settings.ollama_base_url, settings.ollama_embedding_model)
-        except Exception as exc:  # pragma: no cover - network hiccup fallback
-            LOGGER.warning("Ollama embedding backend unavailable, fallback engaged: %s", exc)
+            backend = _try_ollama()
+            LOGGER.debug("Using Ollama embedding backend (auto mode)")
+            return backend
+        except Exception as exc:  # pragma: no cover - runtime failure
+            LOGGER.warning("Ollama embedding backend unavailable, falling back to HuggingFace: %s", exc)
 
-    if settings.enable_fallback_embeddings:
-        model = settings.fallback_embedding_model
-        device = settings.fallback_embedding_device or None
-        try:
-            return _huggingface_embedding(model, device)
-        except Exception as exc:  # pragma: no cover - propagate to caller
-            LOGGER.error("Fallback embedding backend failed: model=%s error=%s", model, exc)
-            raise
-
-    raise ValueError("No embedding backend available (ollama disabled and fallback disabled)")
+    try:
+        backend = _try_huggingface()
+        LOGGER.debug("Using HuggingFace embedding backend (auto mode)")
+        return backend
+    except Exception as exc:  # pragma: no cover - propagate error
+        LOGGER.error("No embedding backend available: %s", exc)
+        raise ValueError("No embedding backend available (Ollama failed and fallback disabled/failed)") from exc
 
 
 def clear_embedding_backends() -> None:
