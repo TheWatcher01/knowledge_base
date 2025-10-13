@@ -109,6 +109,7 @@ uv run uvicorn rag_api.main:app --reload --port 8000
 ### Authentification & accès
 
 - Connexion/inscription via Auth.js avec mots de passe bcryptés et sessions JWT.
+- Secret unifié : `AUTH_SECRET` peut rester vide côté Next.js, la configuration retombe automatiquement sur `NEXTAUTH_SECRET` (simplifie les runs Playwright/CI).
 - Rôles `ADMIN`, `EDITOR`, `VIEWER` avec enforcement serveur + UI contextuelle.
 - Middleware et helpers Prisma pour sécuriser chaque KB.
 

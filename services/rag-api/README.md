@@ -1,134 +1,81 @@
-# RAG API Service
+# RAG API (services/rag-api)
 
-Ce service FastAPI prend le relais d’Open WebUI pour la partie RAG : ingestion de contenus, stockage vectoriel et complétions de chat locales. Il s’appuie sur Ollama (modèles open source), LlamaIndex (pipeline ingestion/indexation) et LangChain (outils complémentaires comme SearxNG).
+Service FastAPI responsable de l’ingestion, du stockage vectoriel et du chat RAG. Ce document décrit les actions concrètes côté dossier `services/rag-api`; pour la vision globale consulter `docs/rag-service/README.md`.
 
----
-
-## 🛣️ Roadmap
-
-| Statut | Tâche |
-| --- | --- |
-| ✅ | Création du squelette FastAPI + configuration uv / Docker |
-| ✅ | Ingestion texte (LlamaIndex : chunking + embeddings Ollama + PGVector) |
-| ✅ | Ingestion URL (SearxNG + Tika) et pipeline asynchrone |
-| ⬜️ | Suppression / resynchronisation complète des KB (`rag-sync`) |
-| ⬜️ | Endpoint chat streaming (ChatOllama + SSE) avec fallback Prisma |
-| ⬜️ | Intégration SearxNG comme outil de recherche live + observabilité |
-| ⬜️ | Fallback embeddings (SentenceTransformers) lorsque Ollama n’est pas disponible |
-| ⬜️ | Support multi-fournisseurs LLM (OpenAI, Azure, Mistral) avec sélection runtime |
-| ⬜️ | UI/Endpoints de gestion des modèles (listing/pull/delete/defaults) |
-| ⬜️ | Jeux de tests (pytest + Vitest/Playwright) et documentation finale |
-
-## ✅ À faire ensuite
-
-- Mutualiser un pool Postgres psycopg pour éviter les connexions répétées.
-- Ajouter un loader Tika résilient (timeouts, retries, fallback Unstructured).
-- Consolider la file de traitement pour les crawls URL volumineux (priorités, retries, déduplication).
-- Finaliser la suppression des chunks + métadonnées dans PGVector.
-- Instrumenter les logs (JSON) et exposer des métriques Prometheus / OTEL.
-- Étendre la couverture de tests (pytest delete/chat, Vitest & Playwright côté web).
-- Rédiger le playbook de déploiement (pgvector init, modèles Ollama, secrets).
-
----
-
-## 🔧 Prérequis
-
-- Python 3.12 (géré automatiquement par `uv`).
-- Services externes via `docker compose` : `ollama`, `mongo`, `postgres`, `tika`, `searxng`.
-
-## 🚀 Démarrage rapide
+## Installation locale
 
 ```bash
-# Installation des dépendances (génère .venv et uv.lock)
 uv sync
-
-# Lancement du serveur en mode développement
-uv run -- uvicorn rag_api.api:app --host 0.0.0.0 --port 8000 --reload
-
-# Ou via le script
-uv run main.py
 ```
 
-## 🔑 Variables d’environnement (`RAG_`)
+- Crée un environnement virtuel `.venv` dédié (géré par `uv`).
+- Résout les dépendances Python définies dans `pyproject.toml` et `uv.lock`.
 
-- `RAG_OLLAMA_BASE_URL` : URL du service Ollama (`http://ollama:11434`).
-- `RAG_OLLAMA_LLM_MODEL` / `RAG_OLLAMA_EMBEDDING_MODEL` : noms de modèles à utiliser.
-- `RAG_POSTGRES_DSN` : DSN Postgres (avec pgvector).
-- `RAG_MONGODB_URI` / `RAG_MONGO_DB` : accès au knowledge store.
-- `RAG_SEARXNG_BASE_URL`, `RAG_TIKA_BASE_URL` : services optionnels pour la recherche web et l’extraction.
-- `RAG_AUTH_TOKEN` : token Bearer attendu côté frontend.
-- `RAG_RELOAD` : si `true`, active l’autoreload (développement).
-- `RAG_RATE_LIMIT` : limite globale SlowAPI appliquée à tous les endpoints (`60/minute` par défaut, chaîne vide pour désactiver).
-- `RAG_MAX_TEXT_CHARS` : taille maximale (caractères) d’un document texte ingéré (défaut : 20 000).
-- `RAG_MAX_JSON_BYTES` : taille maximale (octets) d’un payload JSON (défaut : 262 144).
-- `RAG_MAX_CONCURRENT_JOBS` : nombre maximum de jobs d’ingestion web simultanés par base (`5`).
+> Référez-vous à `docs/rag-service/README.md` pour la liste exhaustive des variables `RAG_*`, la roadmap et les scénarios de validation. Les points ci-dessous se limitent aux actions propres au répertoire `services/rag-api`.
 
-## ⚙️ Endpoints clés
-
-- `POST /api/v1/retrieval/process/text` — ingestion texte (rate limit 5/min, 413 si charges > limites).
-- `POST /api/v1/retrieval/process/web` — ingestion URL asynchrone (rate limit 3/min, 429 si file pleine).
-- `POST /api/v1/retrieval/delete` — suppression d’un document (rate limit 10/min).
-- `POST /api/v1/retrieval/query/doc` — requêtes vectorielles (rate limit 60/min).
-- `GET /api/v1/retrieval/status/{documentId}` — statut le plus récent d’une ingestion.
-- `GET /api/v1/retrieval/jobs?documentId=…|kbId=…` — historique des jobs (limité à 100 entrées).
-- `GET /api/v1/retrieval/jobs/{jobId}` — détail d’un job (timestamps, métadonnées, erreurs).
-- `POST /api/v1/chat/completions` — streaming SSE propulsé par Ollama (rate limit 30/min).
-- `GET /api/v1/models` — liste des modèles Ollama installés.
-- `POST /api/v1/models/pull` — installation d’un modèle Ollama.
-- `DELETE /api/v1/models/{name}` — suppression d’un modèle du serveur Ollama.
-- `PATCH /api/v1/models/defaults` — mise à jour des modèles par défaut (chat / embeddings).
-
-## 🛡️ Rate limiting & garde-fous
-
-- SlowAPI utilise le jeton Bearer comme clé de throttling (sinon l’adresse IP).
-- `RAG_RATE_LIMIT` définit une limite globale ; chaque endpoint critique ajoute en plus sa propre dépendance (`5/min`, `3/min`, etc.).
-- Les payloads dépassant `RAG_MAX_TEXT_CHARS` ou `RAG_MAX_JSON_BYTES` renvoient `413 Content Too Large`.
-- L’ingestion web renvoie `429 Too Many Requests` lorsque `RAG_MAX_CONCURRENT_JOBS` est atteint pour une KB donnée.
-- Les logs structlog et les métriques Prometheus (`prometheus_fastapi_instrumentator`) exposent les informations de quota (`rate.limit.hit`).
-
-## 🕸️ Pipeline d’ingestion web
-
-La pipeline web est désormais orchestrée par `pipelines/web.py` et repose sur trois étapes clés :
-
-1. **Découverte** — `discover_urls` interroge SearxNG (LangChain `SearxSearchWrapper`) pour proposer une liste d’URLs.
-2. **Traitement** — `run_pipeline` gère des `UrlPipelineTask`, crée/relit les jobs `UrlIngestionJob`, met à jour les statuts `UrlEntry` (`queued` → `processing` → `synced|error`) et collecte les résultats (`UrlPipelineResult`).
-3. **Extraction & ingestion** — `ingest_url_document` télécharge l’URL, extrait le texte via Tika, récupère le titre, ajoute des snippets Searx si disponibles puis pousse le contenu vers `ingest_text_into_store` (Ollama embeddings + PGVector).
-
-Les helpers `_safe_update_url_status`/`_safe_mark_job_*` maintiennent la robustesse en cas de indisponibilité Postgres. Chaque exécution retourne les métadonnées enrichies (titre, content-type, URL finale, snippets) exploitables côté orchestrateur ou UI. Les appels réseau sont désormais protégés par un retry exponentiel et un fallback HTML→texte lorsque Tika est indisponible.
-
-**Observabilité** : la pipeline journalise chaque transition (`pipeline.queued`, `pipeline.synced`, `pipeline.job_failed`) avec `job_id`, `kb_id` et métadonnées pour faciliter la corrélation dans les logs structlog.
-
-**Scripts utiles** :
-
-- `pnpm --filter web exec -- node scripts/seed-kb-sample.mjs` — peupler une base de démonstration (notes/fichiers/URLs) côté Prisma.
-- `pnpm --filter web exec -- node scripts/backfill-url-status.mjs --dry-run` — vérifier la cohérence `UrlEntry.status` ↔ dernier job sans modifier la base (retirer `--dry-run` pour appliquer).
-
-## ✅ Tests recommandés
+## Lancement
 
 ```bash
-# Côté service FastAPI
-cd services/rag-api
+uv run -- uvicorn rag_api.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+- `--reload` à conserver en local uniquement.
+- Le service suppose que Postgres, Mongo, Ollama, Tika et SearxNG tournent (Docker Compose recommandé).
+
+## Automatisation rag-sync
+
+- Configurer les variables suivantes pour activer la boucle d’auto-réconciliation :
+  - `RAG_WEB_BASE_URL` : URL publique de l’app Next.js (ex. `http://localhost:3001`).
+  - `RAG_SYNC_SERVICE_TOKEN` : bearer partagé avec l’endpoint `/api/kb/{id}/rag/reconcile`.
+  - `RAG_SYNC_INTERVAL_SECONDS` : intervalle (> 0) entre deux passages. Valeur minimale forcée à 60 s.
+- Au démarrage, `start_scheduler` attend 10 s, récupère les IDs de `KnowledgeBase` dans Postgres, puis appelle l’endpoint Next.js pour chaque KB.
+- Les logs `autosync.*` (structlog) confirment les succès/échecs. Pour désactiver la tâche, laisser `RAG_SYNC_INTERVAL_SECONDS=0` ou retirer l’un des paramètres ci-dessus.
+
+## Scripts et tests
+
+```bash
+# Tests unitaires / d’intégration Python
 uv run pytest
 
-# Scénarios orchestrateur web
-uv run pytest tests/test_web_pipeline.py
+# Pipeline web (URL ingestion) ciblée
+uv run pytest tests/test_web_pipeline.py -k \"pipeline\"
 
-# Côté web (dialogue historique + UI)
-cd apps/web
-pnpm --filter web exec -- vitest run tests/urls-list.test.tsx
+# Schéma OpenAPI
+uv run python scripts/generate-openapi.py
+
+# Ingestion web (Document+UrlEntry + job asynchrone)
+uv run python scripts/ingest_url_job.py <kb-id> https://www.wikipedia.org --title "Autosync"
 ```
 
-Avant d’exécuter les tests Vitest globaux, regénérez Prisma : `pnpm --filter web prisma generate`.
+> Variables requises : `RAG_POSTGRES_DSN`, `RAG_AUTH_TOKEN`, `RAG_API_BASE`. Exemple validé le 13/10/2025 avec la KB `00000000-0000-4000-8000-000000000000` (document `2aa3a28b-3cb0-402d-a838-6e46f35af896` → job `c761092d-aa92-421d-94f3-64d699c89ad6` en statut `synced`).
 
-## 🗂️ Structure du module
+Avant de lancer les tests front (Vitest/Playwright), exécuter côté monorepo `pnpm --filter web exec prisma generate`.
 
-```bash
-src/rag_api/
-  api.py               # Factory FastAPI + CORS + routers
-  config.py            # Pydantic Settings
-  dependencies/auth.py # Vérification Bearer token
-  routes/              # Endpoints (chat, ingestion, health)
-  services/            # Implémentations pipelines (ingestion, vector store, etc.)
+## Structure principale
+
+```
+rag_api/
+  api.py                # Factory FastAPI, route import, instrumentation
+  config.py             # Paramétrage Pydantic (Settings)
+  routes/               # Endpoints (chat, retrieval, models, health, search)
+  services/             # Logique métier (ingestion, vector store, jobs, pipelines)
+  dependencies/         # Authentification Bearer, rate limiting
+  pipelines/            # Orchestration SearxNG/Tika -> pgvector
+  tests/                # Pytest (services + API)
 ```
 
-Les routes retournent pour l’instant des réponses placeholder; elles seront remplacées par des appels réels à LlamaIndex/LangChain aux étapes suivantes.
+## Points de vigilance
+
+- L’extension `vector` doit être disponible sur Postgres avant démarrage.
+- Les jobs d’ingestion URL s’appuient sur `asyncio.create_task`; surveiller les logs structlog pour les erreurs.
+- En cas de renommage de collection (`kb-` → `kb_`), le module `services/vector_store.py` migre tables, index et séquences au runtime.
+- Si Ollama est indisponible, le service passe automatiquement sur SentenceTransformers (`RAG_ENABLE_FALLBACK_EMBEDDINGS=true`).
+- Pour le streaming, `langchain_ollama.ChatOllama.astream` nécessite un serveur Ollama récent (> 0.3); vérifier la compatibilité.
+
+## Validation manuelle rapide
+
+1. Lancer le service avec les variables ci-dessus et le front Next.js (`pnpm --filter web dev`).
+2. Créer une KB, ingérer note/fichier/URL, vérifier les entrées `UrlIngestionJob` et le statut via `/api/v1/retrieval/jobs`.
+3. Supprimer un document depuis l’UI et confirmer la suppression dans PGVector (`SELECT COUNT(*) FROM data_kb_<id>`).
+4. Ouvrir le chat et s’assurer que le streaming SSE fonctionne (console réseau → `EventStream`).
+5. Valider les métriques sur `GET /metrics` et que les limites de rate limit renvoient bien 429/413 en cas de dépassement.
