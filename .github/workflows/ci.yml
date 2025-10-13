@@ -42,6 +42,9 @@ jobs:
     needs: vitest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -56,9 +59,35 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-
       - run: pnpm install --frozen-lockfile
+      - name: Start databases
+        run: docker compose up -d postgres mongo
+      - name: Wait for services
+        run: pnpm dlx wait-on tcp:localhost:5432 tcp:localhost:27017
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+      - name: Apply database migrations
+        run: pnpm --filter web exec prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://kb:kb@localhost:5432/kb
       - run: pnpm --filter web exec prisma generate
       - run: pnpm --filter web exec -- playwright install --with-deps
       - run: pnpm --filter web exec -- playwright test --reporter=list
+        env:
+          DATABASE_URL: postgresql://kb:kb@localhost:5432/kb
+          MONGODB_URI: mongodb://localhost:27017
+          MONGODB_DB: kbapp
+          NEXTAUTH_SECRET: test-nextauth-secret
+          NEXTAUTH_URL: http://localhost:3001
+          RAG_API_BASE: http://localhost:8000
+          RAG_API_TOKEN: ci-token
+          RAG_POSTGRES_DSN: postgresql://kb:kb@localhost:5432/kb
+          RAG_MONGODB_URI: mongodb://localhost:27017
+          RAG_MONGO_DB: kbapp
+          RAG_ENABLE_FALLBACK_EMBEDDINGS: "true"
+          RAG_SYNC_SERVICE_TOKEN: ci-token
+          PLAYWRIGHT_TEST_KB_ID: 00000000-0000-4000-8000-000000000000
+          USE_RAG_MOCK: "false"
+          E2E_USE_RAG_MOCK: "false"
 
   pytest:
     runs-on: ubuntu-latest
