@@ -27,6 +27,9 @@ services:
       - RAG_TIKA_BASE_URL=http://tika:9998
       - RAG_SEARXNG_BASE_URL=http://searxng:8080/search
       - RAG_AUTH_TOKEN=${RAG_AUTH_TOKEN:-kb-dev-token}
+      # - RAG_WEB_BASE_URL=http://host.docker.internal:3001
+      # - RAG_SYNC_SERVICE_TOKEN=${RAG_SYNC_SERVICE_TOKEN:-kb-dev-token}
+      # - RAG_SYNC_INTERVAL_SECONDS=900
     networks: [ kbnet ]
 
   ollama:

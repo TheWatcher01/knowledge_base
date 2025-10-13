@@ -66,12 +66,17 @@
 ## Intégration actuelle d’Open WebUI
 
 - Points d’entrée : `apps/web/src/lib/rag.ts`, `apps/web/src/lib/rag-sync.ts`, `apps/web/src/app/api/{chat,files,urls,urls/[id],kb/[id],notebook}/route.ts`.
-- Configuration : variables `RAG_API_BASE`, `RAG_API_TOKEN`, `MOCK_OPEN_WEBUI`
+- Configuration : variables `RAG_API_BASE`, `RAG_API_TOKEN`, `USE_RAG_MOCK`
   définies dans l’environnement et utilisées via
   `apps/web/src/lib/config.ts`. En développement, `RAG_API_BASE` tombe par
   défaut sur `http://localhost:8000`. Le jeton `RAG_API_TOKEN` est optionnel
   mais doit correspondre à `RAG_AUTH_TOKEN` côté FastAPI (par défaut
-  `kb-dev-token`).
+  `kb-dev-token`). Quand `USE_RAG_MOCK` est à `true`, le front bascule
+  explicitement sur le mock sans appeler le service Python.
+- Scheduler FastAPI : variables `RAG_WEB_BASE_URL`,
+  `RAG_SYNC_SERVICE_TOKEN` et `RAG_SYNC_INTERVAL_SECONDS` contrôlent le job
+  récurrent de resynchronisation. Tant que l’une d’elles est absente, le
+  scheduler reste désactivé.
 - Cas d’usage :
   - Chat streaming (`/api/v1/chat/completions`) depuis `apps/web/src/app/api/chat/route.ts`.
   - Ingestion texte/fichiers (`/api/v1/retrieval/process/text`) pour notes et fichiers.

@@ -87,11 +87,20 @@ pnpm --filter web dev        # http://localhost:3001
 uv run uvicorn rag_api.main:app --reload --port 8000
 ```
 
-> Le mock RAG reste activé par défaut côté front ; basculer vers l’API FastAPI
-> après finalisation de l’endpoint chat streaming.
+> Par défaut, l’application cible directement le service FastAPI ; activez
+> explicitement le mock en cas de besoin via `USE_RAG_MOCK="true"`.
 > Assurez-vous que `RAG_API_TOKEN` dans `.env.local` correspond à
 > `RAG_AUTH_TOKEN` défini dans `compose.yml`.
 > Valeur par défaut : `kb-dev-token`.
+
+### Variables RAG utiles
+
+- `RAG_API_BASE`, `RAG_API_TOKEN` : connexion directe au service FastAPI.
+- `USE_RAG_MOCK` : bascule explicite du front vers le mock (tests E2E).
+- `RAG_SYNC_SERVICE_TOKEN` : jeton partagé avec FastAPI pour les relances
+  automatiques.
+- `RAG_WEB_BASE_URL`, `RAG_SYNC_INTERVAL_SECONDS` (côté service FastAPI) :
+  activent le job périodique de resynchronisation des connaissances.
 
 ---
 
