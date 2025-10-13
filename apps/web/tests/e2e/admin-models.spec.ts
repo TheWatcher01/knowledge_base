@@ -43,12 +43,14 @@ test.describe('Admin modèles', () => {
         const beforeState = (await snapshotBeforeDefaults.json()) as { defaults: { chat_model: string | null } };
         expect(beforeState.defaults.chat_model).toBeNull();
 
-        await table
+        const setDefaultButton = table
             .locator('tbody tr')
             .filter({ hasText: 'llama3.1:8b' })
             .getByRole('button', { name: 'Définir pour le chat' })
-            .first()
-            .click();
+            .first();
+
+        await expect(setDefaultButton).toBeVisible({ timeout: 15_000 });
+        await setDefaultButton.click();
 
         const snapshotAfterDefaults = await page.request.get('/api/test/rag-mock/state');
         const afterState = (await snapshotAfterDefaults.json()) as { defaults: { chat_model: string | null } };

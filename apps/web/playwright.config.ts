@@ -68,10 +68,11 @@ export default defineConfig({
             reuseExistingServer: !process.env.CI,
         },
         {
-            command: 'uv run -- uvicorn rag_api.main:app --host 0.0.0.0 --port 8000',
+            command: 'uv run -- uvicorn rag_api.api:app --host 0.0.0.0 --port 8000',
             cwd: path.resolve(repoRoot, 'services', 'rag-api'),
             env: {
                 ...process.env,
+                PYTHONPATH: path.resolve(repoRoot, 'services', 'rag-api', 'src'),
                 RAG_AUTH_TOKEN: ragToken,
                 RAG_POSTGRES_DSN: process.env.RAG_POSTGRES_DSN ?? databaseUrl,
                 RAG_MONGODB_URI: mongoUri,
