@@ -45,6 +45,7 @@ def query_documents(
     )
 
     results = vector_store.query(
+        query,
         query_embedding=query_embedding,
         similarity_top_k=limit,
     )
@@ -67,4 +68,3 @@ def _serialize_node(node: NodeWithScore) -> Dict[str, Any]:
         "score": node.score,
         "metadata": metadata,
     }
-

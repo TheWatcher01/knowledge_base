@@ -64,7 +64,7 @@ async def chat_completions(
     messages = _to_langchain_messages(payload.messages)
 
     chat = ChatOllama(
-        base_url=settings.ollama_base_url,
+        base_url=str(settings.ollama_base_url),
         model=model_name,
         temperature=0.1,
     )
@@ -127,18 +127,42 @@ def _to_langchain_messages(messages: list[ChatMessage]):
 
 
 def _chunk_text(chunk) -> str:
+    def _stringify(value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, list):
+            parts: list[str] = []
+            for item in value:
+                if isinstance(item, dict) and "text" in item:
+                    text_val = item["text"]
+                    parts.append(str(text_val))
+                else:
+                    parts.append(str(item))
+            return "".join(parts)
+        if isinstance(value, str):
+            return value
+        text_attr = getattr(value, "text", None)
+        if callable(text_attr):
+            try:
+                return str(text_attr())
+            except TypeError:
+                return str(text_attr)
+        return str(value)
+
     if hasattr(chunk, "message") and getattr(chunk.message, "content", None):
-        content = chunk.message.content
-        if isinstance(content, list):
-            return "".join(part.get("text", "") if isinstance(part, dict) else str(part) for part in content)
-        return str(content)
+        return _stringify(chunk.message.content)
     if hasattr(chunk, "delta") and getattr(chunk.delta, "content", None):
-        content = chunk.delta.content
-        if isinstance(content, list):
-            return "".join(part.get("text", "") if isinstance(part, dict) else str(part) for part in content)
-        return str(content)
-    if hasattr(chunk, "text") and chunk.text:
-        return str(chunk.text)
+        return _stringify(chunk.delta.content)
+    if hasattr(chunk, "text"):
+        text_attr = chunk.text
+        if callable(text_attr):
+            try:
+                return str(text_attr())
+            except TypeError:
+                return str(text_attr)
+        return str(text_attr)
+    if hasattr(chunk, "content"):
+        return _stringify(chunk.content)
     return ""
 
 

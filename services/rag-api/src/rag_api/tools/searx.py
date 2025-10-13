@@ -12,7 +12,7 @@ DEFAULT_HOST = "http://searxng:8080"
 
 
 def _normalise_host(host: str) -> str:
-    host = host.rstrip("/")
+    host = str(host).rstrip("/")
     if host.endswith("/search"):
         host = host[: -len("/search")]
     return host
@@ -27,7 +27,7 @@ def create_searx_wrapper(
     """Return a Searx search wrapper configured for the Compose stack."""
 
     normalised = _normalise_host(host)
-    kwargs: dict[str, Any] = {"searx_host": normalised, "num_results": num_results}
+    kwargs: dict[str, Any] = {"searx_host": normalised, "k": num_results}
     if engines:
         kwargs["engines"] = engines
 

@@ -24,7 +24,7 @@ def _text_splitter() -> SentenceSplitter:
 
 @lru_cache(maxsize=None)
 def _embedding_model(base_url: str, model_name: str) -> OllamaEmbedding:
-    return OllamaEmbedding(base_url=base_url, model=model_name)
+    return OllamaEmbedding(model_name=model_name, base_url=str(base_url))
 
 
 def get_embedding_model(settings: AppSettings) -> OllamaEmbedding:

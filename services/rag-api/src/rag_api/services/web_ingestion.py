@@ -73,7 +73,8 @@ async def extract_text_with_tika(
     if not settings.tika_base_url:
         raise WebIngestionError("Tika server is not configured (RAG_TIKA_BASE_URL missing)")
 
-    url = settings.tika_base_url.rstrip("/") + "/tika"
+    base_url = str(settings.tika_base_url)
+    url = base_url.rstrip("/") + "/tika"
     headers = {
         "Accept": "text/plain",
         "Content-Type": content_type or "text/html; charset=utf-8",
