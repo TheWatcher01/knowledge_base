@@ -68,6 +68,8 @@ Les redémarrages doivent être effectués manuellement en utilisant les command
 - `USE_RAG_MOCK` : bascule vers le mock interne (doit rester `false` en mode service réel).
 - `RAG_SYNC_SERVICE_TOKEN` : secret partagé si le service RAG déclenche des synchronisations vers le web.
 - `AUTH_SECRET` *(optionnel)* : correspond au secret NextAuth côté middleware. À défaut, la webapp retombe automatiquement sur `NEXTAUTH_SECRET`.
+- `RAG_EMBEDDING_BACKEND` : `auto` (défaut), `ollama` ou `huggingface` selon le backend souhaité.
+- `RAG_ENABLE_FALLBACK_EMBEDDINGS`, `RAG_FALLBACK_EMBEDDING_MODEL`, `RAG_FALLBACK_EMBEDDING_DEVICE` : contrôlent SentenceTransformers (détection auto du device si valeur vide).
 
 ### Variables FastAPI (`services/rag-api`)
 
@@ -203,4 +205,4 @@ Avant les tests front, exécuter `pnpm --filter web exec prisma generate`.
   ```bash
   E2E_USE_RAG_MOCK=false USE_RAG_MOCK=false pnpm --filter web exec -- playwright test tests/e2e/admin-models-real.spec.ts
   ```
-- Dernière exécution complète : 13 octobre 2025 à 20:50 UTC (mock + scénario réel) après correction i18n (`kb.ragStatus`) et ajustement des secrets NextAuth.
+- Dernière exécution complète : 13 octobre 2025 à 20:50 UTC (mock + scénario réel) après correction i18n (`kb.ragStatus`), ajustement des secrets NextAuth et validation fallback GPU/CPU.

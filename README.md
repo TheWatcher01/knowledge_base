@@ -85,6 +85,9 @@ pnpm --filter web dev        # http://localhost:3001
 
 # (Optionnel) Service FastAPI RAG réel
 uv run uvicorn rag_api.main:app --reload --port 8000
+
+# (Optionnel) Détection matériel / backend recommandé
+python services/rag-api/scripts/hardware_probe.py
 ```
 
 > Par défaut, l’application cible directement le service FastAPI ; activez
@@ -101,6 +104,8 @@ uv run uvicorn rag_api.main:app --reload --port 8000
   automatiques.
 - `RAG_WEB_BASE_URL`, `RAG_SYNC_INTERVAL_SECONDS` (côté service FastAPI) :
   activent le job périodique de resynchronisation des connaissances.
+- `RAG_EMBEDDING_BACKEND` : `auto` (défaut), `ollama`, `huggingface`.
+  Ajuster `RAG_FALLBACK_EMBEDDING_DEVICE` pour forcer `cpu`/`cuda` si besoin.
 
 ---
 
@@ -129,6 +134,8 @@ uv run uvicorn rag_api.main:app --reload --port 8000
   tests Vitest).
 - Service FastAPI prêt pour l’ingestion et les jobs de modèles
   (pull/install) avant la bascule chat.
+- Choix dynamique des embeddings : Ollama (GPU si disponible) ou
+  SentenceTransformers HuggingFace avec détection automatique CPU/GPU.
 
 ### Administration & observabilité
 

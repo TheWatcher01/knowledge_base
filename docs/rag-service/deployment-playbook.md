@@ -73,8 +73,10 @@ RAG_SEARXNG_BASE_URL=http://localhost:8080
 RAG_WEB_BASE_URL=http://localhost:3001
 RAG_SYNC_SERVICE_TOKEN=kb-dev-token
 RAG_SYNC_INTERVAL_SECONDS=900
+RAG_EMBEDDING_BACKEND=auto
 RAG_ENABLE_FALLBACK_EMBEDDINGS=true
 RAG_FALLBACK_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+RAG_FALLBACK_EMBEDDING_DEVICE=
 ```
 
 Adapter les hôtes/ports si vous utilisez Docker Desktop (`host.docker.internal` côté service).
@@ -133,6 +135,15 @@ curl -H "Authorization: Bearer $RAG_AUTH_TOKEN" \
 Le job doit passer par `queued` → `synced` et `UrlEntry.status` être mis à jour. Consulter les logs FastAPI (`autosync.*`) pour valider la boucle complète.
 
 > 13/10/2025 – Validation locale : KB `00000000-0000-4000-8000-000000000000`, document `2aa3a28b-3cb0-402d-a838-6e46f35af896` (`https://www.wikipedia.org`) traité avec succès (`synced`) – voir job `c761092d-aa92-421d-94f3-64d699c89ad6`.
+
+### Détection matériel & recommandation backend
+
+```bash
+cd services/rag-api
+python scripts/hardware_probe.py
+```
+
+Le script retourne un JSON détaillant la présence GPU, la disponibilité d’Ollama et le backend recommandé (`ollama`, `huggingface (cuda)`, `huggingface (cpu)`). Utilisez ces informations pour ajuster `RAG_EMBEDDING_BACKEND` et `RAG_FALLBACK_EMBEDDING_DEVICE` avant de lancer le service.
 
 ## 10. Exécuter la suite de tests
 
