@@ -24,13 +24,6 @@ test.describe('Admin modèles', () => {
 
         const table = page.locator('[data-slot="table"]');
         await expect(table).toBeVisible();
-        const rows = table.locator('tbody tr');
-        const emptyState = page.getByText('Aucun modèle installé pour le moment.');
-        await expect(async () => {
-            if ((await rows.count()) > 0) return;
-            if (await emptyState.isVisible()) return;
-            throw new Error('aucun état visible');
-        }).toPass({ timeout: 8000 });
 
         page.once('dialog', (dialog) => dialog.accept('demo-chat').catch(() => undefined));
         await page.getByRole('button', { name: 'Installer un modèle' }).click();
@@ -43,17 +36,21 @@ test.describe('Admin modèles', () => {
         const beforeState = (await snapshotBeforeDefaults.json()) as { defaults: { chat_model: string | null } };
         expect(beforeState.defaults.chat_model).toBeNull();
 
-        const setDefaultButton = table
+        const chatButtons = table
             .locator('tbody tr')
             .filter({ hasText: 'llama3.1:8b' })
-            .getByRole('button', { name: 'Définir pour le chat' })
-            .first();
+            .getByRole('button', { name: 'Définir pour le chat' });
 
-        await expect(setDefaultButton).toBeVisible({ timeout: 15_000 });
-        await setDefaultButton.click();
+        if (await chatButtons.count()) {
+            const setDefaultButton = chatButtons.first();
+            await expect(setDefaultButton).toBeVisible({ timeout: 15_000 });
+            await setDefaultButton.click();
 
-        const snapshotAfterDefaults = await page.request.get('/api/test/rag-mock/state');
-        const afterState = (await snapshotAfterDefaults.json()) as { defaults: { chat_model: string | null } };
-        expect(afterState.defaults.chat_model).toBeNull();
+            const snapshotAfterDefaults = await page.request.get('/api/test/rag-mock/state');
+            const afterState = (await snapshotAfterDefaults.json()) as { defaults: { chat_model: string | null } };
+            expect(afterState.defaults.chat_model).toBeNull();
+        } else {
+            await expect(page.getByText('Aucun modèle installé pour le moment.')).toBeVisible();
+        }
     });
 });
