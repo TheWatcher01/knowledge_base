@@ -15,6 +15,13 @@ type RetrievedDoc = {
     title?: string | null;
     kind?: "vector" | "web" | "fallback";
 };
+
+type RetrievedDocSummary = {
+    id: string;
+    kind: "vector" | "web" | "fallback";
+    title: string | null;
+    source: string | null;
+};
 type RetrievalResponse = {
     docs?: RetrievedDoc[];
     documents?: unknown;
@@ -230,6 +237,19 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        const sources: RetrievedDocSummary[] = docs.slice(0, 10).map((doc, index) => {
+            const kind = doc.kind ?? "vector";
+            const labelIndex = index + 1;
+            const baseTitle = doc.title?.trim() || null;
+            const baseSource = doc.source?.trim() || null;
+            return {
+                id: `${kind}-${labelIndex}`,
+                kind,
+                title: baseTitle,
+                source: baseSource,
+            } satisfies RetrievedDocSummary;
+        });
+
         const ctx = docs
             .map((doc, index) => {
                 const prefix = doc.kind === "web" ? "WebDoc" : "Doc";
@@ -282,6 +302,7 @@ export async function POST(req: NextRequest) {
                 question,
                 sequence: nextSequence,
                 model: conversation.model ?? model ?? null,
+                sources,
             });
 
             return new Response(stream, {
@@ -289,6 +310,7 @@ export async function POST(req: NextRequest) {
                     "Content-Type": "text/event-stream",
                     "Cache-Control": "no-cache",
                     "X-Conversation-Id": conversation.id,
+                    "X-Rag-Sources": JSON.stringify(sources),
                 },
             });
         } catch (error) {
@@ -394,8 +416,9 @@ function createStreamingResponse(params: {
     question: string;
     sequence: number;
     model: string | null;
+    sources: RetrievedDocSummary[];
 }) {
-    const { upstream, conversationId, question, sequence, model } = params;
+    const { upstream, conversationId, question, sequence, model, sources } = params;
     const reader = upstream.body!.getReader();
     const decoder = new TextDecoder();
     const encoder = new TextEncoder();
@@ -529,6 +552,7 @@ function createStreamingResponse(params: {
                             role: ChatMessageRole.assistant,
                             content: assistantContent.trim(),
                             sequence: sequence + 1,
+                            meta: sources.length > 0 ? ( { sources } as Prisma.JsonObject ) : undefined,
                         },
                     }),
                     prisma.chatConversation.update({

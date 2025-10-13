@@ -60,6 +60,7 @@ export async function GET(
             tokens: true,
             error: true,
             createdAt: true,
+            meta: true,
           },
         },
       },

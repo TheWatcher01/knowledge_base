@@ -158,6 +158,7 @@ model ChatMessage {
   sequence        Int
   tokens          Int?
   error           String?
+  meta            Json?
   createdAt       DateTime          @default(now())
 
   @@unique([conversationId, sequence])
