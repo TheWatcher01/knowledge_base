@@ -187,50 +187,50 @@
       "success": "Base de connaissance supprimée.",
       "cancel": "Annuler"
     },
-  "layout": {
-    "missingDescription": "Ajoutez une description pour contextualiser cette base de connaissance.",
-    "createdOn": "Créée le",
-    "sources": "Sources",
-    "documents": "Documents",
-    "ragSyncLabel": "Réanalyser les connaissances",
-    "ragSyncRunningButton": "Réanalyse en cours…",
-    "ragSyncRunning": "Vérification service RAG en cours…",
-    "ragSyncAlready": "La collection service RAG existe déjà, aucune réindexation n'est nécessaire.",
-    "ragSyncReembedded": "Réindexation envoyée pour {count, plural, one {# élément} other {# éléments}}.",
-    "ragSyncNoEntries": "Aucune connaissance sauvegardée à réindexer.",
-    "ragSyncError": "Échec de la réanalyse : {error}.",
-    "ragSyncErrorFallback": "erreur inconnue",
-    "ragSyncErrorUnexpectedResponse": "réponse service RAG inattendue",
-    "ragSyncErrorTimeout": "délai dépassé lors de l'appel service RAG"
-  },
-  "ragStatus": {
-    "title": "Service RAG indisponible",
-    "disabled": "{message}",
-    "disabledDefault": "Le backend RAG est désactivé. Configurez RAG_API_BASE puis redémarrez la stack.",
-    "error": "Impossible de joindre le backend RAG : {message}",
-    "errorDefault": "Erreur inconnue lors de la communication avec le backend RAG.",
-    "retry": "Réessayer",
-    "checking": "Vérification…",
-    "checkedAt": "Dernière vérification : {time}"
-  },
-  "tabs": {
-    "overview": "Vue d'ensemble",
-    "notes": "Notes",
-    "files": "Fichiers",
-    "urls": "Liens",
-    "chat": "Chat"
-  },
-  "chatNav": {
-    "heading": "Historique du chat",
-    "loading": "Chargement…",
-    "empty": "Aucune conversation enregistrée.",
-    "loadError": "Impossible de charger l'historique.",
-    "untitled": "Sans titre",
-    "delete": "Supprimer",
-    "deleteConfirm": "Supprimer la conversation \"{title}\" ?",
-    "deleteError": "Impossible de supprimer la conversation."
-  },
-  "overview": {
+    "layout": {
+      "missingDescription": "Ajoutez une description pour contextualiser cette base de connaissance.",
+      "createdOn": "Créée le",
+      "sources": "Sources",
+      "documents": "Documents",
+      "ragSyncLabel": "Réanalyser les connaissances",
+      "ragSyncRunningButton": "Réanalyse en cours…",
+      "ragSyncRunning": "Vérification service RAG en cours…",
+      "ragSyncAlready": "La collection service RAG existe déjà, aucune réindexation n'est nécessaire.",
+      "ragSyncReembedded": "Réindexation envoyée pour {count, plural, one {# élément} other {# éléments}}.",
+      "ragSyncNoEntries": "Aucune connaissance sauvegardée à réindexer.",
+      "ragSyncError": "Échec de la réanalyse : {error}.",
+      "ragSyncErrorFallback": "erreur inconnue",
+      "ragSyncErrorUnexpectedResponse": "réponse service RAG inattendue",
+      "ragSyncErrorTimeout": "délai dépassé lors de l'appel service RAG"
+    },
+    "ragStatus": {
+      "title": "Service RAG indisponible",
+      "disabled": "{message}",
+      "disabledDefault": "Le backend RAG est désactivé. Configurez RAG_API_BASE puis redémarrez la stack.",
+      "error": "Impossible de joindre le backend RAG : {message}",
+      "errorDefault": "Erreur inconnue lors de la communication avec le backend RAG.",
+      "retry": "Réessayer",
+      "checking": "Vérification…",
+      "checkedAt": "Dernière vérification : {time}"
+    },
+    "tabs": {
+      "overview": "Vue d'ensemble",
+      "notes": "Notes",
+      "files": "Fichiers",
+      "urls": "Liens",
+      "chat": "Chat"
+    },
+    "chatNav": {
+      "heading": "Historique du chat",
+      "loading": "Chargement…",
+      "empty": "Aucune conversation enregistrée.",
+      "loadError": "Impossible de charger l'historique.",
+      "untitled": "Sans titre",
+      "delete": "Supprimer",
+      "deleteConfirm": "Supprimer la conversation \"{title}\" ?",
+      "deleteError": "Impossible de supprimer la conversation."
+    },
+    "overview": {
       "stats": {
         "note": {
           "label": "Notes",
@@ -250,12 +250,12 @@
         "empty": "Aucune note pour l'instant. Ajoutez votre première note depuis l'onglet \"Notes\"."
       }
     },
-  "notes": {
-    "title": "Notes",
-    "description": "Consignez les idées et le contexte pour garder cette base alignée.",
-    "empty": "Aucune note pour le moment.",
-    "emptyDescription": "Ajoutez une première note grâce au formulaire ci-dessus pour conserver vos idées."
-  },
+    "notes": {
+      "title": "Notes",
+      "description": "Consignez les idées et le contexte pour garder cette base alignée.",
+      "empty": "Aucune note pour le moment.",
+      "emptyDescription": "Ajoutez une première note grâce au formulaire ci-dessus pour conserver vos idées."
+    },
     "permissions": {
       "viewOnlyMessage": "Vous êtes en lecture seule. Demandez à un éditeur ou un administrateur d'accorder des droits de modification."
     },
@@ -348,23 +348,23 @@
       "ingestionDisabled": "L’ingestion automatique est désactivée. Vous pourrez relancer l’indexation plus tard.",
       "ingestionError": "L’ingestion a échoué : {error}"
     },
-  "urlActions": {
-    "open": "Ouvrir",
-    "edit": "Modifier",
-    "save": "Enregistrer",
-    "saving": "Enregistrement...",
-    "cancel": "Annuler",
-    "delete": "Supprimer",
-    "deleting": "Suppression...",
-    "deleteConfirm": "Supprimer le lien \"{title}\" ?",
-    "deleteError": "Impossible de supprimer le lien.",
-    "updateError": "Impossible de mettre à jour le lien.",
-    "resync": "Relancer l’ingestion",
-    "queuedTooltip": "En cours d’ingestion. Actualisez plus tard ou modifiez le lien si besoin.",
-    "errorTooltip": "Échec de l’ingestion. Vérifiez l’URL puis utilisez «Modifier» pour relancer.",
-    "history": "Historique",
-    "close": "Fermer"
-  },
+    "urlActions": {
+      "open": "Ouvrir",
+      "edit": "Modifier",
+      "save": "Enregistrer",
+      "saving": "Enregistrement...",
+      "cancel": "Annuler",
+      "delete": "Supprimer",
+      "deleting": "Suppression...",
+      "deleteConfirm": "Supprimer le lien \"{title}\" ?",
+      "deleteError": "Impossible de supprimer le lien.",
+      "updateError": "Impossible de mettre à jour le lien.",
+      "resync": "Relancer l’ingestion",
+      "queuedTooltip": "En cours d’ingestion. Actualisez plus tard ou modifiez le lien si besoin.",
+      "errorTooltip": "Échec de l’ingestion. Vérifiez l’URL puis utilisez «Modifier» pour relancer.",
+      "history": "Historique",
+      "close": "Fermer"
+    },
     "urlStatuses": {
       "draft": "Brouillon",
       "queued": "En attente",
@@ -418,43 +418,49 @@
       "errorGeneric": "L’assistant n’a pas pu répondre. Réessayez dans un instant.",
       "errorModelRequired": "Sélectionnez un modèle avant d’envoyer une question.",
       "errorAborted": "Génération interrompue.",
-      "modelsAriaLabel": "Modèles disponibles pour le chat"
+      "modelsAriaLabel": "Modèles disponibles pour le chat",
+      "sourcesHeading": "Références",
+      "sourceKindVector": "Document",
+      "sourceKindWeb": "Web",
+      "sourceKindFallback": "Fallback",
+      "sourceLinkLabel": "Ouvrir la source",
+      "sourceUnknown": "Source inconnue"
     },
-  "card": {
-    "emptyDescription": "Aucune description pour le moment.",
-    "notes": "{count, plural, one {# note} other {# notes}}",
-    "files": "{count, plural, one {# fichier} other {# fichiers}}",
-    "urls": "{count, plural, one {# lien} other {# liens}}",
-    "documents": "{count, plural, one {# document} other {# documents}}"
-  },
-  "workspace": {
-    "sources": "Sources",
-    "searchPlaceholder": "Rechercher une base",
-    "documents": "{count, plural, one {# document} other {# documents}}",
-    "selection": {
-      "toggle": "{name} : basculer la sélection",
-      "count": "{count, plural, one {# base sélectionnée} other {# bases sélectionnées}}"
+    "card": {
+      "emptyDescription": "Aucune description pour le moment.",
+      "notes": "{count, plural, one {# note} other {# notes}}",
+      "files": "{count, plural, one {# fichier} other {# fichiers}}",
+      "urls": "{count, plural, one {# lien} other {# liens}}",
+      "documents": "{count, plural, one {# document} other {# documents}}"
     },
-    "actions": {
-      "selectVisible": "Tout sélectionner",
-      "unselectVisible": "Effacer la sélection visible",
-      "clear": "Réinitialiser"
-    },
-    "tip": {
-      "title": "Astuce",
-      "content": "Utilisez l’assistant pour résumer vos sources et enrichir rapidement cette base."
-    },
-    "studio": {
-      "title": "Studio",
-      "description": "Générez de nouveaux contenus pour cette base en un clic.",
-      "audio": "Résumé audio",
-      "video": "Résumé vidéo",
-      "mindmap": "Carte mentale",
-      "report": "Rapport",
-      "flashcards": "Fiches d’apprentissage",
-      "quiz": "Quiz",
-      "cta": "Workflows IA"
+    "workspace": {
+      "sources": "Sources",
+      "searchPlaceholder": "Rechercher une base",
+      "documents": "{count, plural, one {# document} other {# documents}}",
+      "selection": {
+        "toggle": "{name} : basculer la sélection",
+        "count": "{count, plural, one {# base sélectionnée} other {# bases sélectionnées}}"
+      },
+      "actions": {
+        "selectVisible": "Tout sélectionner",
+        "unselectVisible": "Effacer la sélection visible",
+        "clear": "Réinitialiser"
+      },
+      "tip": {
+        "title": "Astuce",
+        "content": "Utilisez l’assistant pour résumer vos sources et enrichir rapidement cette base."
+      },
+      "studio": {
+        "title": "Studio",
+        "description": "Générez de nouveaux contenus pour cette base en un clic.",
+        "audio": "Résumé audio",
+        "video": "Résumé vidéo",
+        "mindmap": "Carte mentale",
+        "report": "Rapport",
+        "flashcards": "Fiches d’apprentissage",
+        "quiz": "Quiz",
+        "cta": "Workflows IA"
+      }
     }
   }
-}
 }

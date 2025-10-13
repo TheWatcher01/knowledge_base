@@ -187,50 +187,50 @@
       "success": "Knowledge base deleted.",
       "cancel": "Cancel"
     },
-  "layout": {
-    "missingDescription": "Add a description to provide context for this knowledge base.",
-    "createdOn": "Created on",
-    "sources": "Sources",
-    "documents": "Documents",
-    "ragSyncLabel": "Re-sync knowledge",
-    "ragSyncRunningButton": "Re-sync in progress…",
-    "ragSyncRunning": "Checking RAG service collection…",
-    "ragSyncAlready": "The RAG service collection already exists – no re-index required.",
-    "ragSyncReembedded": "Re-index request sent for {count, plural, one {# item} other {# items}}.",
-    "ragSyncNoEntries": "No stored knowledge to re-index.",
-    "ragSyncError": "Re-sync failed: {error}.",
-    "ragSyncErrorFallback": "unknown error",
-    "ragSyncErrorUnexpectedResponse": "unexpected RAG service response",
-    "ragSyncErrorTimeout": "request to RAG service timed out"
-  },
-  "ragStatus": {
-    "title": "RAG service unavailable",
-    "disabled": "{message}",
-    "disabledDefault": "The RAG backend is disabled. Configure RAG_API_BASE and restart the stack.",
-    "error": "Unable to reach the RAG backend: {message}",
-    "errorDefault": "Unknown error contacting the RAG backend.",
-    "retry": "Try again",
-    "checking": "Checking…",
-    "checkedAt": "Last check: {time}"
-  },
-  "tabs": {
-    "overview": "Overview",
-    "notes": "Notes",
-    "files": "Files",
-    "urls": "URLs",
-    "chat": "Chat"
-  },
-  "chatNav": {
-    "heading": "Chat history",
-    "loading": "Loading…",
-    "empty": "No conversations yet.",
-    "loadError": "Unable to load history.",
-    "untitled": "Untitled",
-    "delete": "Delete",
-    "deleteConfirm": "Delete conversation \"{title}\"?",
-    "deleteError": "Couldn't delete the conversation."
-  },
-  "overview": {
+    "layout": {
+      "missingDescription": "Add a description to provide context for this knowledge base.",
+      "createdOn": "Created on",
+      "sources": "Sources",
+      "documents": "Documents",
+      "ragSyncLabel": "Re-sync knowledge",
+      "ragSyncRunningButton": "Re-sync in progress…",
+      "ragSyncRunning": "Checking RAG service collection…",
+      "ragSyncAlready": "The RAG service collection already exists – no re-index required.",
+      "ragSyncReembedded": "Re-index request sent for {count, plural, one {# item} other {# items}}.",
+      "ragSyncNoEntries": "No stored knowledge to re-index.",
+      "ragSyncError": "Re-sync failed: {error}.",
+      "ragSyncErrorFallback": "unknown error",
+      "ragSyncErrorUnexpectedResponse": "unexpected RAG service response",
+      "ragSyncErrorTimeout": "request to RAG service timed out"
+    },
+    "ragStatus": {
+      "title": "RAG service unavailable",
+      "disabled": "{message}",
+      "disabledDefault": "The RAG backend is disabled. Configure RAG_API_BASE and restart the stack.",
+      "error": "Unable to reach the RAG backend: {message}",
+      "errorDefault": "Unknown error contacting the RAG backend.",
+      "retry": "Try again",
+      "checking": "Checking…",
+      "checkedAt": "Last check: {time}"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "notes": "Notes",
+      "files": "Files",
+      "urls": "URLs",
+      "chat": "Chat"
+    },
+    "chatNav": {
+      "heading": "Chat history",
+      "loading": "Loading…",
+      "empty": "No conversations yet.",
+      "loadError": "Unable to load history.",
+      "untitled": "Untitled",
+      "delete": "Delete",
+      "deleteConfirm": "Delete conversation \"{title}\"?",
+      "deleteError": "Couldn't delete the conversation."
+    },
+    "overview": {
       "stats": {
         "note": {
           "label": "Notes",
@@ -348,23 +348,23 @@
       "ingestionDisabled": "Automatic ingestion is disabled. You can rerun it later.",
       "ingestionError": "Ingestion failed: {error}"
     },
-  "urlActions": {
-    "open": "Open",
-    "edit": "Edit",
-    "save": "Save",
-    "saving": "Saving...",
-    "cancel": "Cancel",
-    "delete": "Delete",
-    "deleting": "Deleting...",
-    "deleteConfirm": "Delete the link \"{title}\"?",
-    "deleteError": "Couldn't delete the link.",
-    "updateError": "Couldn't update the link.",
-    "resync": "Requeue ingestion",
-    "queuedTooltip": "Ingestion in progress. Refresh later or edit the link if needed.",
-    "errorTooltip": "Ingestion failed. Check the URL then use “Edit” to retry.",
-    "history": "History",
-    "close": "Close"
-  },
+    "urlActions": {
+      "open": "Open",
+      "edit": "Edit",
+      "save": "Save",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleting": "Deleting...",
+      "deleteConfirm": "Delete the link \"{title}\"?",
+      "deleteError": "Couldn't delete the link.",
+      "updateError": "Couldn't update the link.",
+      "resync": "Requeue ingestion",
+      "queuedTooltip": "Ingestion in progress. Refresh later or edit the link if needed.",
+      "errorTooltip": "Ingestion failed. Check the URL then use “Edit” to retry.",
+      "history": "History",
+      "close": "Close"
+    },
     "urlStatuses": {
       "draft": "Draft",
       "queued": "Queued",
@@ -418,7 +418,13 @@
       "errorGeneric": "The assistant could not answer. Please try again.",
       "errorModelRequired": "Select a model before asking a question.",
       "errorAborted": "Generation cancelled.",
-      "modelsAriaLabel": "Available chat models"
+      "modelsAriaLabel": "Available chat models",
+      "sourcesHeading": "References",
+      "sourceKindVector": "Document",
+      "sourceKindWeb": "Web",
+      "sourceKindFallback": "Fallback",
+      "sourceLinkLabel": "Open source",
+      "sourceUnknown": "Untitled source"
     },
     "card": {
       "emptyDescription": "No description provided yet.",

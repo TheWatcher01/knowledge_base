@@ -45,6 +45,14 @@ type ConversationMessage = {
   content: string;
   sequence: number;
   isStreaming?: boolean;
+  sources?: RagContextSource[] | null;
+};
+
+type RagContextSource = {
+  id: string;
+  kind: "vector" | "web" | "fallback";
+  title: string | null;
+  source: string | null;
 };
 
 type ModelOption = {
@@ -255,6 +263,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
               content: string;
               sequence: number;
               createdAt: string;
+              meta?: Record<string, unknown> | null;
             }>;
           };
         };
@@ -286,12 +295,16 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
 
         setActiveConversationId(data.conversation.id, { syncSearchParams: false });
         setSelectedModel((current) => conversationSummary.model ?? current);
-        const mappedMessages = conversationMessages.map((message) => ({
-          id: message.id,
-          role: message.role,
-          content: message.content,
-          sequence: message.sequence,
-        }));
+        const mappedMessages = conversationMessages.map((message) => {
+          const metaSources = ((message.meta as { sources?: unknown } | null) ?? null)?.sources;
+          return {
+            id: message.id,
+            role: message.role,
+            content: message.content,
+            sequence: message.sequence,
+            sources: normalizeSources(metaSources),
+          } satisfies ConversationMessage;
+        });
         if (
           currentKbIdRef.current !== kbId ||
           activeConversationIdRef.current !== conversationId
@@ -534,6 +547,24 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
         }),
         signal: controller.signal,
       });
+
+      let contextSources: RagContextSource[] | null = null;
+      const sourcesHeader = response.headers.get("X-Rag-Sources");
+      if (sourcesHeader) {
+        try {
+          contextSources = normalizeSources(JSON.parse(sourcesHeader) as unknown);
+        } catch (error) {
+          console.warn("[chat] Failed to parse X-Rag-Sources", error);
+        }
+      }
+
+      if (contextSources && contextSources.length > 0) {
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === assistantMessageId ? { ...message, sources: contextSources } : message,
+          ),
+        );
+      }
 
       if (!response.ok || !response.body) {
         let message = t("errorGeneric");
@@ -779,6 +810,14 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
                       userLabel={t("messageUserLabel")}
                       streamingLabel={t("messageStreaming")}
                       emptyLabel={t("messageEmpty")}
+                      sourceLabels={{
+                        heading: t("sourcesHeading"),
+                        vector: t("sourceKindVector"),
+                        web: t("sourceKindWeb"),
+                        fallback: t("sourceKindFallback"),
+                        open: t("sourceLinkLabel"),
+                        unknown: t("sourceUnknown"),
+                      }}
                     />
                   ))}
                 </ConversationContent>
@@ -1054,6 +1093,36 @@ function normalizeModels(models: unknown): ModelOption[] {
     .filter(Boolean) as ModelOption[];
 }
 
+function normalizeSources(value: unknown): RagContextSource[] | null {
+  if (!value) return null;
+  const list = Array.isArray(value) ? value : (typeof value === "object" && Array.isArray((value as { sources?: unknown }).sources))
+    ? ((value as { sources: unknown[] }).sources)
+    : null;
+
+  if (!list) return null;
+
+  const normalized = list
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const record = item as Record<string, unknown>;
+      const id = typeof record.id === "string" ? record.id : undefined;
+      const kind = record.kind === "web" || record.kind === "fallback" || record.kind === "vector"
+        ? record.kind
+        : "vector";
+      const title = typeof record.title === "string" ? record.title : null;
+      const source = typeof record.source === "string" ? record.source : null;
+      return {
+        id: id ?? `${kind}-${createId()}`,
+        kind,
+        title,
+        source,
+      } satisfies RagContextSource;
+    })
+    .filter(Boolean) as RagContextSource[];
+
+  return normalized.length > 0 ? normalized : null;
+}
+
 function createId() {
   return typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
@@ -1068,6 +1137,16 @@ type ChatMessageItemProps = {
   emptyLabel: string;
   shouldFocus: boolean;
   onFocusComplete: () => void;
+  sourceLabels: SourceLabels;
+};
+
+type SourceLabels = {
+  heading: string;
+  vector: string;
+  web: string;
+  fallback: string;
+  open: string;
+  unknown: string;
 };
 
 function ChatMessageItem({
@@ -1078,6 +1157,7 @@ function ChatMessageItem({
   emptyLabel,
   shouldFocus,
   onFocusComplete,
+  sourceLabels,
 }: ChatMessageItemProps) {
   const contentRef = useRef<HTMLDivElement | null>(null);
 
@@ -1091,6 +1171,13 @@ function ChatMessageItem({
   const isAssistant = message.role === "assistant";
   const trimmedContent = message.content.trim();
   const showLoader = isAssistant && message.isStreaming && trimmedContent.length === 0;
+  const sources = isAssistant && Array.isArray(message.sources) ? message.sources ?? null : null;
+  const hasSources = Boolean(sources && sources.length > 0);
+  const kindLabels: Record<RagContextSource["kind"], string> = {
+    vector: sourceLabels.vector,
+    web: sourceLabels.web,
+    fallback: sourceLabels.fallback,
+  };
 
   return (
     <Message from={message.role}>
@@ -1117,6 +1204,43 @@ function ChatMessageItem({
           ) : (
             <p className="whitespace-pre-wrap">{message.content}</p>
           )}
+
+          {hasSources ? (
+            <div className="mt-3 space-y-2 rounded-lg border border-border/40 bg-muted/20 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {sourceLabels.heading}
+              </p>
+              <ul className="space-y-2">
+                {sources!.map((source, index) => {
+                  const displayLabel = source.title?.trim() || source.source?.trim() || `${kindLabels[source.kind]} ${index + 1}`;
+                  const kindLabel = kindLabels[source.kind] ?? sourceLabels.vector;
+                  return (
+                    <li
+                      key={source.id || `${source.kind}-${index}`}
+                      className="rounded-md bg-background/70 p-2 text-xs text-muted-foreground"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-foreground">{displayLabel ?? sourceLabels.unknown}</span>
+                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground/80">
+                          {kindLabel}
+                        </span>
+                      </div>
+                      {source.source ? (
+                        <a
+                          className="mt-1 inline-flex text-[11px] text-primary hover:underline"
+                          href={source.source}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {sourceLabels.open}
+                        </a>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
         </div>
       </MessageContent>
     </Message>
