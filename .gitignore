@@ -29,6 +29,7 @@ apps/**/*.tsbuildinfo
 .env.*
 apps/**/.env
 apps/**/.env.*
+!apps/**/.env.example
 
 # Logs
 logs/
@@ -82,6 +83,7 @@ apps/**/temp/
 
 # env files (can opt-in for committing if needed)
 .env*
+!apps/**/.env.example
 
 # vercel
 .vercel

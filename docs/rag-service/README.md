@@ -1,5 +1,7 @@
 # Plan de remplacement d’Open WebUI
 
+<!-- markdownlint-disable MD013 -->
+
 ## Objectif
 
 - Remplacer l’intégration actuelle avec Open WebUI par un service RAG Python léger, modulable et réutilisable dans d’autres projets.
@@ -64,7 +66,12 @@
 ## Intégration actuelle d’Open WebUI
 
 - Points d’entrée : `apps/web/src/lib/rag.ts`, `apps/web/src/lib/rag-sync.ts`, `apps/web/src/app/api/{chat,files,urls,urls/[id],kb/[id],notebook}/route.ts`.
-- Configuration : variables `RAG_API_BASE`, `RAG_API_TOKEN`, `MOCK_OPEN_WEBUI` définies dans l’environnement et utilisées via `apps/web/src/lib/config.ts`.
+- Configuration : variables `RAG_API_BASE`, `RAG_API_TOKEN`, `MOCK_OPEN_WEBUI`
+  définies dans l’environnement et utilisées via
+  `apps/web/src/lib/config.ts`. En développement, `RAG_API_BASE` tombe par
+  défaut sur `http://localhost:8000`. Le jeton `RAG_API_TOKEN` est optionnel
+  mais doit correspondre à `RAG_AUTH_TOKEN` côté FastAPI (par défaut
+  `kb-dev-token`).
 - Cas d’usage :
   - Chat streaming (`/api/v1/chat/completions`) depuis `apps/web/src/app/api/chat/route.ts`.
   - Ingestion texte/fichiers (`/api/v1/retrieval/process/text`) pour notes et fichiers.

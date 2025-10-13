@@ -60,7 +60,7 @@ knowledge_base/
 - pnpm 9+
 - Python 3.12+ (pour le service RAG)
 - Docker + Docker Compose (recommandé pour lancer la stack complète)
-  
+
 ### Installation
 
 ```bash
@@ -69,6 +69,9 @@ cd knowledge_base
 
 pnpm install
 pnpm --filter web exec prisma generate
+
+# Facultatif mais recommandé : configurer les variables d'environnement
+cp apps/web/.env.example apps/web/.env.local
 ```
 
 ### Lancer l’environnement
@@ -86,6 +89,9 @@ uv run uvicorn rag_api.main:app --reload --port 8000
 
 > Le mock RAG reste activé par défaut côté front ; basculer vers l’API FastAPI
 > après finalisation de l’endpoint chat streaming.
+> Assurez-vous que `RAG_API_TOKEN` dans `.env.local` correspond à
+> `RAG_AUTH_TOKEN` défini dans `compose.yml`.
+> Valeur par défaut : `kb-dev-token`.
 
 ---
 
