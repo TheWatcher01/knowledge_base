@@ -19,7 +19,7 @@ Documentation complète des endpoints REST de la plateforme.
 
 ### Conversations
 
-- [`POST /api/chat`](../../apps/web/src/app/api/chat/route.ts) — orchestrateur Next.js qui persiste les conversations et relaie le service RAG.
+- [`POST /api/chat`](../../apps/web/src/app/api/chat/route.ts) — orchestrateur Next.js qui persiste les conversations, ajoute les snippets SearxNG et expose les références via l’en-tête `X-Rag-Sources`.
 - [`POST /api/v1/chat/completions`](../../services/rag-api/src/rag_api/routes/chat.py) — endpoint FastAPI en streaming SSE.
 - Pour le détail fonctionnel (roadmap, intégration RAG), se référer à [`docs/rag-service/README.md`](../rag-service/README.md).
 - [`GET /api/rag/status`](../../apps/web/src/app/api/rag/status/route.ts) — état temps réel du service RAG (utilisé par la bannière de disponibilité).

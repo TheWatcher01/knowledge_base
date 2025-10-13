@@ -87,12 +87,13 @@ Les redémarrages doivent être effectués manuellement en utilisant les command
 - `apps/web/src/lib/rag-sync.ts` reconstruit les collections `kb_<slug>` lorsque nécessaire et gère les documents manquants.
 - `apps/web/src/lib/rag-sync-scheduler.ts` planifie des relances côté Next.js hors environnement de test.
 - Routes API Next.js mises à jour :
-  - `/api/chat` relaye les complétions SSE et sauvegarde l’historique Prisma,
+- `/api/chat` relaye les complétions SSE et sauvegarde l’historique Prisma,
+- `/api/chat` relaye les complétions SSE, enrichit les prompts avec SearxNG et conserve désormais les métadonnées de sources (vector/web/fallback) dans `ChatMessage.meta`.
   - `/api/files`, `/api/urls`, `/api/notebook` notifient la suppression au vector store,
   - `/api/kb` assure la création ou la relance `rag-sync` lors de la création d’une base.
 - `apps/web/src/app/[locale]/(app)/kb/[id]/urls/_components/` gère le feedback utilisateur (messages `RAG_SERVICE_DISABLED_MESSAGE`).
 - `apps/web/src/components/rag/rag-status-banner.tsx` affiche une bannière globale quand le service RAG est indisponible (s’appuie sur `/api/rag/status`, rafraîchissement 30 s).
-- `/api/chat` interroge désormais `/api/v1/search/web` pour ajouter des extraits SearxNG temps réel aux documents vectoriels.
+- `/api/chat` interroge `/api/v1/search/web` pour ajouter des extraits SearxNG temps réel et republie les références côté client via l’en-tête `X-Rag-Sources` (affichage des sources dans l’UI).
 
 ### Automatisation rag-sync (FastAPI)
 
