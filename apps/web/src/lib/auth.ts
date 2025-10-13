@@ -6,6 +6,8 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
 
+const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+
 export const authOptions: AuthOptions = {
     adapter: PrismaAdapter(prisma),
     providers: [
@@ -16,7 +18,7 @@ export const authOptions: AuthOptions = {
             },
             authorize: async (credentials) => {
                 const email = credentials?.email?.toLowerCase().trim();
-                const password = credentials?.password || ""
+                const password = credentials?.password || "";
                 if (!email || !password) return null;
 
                 const user = await prisma.user.findUnique({ where: { email } });
@@ -55,5 +57,5 @@ export const authOptions: AuthOptions = {
     pages: {
         signIn: "/login",
     },
-    secret: process.env.AUTH_SECRET,
+    secret: authSecret,
 };

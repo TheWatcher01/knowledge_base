@@ -5,6 +5,7 @@ import { locales, defaultLocale } from "@/i18n/config";
 
 const PUBLIC_SEGMENTS = ["/", "/login", "/register"];
 const PUBLIC_API_PREFIXES = ["/api/auth", "/api/register"];
+const AUTH_SECRET = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? undefined;
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
@@ -40,7 +41,7 @@ export async function middleware(req: NextRequest) {
   const isPublicApi = PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
   if (!isPublicPage && !isPublicApi) {
-    const token = await getToken({ req, secret: process.env.AUTH_SECRET });
+    const token = await getToken({ req, secret: AUTH_SECRET });
 
     if (!token) {
       const locale = hasLocale ? potentialLocale : req.cookies.get("NEXT_LOCALE")?.value ?? defaultLocale;
