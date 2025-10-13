@@ -26,6 +26,7 @@ test.describe('Chat des bases de connaissance', () => {
 
         await page.goto('/fr/kb');
         await expect(page.getByRole('heading', { level: 1, name: 'Bases de connaissance' })).toBeVisible();
+        await expect(page.locator('[data-testid="rag-status-banner"]')).toHaveCount(0);
         const firstKbHeading = page.getByRole('heading', { level: 2 }).first();
         const firstKbName = (await firstKbHeading.textContent())?.trim() ?? '';
         expect(firstKbName.length).toBeGreaterThan(0);

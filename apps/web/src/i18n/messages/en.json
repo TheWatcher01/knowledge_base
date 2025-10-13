@@ -88,6 +88,7 @@
       "installSummary": "Ollama summary: {summary}",
       "installUnknownError": "Unknown error",
       "installError": "Installation failed: {error}",
+      "refreshError": "Failed to refresh model list: {error}",
       "deleteConfirm": "Delete model \"{name}\"?",
       "deleteSuccess": "{name} deleted",
       "deleteError": "Failed to delete model: {error}",
@@ -202,11 +203,21 @@
     "ragSyncErrorUnexpectedResponse": "unexpected RAG service response",
     "ragSyncErrorTimeout": "request to RAG service timed out"
   },
-    "tabs": {
-      "overview": "Overview",
-      "notes": "Notes",
-      "files": "Files",
-      "urls": "URLs",
+  "ragStatus": {
+    "title": "RAG service unavailable",
+    "disabled": "{message}",
+    "disabledDefault": "The RAG backend is disabled. Configure RAG_API_BASE and restart the stack.",
+    "error": "Unable to reach the RAG backend: {message}",
+    "errorDefault": "Unknown error contacting the RAG backend.",
+    "retry": "Try again",
+    "checking": "Checking…",
+    "checkedAt": "Last check: {time}"
+  },
+  "tabs": {
+    "overview": "Overview",
+    "notes": "Notes",
+    "files": "Files",
+    "urls": "URLs",
     "chat": "Chat"
   },
   "chatNav": {
@@ -357,6 +368,7 @@
     "urlStatuses": {
       "draft": "Draft",
       "queued": "Queued",
+      "processing": "Processing",
       "synced": "Synced",
       "error": "Error"
     },

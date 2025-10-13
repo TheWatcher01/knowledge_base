@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RAG_SERVICE_DISABLED_MESSAGE } from "@/lib/rag";
 
-const STATUSES = ["draft", "queued", "synced", "error"] as const;
+const STATUSES = ["draft", "queued", "processing", "synced", "error"] as const;
 type UrlStatus = (typeof STATUSES)[number];
 
 type UrlListEntry = {
@@ -642,6 +642,7 @@ function StatusBadge({
   const palette: Record<UrlStatus, string> = {
     draft: "bg-muted text-muted-foreground",
     queued: "bg-amber-100 text-amber-900",
+    processing: "bg-blue-100 text-blue-900",
     synced: "bg-emerald-100 text-emerald-900",
     error: "bg-red-100 text-red-700",
   };
@@ -649,6 +650,7 @@ function StatusBadge({
   const tooltip: Record<UrlStatus, string> = {
     draft: "",
     queued: onQueued,
+    processing: onQueued,
     synced: "",
     error: onError,
   };

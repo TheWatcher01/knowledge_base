@@ -88,6 +88,7 @@
       "installSummary": "Résumé Ollama : {summary}",
       "installUnknownError": "Erreur inconnue",
       "installError": "Installation impossible : {error}",
+      "refreshError": "Impossible d'actualiser la liste : {error}",
       "deleteConfirm": "Supprimer le modèle \"{name}\" ?",
       "deleteSuccess": "{name} supprimé",
       "deleteError": "Suppression impossible : {error}",
@@ -202,11 +203,21 @@
     "ragSyncErrorUnexpectedResponse": "réponse service RAG inattendue",
     "ragSyncErrorTimeout": "délai dépassé lors de l'appel service RAG"
   },
-    "tabs": {
-      "overview": "Vue d'ensemble",
-      "notes": "Notes",
-      "files": "Fichiers",
-      "urls": "Liens",
+  "ragStatus": {
+    "title": "Service RAG indisponible",
+    "disabled": "{message}",
+    "disabledDefault": "Le backend RAG est désactivé. Configurez RAG_API_BASE puis redémarrez la stack.",
+    "error": "Impossible de joindre le backend RAG : {message}",
+    "errorDefault": "Erreur inconnue lors de la communication avec le backend RAG.",
+    "retry": "Réessayer",
+    "checking": "Vérification…",
+    "checkedAt": "Dernière vérification : {time}"
+  },
+  "tabs": {
+    "overview": "Vue d'ensemble",
+    "notes": "Notes",
+    "files": "Fichiers",
+    "urls": "Liens",
     "chat": "Chat"
   },
   "chatNav": {
@@ -357,6 +368,7 @@
     "urlStatuses": {
       "draft": "Brouillon",
       "queued": "En attente",
+      "processing": "En cours",
       "synced": "Synchronisé",
       "error": "Erreur"
     },

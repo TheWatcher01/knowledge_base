@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RAG_SERVICE_DISABLED_MESSAGE } from "@/lib/rag";
 
-const STATUSES = ["draft", "queued", "synced", "error"] as const;
+const STATUSES = ["draft", "queued", "processing", "synced", "error"] as const;
 type UrlStatus = (typeof STATUSES)[number];
 
 type CreateUrlFormProps = {
