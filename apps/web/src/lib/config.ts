@@ -13,4 +13,7 @@ function resolveRagApiBase(): string {
 
 export const RAG_API_BASE = resolveRagApiBase();
 export const RAG_API_TOKEN = (process.env.RAG_API_TOKEN || "").trim();
-export const collectionName = (knId: string) => `kb_${knId}`;
+
+const slugKnowledgeBaseId = (kbId: string) => kbId.replace(/-/g, "_");
+
+export const collectionName = (kbId: string) => `kb_${slugKnowledgeBaseId(kbId)}`;

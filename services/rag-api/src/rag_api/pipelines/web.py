@@ -249,7 +249,7 @@ def _hash_document_id(url: str) -> str:
 
 def _extract_kb_id(collection_name: str) -> str | None:
     if collection_name.startswith("kb_") and len(collection_name) > 3:
-        return collection_name[3:]
+        return collection_name[3:].replace("_", "-")
     return None
 
 
