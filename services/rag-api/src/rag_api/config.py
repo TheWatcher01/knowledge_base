@@ -42,6 +42,19 @@ class Settings(BaseSettings):
         description="Default embedding model served by Ollama.",
     )
 
+    enable_fallback_embeddings: bool = Field(
+        default=True,
+        description="Enable fallback embeddings when Ollama is indisponible.",
+    )
+    fallback_embedding_model: str = Field(
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        description="Fallback SentenceTransformers model utilisé si Ollama échoue.",
+    )
+    fallback_embedding_device: str | None = Field(
+        default=None,
+        description="Optionnel : périphérique pour SentenceTransformers (ex: cuda, cpu).",
+    )
+
     postgres_dsn: str | None = Field(
         default=None,
         description="Postgres connection string (e.g. postgresql+asyncpg://user:pass@host/db).",

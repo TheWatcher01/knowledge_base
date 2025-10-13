@@ -10,7 +10,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..config import Settings, get_settings
-from ..services.ingestion import clear_embedding_cache
+from ..services.embedding_provider import clear_embedding_backends
 from ..services.model_preferences import get_model_preferences, upsert_model_preferences
 from ..services.model_jobs import (
     create_model_job,
@@ -260,7 +260,7 @@ async def update_model_defaults(
     if effective_embedding:
         settings.ollama_embedding_model = effective_embedding
         if effective_embedding != previous_embedding:
-            clear_embedding_cache()
+            clear_embedding_backends()
             log.info("models.defaults.embedding", model=effective_embedding)
 
     return {

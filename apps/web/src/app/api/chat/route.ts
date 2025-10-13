@@ -9,7 +9,12 @@ import { authOptions } from "@/lib/auth";
 import { assertRole, handleAuthError } from "@/lib/authz";
 import { ChatMessageRole, Prisma } from "@prisma/client";
 
-type RetrievedDoc = { text: string };
+type RetrievedDoc = {
+    text: string;
+    source?: string | null;
+    title?: string | null;
+    kind?: "vector" | "web" | "fallback";
+};
 type RetrievalResponse = {
     docs?: RetrievedDoc[];
     documents?: unknown;
@@ -73,7 +78,7 @@ async function loadFallbackDocuments(kbId: string): Promise<RetrievedDoc[]> {
             const text = collectSegments(doc.title, doc.source)
                 .join("\n\n")
                 .trim();
-            if (text) fallback.push({ text });
+            if (text) fallback.push({ text, title: doc.title ?? null, kind: "fallback" });
             continue;
         }
 
@@ -82,7 +87,8 @@ async function loadFallbackDocuments(kbId: string): Promise<RetrievedDoc[]> {
             const text = collectSegments(doc.title, fileContent)
                 .join("\n\n")
                 .trim();
-            if (text) fallback.push({ text });
+            if (text)
+                fallback.push({ text, title: doc.title ?? null, source: doc.source ?? null, kind: "fallback" });
             continue;
         }
 
@@ -92,7 +98,13 @@ async function loadFallbackDocuments(kbId: string): Promise<RetrievedDoc[]> {
             const text = collectSegments(doc.title, source, summary)
                 .join("\n\n")
                 .trim();
-            if (text) fallback.push({ text });
+            if (text)
+                fallback.push({
+                    text,
+                    title: doc.title ?? null,
+                    source: source || null,
+                    kind: "fallback",
+                });
             continue;
         }
     }
@@ -156,7 +168,7 @@ export async function POST(req: NextRequest) {
 
         const { conversation, history, nextSequence } = resolved;
 
-        let docs: RetrievedDoc[] = [];
+    let docs: RetrievedDoc[] = [];
 
         try {
             const response = (await ragApiJson("/api/v1/retrieval/query/doc", {
@@ -171,10 +183,43 @@ export async function POST(req: NextRequest) {
 
             const normalized = collectDocumentTexts(response);
 
-            docs = normalized.map((text) => ({ text }));
+            docs = normalized.map((text) => ({ text, kind: "vector" as const }));
         } catch (error) {
             console.warn("[api/chat] Retrieval failed", error);
             docs = [];
+        }
+
+        if (RAG_API_BASE) {
+            try {
+                const webSearch = (await ragApiJson("/api/v1/search/web", {
+                    method: "POST",
+                    body: JSON.stringify({ query: question, max_results: 3 }),
+                })) as {
+                    results?: Array<{ title?: string | null; content?: string | null; url?: string | null }>;
+                };
+
+                const webDocs = (webSearch.results ?? [])
+                    .map((item): RetrievedDoc | null => {
+                        const pieces = [item.title, item.content, item.url]
+                            .filter((segment): segment is string => typeof segment === "string" && segment.trim().length > 0);
+                        if (pieces.length === 0) {
+                            return null;
+                        }
+                        return {
+                            text: pieces.join("\n"),
+                            source: item.url ?? null,
+                            title: item.title ?? null,
+                            kind: "web" as const,
+                        };
+                    })
+                    .filter((value): value is RetrievedDoc => value !== null);
+
+                if (webDocs.length > 0) {
+                    docs = [...docs, ...webDocs];
+                }
+            } catch (error) {
+                console.warn("[api/chat] Web search augmentation failed", error);
+            }
         }
 
         if (docs.length === 0) {
@@ -186,7 +231,16 @@ export async function POST(req: NextRequest) {
         }
 
         const ctx = docs
-            .map((doc, index) => `Doc${index + 1}:\n${doc.text}`)
+            .map((doc, index) => {
+                const prefix = doc.kind === "web" ? "WebDoc" : "Doc";
+                const labelParts = [
+                    `${prefix}${index + 1}`,
+                    doc.title ? `– ${doc.title}` : null,
+                    doc.source ? `(${doc.source})` : null,
+                ].filter(Boolean);
+                const label = labelParts.join(" ");
+                return `${label}:\n${doc.text}`;
+            })
             .join("\n\n");
 
         const prompt = `Réponds de façon concise en citant Doc1..N.\n\n${ctx}\n\nQuestion:\n${question}`;

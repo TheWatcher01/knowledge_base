@@ -13,7 +13,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from .config import Settings, get_settings
 from .logging import configure_logging, logger
 from .rate_limit import configure_default_limits, limiter
-from .routes import chat, health, retrieval, models
+from .routes import chat, health, retrieval, models, search
 from .scheduler import start_scheduler, stop_scheduler
 
 
@@ -45,6 +45,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(chat.router, prefix="/api/v1")
     app.include_router(models.router, prefix="/api/v1")
     app.include_router(retrieval.router, prefix="/api/v1")
+    app.include_router(search.router, prefix="/api/v1")
 
     Instrumentator().instrument(app).expose(app, include_in_schema=False)
 

@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 from llama_index.core.schema import MetadataMode, NodeWithScore
 
 from ..config import Settings as AppSettings
-from .ingestion import get_embedding_model
+from .embedding_provider import get_embedding_backend
 from .vector_store import build_pgvector_store, ensure_vector_extension
 
 
@@ -33,7 +33,7 @@ def query_documents(
 
     ensure_vector_extension(settings)
 
-    embed_model = get_embedding_model(settings)
+    embed_model = get_embedding_backend(settings)
     query_embedding = embed_model.get_text_embedding(query)
     embed_dim = len(query_embedding)
 

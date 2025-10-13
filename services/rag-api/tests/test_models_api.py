@@ -196,7 +196,7 @@ async def test_update_model_defaults(monkeypatch):
     def _clear():
         cleared["value"] = True
 
-    monkeypatch.setattr("rag_api.routes.models.clear_embedding_cache", _clear)
+    monkeypatch.setattr("rag_api.routes.models.clear_embedding_backends", _clear)
     monkeypatch.setattr(
         "rag_api.routes.models._run_ollama_command",
         lambda *args, **kwargs: "{}" if args[1] == "show" else "",
@@ -230,7 +230,7 @@ async def test_update_model_defaults_persists(monkeypatch):
     cleared = {"value": False}
 
     monkeypatch.setattr(
-        "rag_api.routes.models.clear_embedding_cache",
+        "rag_api.routes.models.clear_embedding_backends",
         lambda: cleared.__setitem__("value", True),
     )
 
