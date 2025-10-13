@@ -13,7 +13,7 @@
 - [x] Migration du front Next.js vers les variables `RAG_API_*` et helpers `rag.ts`.
 - [x] Ingestion texte synchrone : chunking, embeddings Ollama, stockage PGVector.
 - [x] Ingestion URL : crawl via SearxNG, extraction Tika, pipeline asynchrone.
-- [ ] Suppression & synchronisation complète (`rag-sync`) avec alignement vecteurs/métadonnées.
+- [ ] Suppression & synchronisation complète (`rag-sync`) avec alignement vecteurs/métadonnées. *(Les API Next.js propagent désormais les suppressions de documents vers le service RAG pour éviter les entrées fantômes dans PGVector.)*
 - [ ] Endpoint chat streaming (ChatOllama + SSE) avec fallback Prisma.
 - [ ] Intégration SearxNG comme outil de recherche temps réel.
 - [ ] Fallback embeddings (SentenceTransformers) pour tolérance aux pannes Ollama.

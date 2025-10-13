@@ -18,7 +18,8 @@ Documentation complète des endpoints REST de la plateforme.
 
 ### Conversations
 
-Voir [`docs/chat-persistence-plan.md`](../chat-persistence-plan.md#phase-2-api-backend) pour la documentation complète.
+Voir la documentation complète dans
+[`docs/chat-persistence-plan.md`](../chat-persistence-plan.md#phase-2-api-backend).
 
 ### Fichiers
 

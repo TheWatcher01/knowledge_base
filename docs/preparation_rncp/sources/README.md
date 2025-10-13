@@ -1,16 +1,21 @@
 # Sources et références bibliographiques
 
+<!-- markdownlint-disable MD013 -->
+
 Ce dossier contient les sources documentaires étayant les affirmations du dossier RNCP 5.
 
 ## 📂 Contenu
 
 ### Documents source
 
-- **`Recherche de sources fiables.pdf`** *(à ajouter)* - Compilation des études et articles scientifiques validant les besoins du marché professionnel
+- **`Recherche de sources fiables.pdf`** *(à ajouter)* -
+  Compilation des études et articles scientifiques validant les besoins du marché
+  professionnel
 
 ### Documentation Markdown
 
-- **[`references-bibliographiques.md`](references-bibliographiques.md)** - Version structurée et navigable des sources avec :
+- **[`references-bibliographiques.md`](references-bibliographiques.md)** - Version
+  structurée et navigable des sources avec :
   - 13 références bibliographiques complètes
   - Liens vers les sources originales (McKinsey, Harvard Business Review, etc.)
   - Contexte et méthodologie pour chaque étude
@@ -25,6 +30,7 @@ Les ingénieurs passent **2h/jour à chercher de l'information** existante ¹
 ```
 
 Chaque référence `¹` `²` `³` renvoie vers :
+
 1. Une **section dédiée** dans le document principal avec tableau récapitulatif
 2. Une **page détaillée** dans `references-bibliographiques.md`
 3. Le **lien direct** vers la source originale externe
@@ -45,9 +51,12 @@ Chaque référence `¹` `²` `³` renvoie vers :
 
 ## 🔗 Navigation
 
-- 🔙 [Retour au document principal](../travail_Entretien%20Préparatoire%20RNCP%205.md)
+- 🔙 [Retour au document principal]
+  (../travail_Entretien%20Préparatoire%20RNCP%205.md)
 - 📚 [Voir toutes les références](references-bibliographiques.md)
 
 ---
 
 📝 **Note** : Toutes les sources sont **accessibles publiquement** et **vérifiables** par le jury RNCP.
+
+<!-- markdownlint-enable MD013 -->
