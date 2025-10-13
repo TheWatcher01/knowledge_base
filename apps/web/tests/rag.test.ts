@@ -16,7 +16,6 @@ afterEach(() => {
 describe("rag helpers", () => {
     test("triggerWebIngestion retourne une erreur quand le service RAG est désactivé", async () => {
         delete process.env.RAG_API_BASE;
-        delete process.env.RAG_API_TOKEN;
         const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
         const { triggerWebIngestion, RAG_SERVICE_DISABLED_MESSAGE } = await import("@/lib/rag");
@@ -40,6 +39,20 @@ describe("rag helpers", () => {
         }));
         const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
         expect(body.document_id).toBe("doc_99");
+        expect(result).toEqual({ ok: true });
+    });
+
+    test("triggerWebIngestion fonctionne sans token quand l'API est configurée", async () => {
+        process.env.RAG_API_BASE = "http://rag.test";
+        delete process.env.RAG_API_TOKEN;
+        const fetchMock = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue("{}") });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const { triggerWebIngestion } = await import("@/lib/rag");
+        const result = await triggerWebIngestion({ kbId: "kb_55", url: "https://example.com", documentId: "doc_55" });
+
+        const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
+        expect(headers.Authorization).toBeUndefined();
         expect(result).toEqual({ ok: true });
     });
 

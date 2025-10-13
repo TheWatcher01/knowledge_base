@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 
-import { ragApiJson } from "@/lib/rag";
+import { ragApiJson, RAG_SERVICE_DISABLED_MESSAGE } from "@/lib/rag";
 import { RAG_API_BASE, RAG_API_TOKEN, collectionName } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
@@ -196,12 +196,16 @@ export async function POST(req: NextRequest) {
             prompt,
         });
 
+        if (!RAG_API_BASE) {
+            return NextResponse.json({ error: RAG_SERVICE_DISABLED_MESSAGE }, { status: 503 });
+        }
+
         try {
             const upstream = await fetch(`${RAG_API_BASE}/api/v1/chat/completions`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${RAG_API_TOKEN}`,
+                    ...(RAG_API_TOKEN ? { Authorization: `Bearer ${RAG_API_TOKEN}` } : {}),
                 },
                 body: JSON.stringify({
                     model: conversation.model ?? model,

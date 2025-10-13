@@ -1,4 +1,4 @@
-import { RAG_API_BASE, RAG_API_TOKEN, collectionName } from "@/lib/config";
+import { RAG_API_BASE, collectionName } from "@/lib/config";
 import { ragApiJson, triggerWebIngestion, RAG_SERVICE_DISABLED_MESSAGE } from "@/lib/rag";
 import { prisma } from "@/lib/prisma";
 import {
@@ -18,7 +18,7 @@ export type RagSyncResult = {
 };
 
 export async function ensureCollectionForKnowledgeBase(kbId: string): Promise<RagSyncResult> {
-  if (!RAG_API_BASE || !RAG_API_TOKEN) {
+  if (!RAG_API_BASE) {
     return {
       ok: false,
       collectionFound: false,

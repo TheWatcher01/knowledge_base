@@ -78,14 +78,22 @@ export async function ragApiJson(path: string, init?: RequestInit) {
     }
 
     const target = buildRequestUrl(path);
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+    };
+
+    if (RAG_API_TOKEN) {
+        headers.Authorization = `Bearer ${RAG_API_TOKEN}`;
+    }
+
+    if (init?.headers) {
+        Object.assign(headers, init.headers as Record<string, string>);
+    }
+
     const res = await fetch(target, {
         ...init,
-        headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Authorization: `Bearer ${RAG_API_TOKEN}`,
-            ...(init?.headers || {}),
-        },
+        headers,
     });
 
     const raw = await res.text();
@@ -108,8 +116,8 @@ export async function ragApiJson(path: string, init?: RequestInit) {
 }
 
 export async function triggerWebIngestion(params: { kbId: string; url: string; documentId: string }): Promise<RagActionResult> {
-    if (!shouldUseRagMock() && (!RAG_API_BASE || !RAG_API_TOKEN)) {
-        console.warn("[rag-service] integration disabled: RAG_API_BASE=", RAG_API_BASE, "RAG_API_TOKEN=", RAG_API_TOKEN ? "***" : undefined);
+    if (!shouldUseRagMock() && !RAG_API_BASE) {
+        console.warn("[rag-service] integration disabled: RAG_API_BASE=", RAG_API_BASE || "<empty>");
         return { ok: false, error: RAG_SERVICE_DISABLED_MESSAGE };
     }
 
@@ -132,7 +140,7 @@ export async function triggerWebIngestion(params: { kbId: string; url: string; d
 }
 
 export async function deleteFromCollection(params: { kbId: string; documentId: string }): Promise<RagActionResult> {
-    if (!shouldUseRagMock() && (!RAG_API_BASE || !RAG_API_TOKEN)) {
+    if (!shouldUseRagMock() && !RAG_API_BASE) {
         return { ok: false, error: RAG_SERVICE_DISABLED_MESSAGE };
     }
 
