@@ -16,6 +16,7 @@ enum Role {
 enum UrlStatus {
   draft
   queued
+  processing
   synced
   error
 }

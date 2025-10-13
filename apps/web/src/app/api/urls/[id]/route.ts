@@ -347,8 +347,12 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
 
     await removeKnowledgeEntry(document.id);
 
+    const deletion = await deleteFromCollection({ kbId: document.kbId, documentId: document.id });
+    if (!deletion.ok && deletion.error !== RAG_SERVICE_DISABLED_MESSAGE) {
+      console.warn("[api/urls] Failed to delete URL from RAG collection", deletion.error);
+    }
+
     if (document.urlEntry.externalId) {
-      await deleteFromCollection({ kbId: document.kbId, documentId: document.id });
       await updateUrlContentStatus({ externalId: document.urlEntry.externalId, status: UrlStatus.error });
     }
 

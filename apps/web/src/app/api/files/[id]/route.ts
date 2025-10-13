@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { assertRole, handleAuthError } from "@/lib/authz";
 import { removeKnowledgeEntry, upsertKnowledgeEntry, markNeedsEmbedding } from "@/lib/knowledge-store";
+import { deleteFromCollection, RAG_SERVICE_DISABLED_MESSAGE } from "@/lib/rag";
 import { scheduleRagSync } from "@/lib/rag-sync-scheduler";
 
 const ParamsSchema = z.object({
@@ -85,7 +86,7 @@ export async function DELETE(
                 type: "file",
                 kb: { ownerId: userId },
             },
-            select: { id: true },
+            select: { id: true, kbId: true },
         });
 
         if (!document) {
@@ -98,6 +99,13 @@ export async function DELETE(
         });
 
         await removeKnowledgeEntry(document.id);
+
+        if (document.kbId) {
+            const deletion = await deleteFromCollection({ kbId: document.kbId, documentId: document.id });
+            if (!deletion.ok && deletion.error !== RAG_SERVICE_DISABLED_MESSAGE) {
+                console.warn("[api/files] Failed to delete file from RAG collection", deletion.error);
+            }
+        }
 
         return NextResponse.json({ ok: true });
     } catch (error) {

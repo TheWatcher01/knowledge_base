@@ -22,22 +22,24 @@ type RagMockConfig = {
     failModels: Set<string>;
 };
 
+type RagMockJob = {
+    id: string;
+    provider: string;
+    model: string;
+    phases: ModelJobStatus[];
+    phaseIndex: number;
+    summary?: string;
+    error?: string;
+    queuedAt: string;
+    startedAt?: string;
+    finishedAt?: string;
+    updatedAt: string;
+};
+
 type RagMockState = {
     models: RagModel[];
     defaults: RagDefaults;
-    jobs: Map<string, {
-        id: string;
-        provider: string;
-        model: string;
-        phases: ModelJobStatus[];
-        phaseIndex: number;
-        summary?: string;
-        error?: string;
-        queuedAt: string;
-        startedAt?: string;
-        finishedAt?: string;
-        updatedAt: string;
-    }>;
+    jobs: Map<string, RagMockJob>;
     config: RagMockConfig;
 };
 
@@ -133,7 +135,7 @@ function registerJob(model: string, provider: string): Record<string, unknown> {
     };
 }
 
-function advanceJob(job: RagMockState["jobs"][string], state: RagMockState): void {
+function advanceJob(job: RagMockJob, state: RagMockState): void {
     if (job.phaseIndex < job.phases.length - 1) {
         job.phaseIndex += 1;
         job.updatedAt = new Date().toISOString();
@@ -156,7 +158,7 @@ function advanceJob(job: RagMockState["jobs"][string], state: RagMockState): voi
     }
 }
 
-function serializeJob(job: RagMockState["jobs"][string]): Record<string, unknown> {
+function serializeJob(job: RagMockJob): Record<string, unknown> {
     const status = job.phases[job.phaseIndex];
     return {
         id: job.id,
