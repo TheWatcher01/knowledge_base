@@ -20,7 +20,7 @@ export default async function AdminModelsPage({ params }: PageProps) {
   const t = await getTranslations({ locale, namespace: "admin.models" });
 
   let initialModels: Awaited<ReturnType<typeof listModels>> = [];
-  let initialDefaults = await getModelDefaults().catch(() => ({ chat_model: null, embedding_model: null }));
+  const initialDefaults = await getModelDefaults().catch(() => ({ chat_model: null, embedding_model: null }));
   let initialError: string | null = null;
 
   try {

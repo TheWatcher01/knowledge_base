@@ -42,9 +42,7 @@ type RagMockState = {
 };
 
 declare global {
-    // eslint-disable-next-line vars-on-top, no-var
     var __RAG_MOCK_STATE__: RagMockState | undefined;
-    // eslint-disable-next-line vars-on-top, no-var
     var __USE_RAG_MOCK__: boolean | undefined;
 }
 

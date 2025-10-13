@@ -54,9 +54,6 @@ test.describe('Historique des URLs', () => {
         const dialog = page.getByRole('dialog');
         await expect(dialog.getByRole('heading', { name: 'Historique d’ingestion' })).toBeVisible();
 
-        const timelineItem = dialog.getByRole('listitem').first();
-        const emptyMessage = dialog.getByText('Aucune opération enregistrée pour ce lien.');
-
         const loadingMessage = dialog.getByText('Chargement de l’historique…');
         await loadingMessage.waitFor({ state: 'hidden', timeout: 20_000 }).catch(() => undefined);
 

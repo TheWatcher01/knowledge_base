@@ -317,7 +317,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
         }
       }
     },
-    [kbId, t, updateStatus, setActiveConversationId, emitConversationsUpdated],
+    [kbId, t, updateStatus, setActiveConversationId],
   );
 
   useEffect(() => {
@@ -357,7 +357,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     } catch (error) {
       console.warn("[chat] Failed to load conversations", error);
     }
-  }, [kbId, emitConversationsUpdated]);
+  }, [kbId]);
 
   useEffect(() => {
     void loadConversations();
