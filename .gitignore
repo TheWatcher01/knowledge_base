@@ -104,3 +104,5 @@ __pycache__/
 services/rag-api/src/rag_api/**/__pycache__/
 services/rag-api/tests/__pycache__/
 AGENTS.md
+services/rag-api/build/
+services/rag-api/src/rag_api.egg-info/
