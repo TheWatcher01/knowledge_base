@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Access-Control-Allow-Origin",
-            value: "https://cover-southeast-neon-hearing.trycloudflare.com",
+            value: "https://por-artistic-impact-selecting.trycloudflare.com/",
           },
           {
             key: "Access-Control-Allow-Methods",
