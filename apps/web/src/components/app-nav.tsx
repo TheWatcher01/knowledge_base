@@ -39,8 +39,8 @@ export function AppNav({
 
   return (
     <header className="border-b bg-card">
-      <div className="flex w-full items-center justify-between gap-6 px-4 py-4 sm:px-6 lg:px-8">
-        <nav className="flex items-center gap-4 text-sm font-medium">
+      <div className="flex w-full flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6 lg:px-8">
+        <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium">
           {navItems.map((item) => {
             const active =
               pathname === item.href ||
@@ -62,12 +62,23 @@ export function AppNav({
           })}
         </nav>
 
-        <div className="flex items-center gap-3 text-sm">
-          <ThemeToggle />
-          <span className="text-muted-foreground">{userEmail}</span>
+        <div className="flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            {userEmail ? (
+              <span className="hidden max-w-[200px] truncate text-muted-foreground sm:inline">
+                {userEmail}
+              </span>
+            ) : null}
+          </div>
+          {userEmail ? (
+            <span className="max-w-[200px] truncate text-muted-foreground sm:hidden">
+              {userEmail}
+            </span>
+          ) : null}
           <button
             onClick={() => signOut({ callbackUrl: localeLogin })}
-            className="rounded-md border px-3 py-1.5 text-xs font-semibold transition hover:bg-muted"
+            className="w-full rounded-md border px-3 py-1.5 text-xs font-semibold transition hover:bg-muted sm:w-auto"
           >
             {tCta("logout")}
           </button>

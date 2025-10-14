@@ -5,7 +5,6 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { KnowledgeBaseTabs } from "./_components/kb-tabs";
 import { KnowledgeBaseStudio } from "./_components/kb-studio";
-import { RagSyncTrigger } from "./_components/rag-sync-trigger";
 import { getTranslations } from "next-intl/server";
 
 type LayoutProps = {
@@ -58,7 +57,6 @@ export default async function KnowledgeBaseLayout({ children, params }: LayoutPr
                                     )}
                                 </div>
 
-                                <RagSyncTrigger kbId={kb.id} />
                             </div>
                         </header>
                         <div className="min-h-0 flex-1 overflow-y-auto rounded-3xl border border-border/40 bg-card/90 p-6 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">

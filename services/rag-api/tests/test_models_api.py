@@ -56,10 +56,10 @@ async def test_list_models_success(monkeypatch):
 
     monkeypatch.setattr("rag_api.routes.models.get_settings", lambda: settings)
 
-    def _fake_run(*args, **kwargs):  # noqa: ANN001
-        return "[\n  {\"name\": \"llama3.1:8b\", \"size\": \"4.7 GB\", \"modified_at\": \"2024-10-01\"}\n]"
+    async def _fake_ollama_json(settings, method, path, json_body=None, timeout=60.0):  # noqa: ANN001
+        return [{"name": "llama3.1:8b", "size": "4.7 GB", "modified_at": "2024-10-01"}]
 
-    monkeypatch.setattr("rag_api.routes.models._run_ollama_command", _fake_run)
+    monkeypatch.setattr("rag_api.routes.models._ollama_json", _fake_ollama_json)
 
     async with _client(settings) as client:
         response = await client.get("/api/v1/models")
@@ -109,7 +109,19 @@ async def test_delete_model_success(monkeypatch):
     settings.ollama_base_url = "http://ollama:11434"
 
     monkeypatch.setattr("rag_api.routes.models.get_settings", lambda: settings)
-    monkeypatch.setattr("rag_api.routes.models._run_ollama_command", lambda *args, **kwargs: "")
+
+    class _Response:
+        status_code = 200
+        text = ""
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    async def _fake_request(settings, method, path, json_body=None, timeout=60.0):  # noqa: ANN001
+        return _Response()
+
+    monkeypatch.setattr("rag_api.routes.models._ollama_request", _fake_request)
 
     async with _client(settings) as client:
         response = await client.delete("/api/v1/models/test-model")
@@ -197,10 +209,10 @@ async def test_update_model_defaults(monkeypatch):
         cleared["value"] = True
 
     monkeypatch.setattr("rag_api.routes.models.clear_embedding_backends", _clear)
-    monkeypatch.setattr(
-        "rag_api.routes.models._run_ollama_command",
-        lambda *args, **kwargs: "{}" if args[1] == "show" else "",
-    )
+    async def _noop(settings, model_name):  # noqa: ANN001
+        return None
+
+    monkeypatch.setattr("rag_api.routes.models._assert_model_installed", _noop)
 
     async with _client(settings) as client:
         response = await client.patch(
@@ -241,10 +253,10 @@ async def test_update_model_defaults_persists(monkeypatch):
         return {"chat_model": "persisted-chat", "embedding_model": "persisted-embed"}
 
     monkeypatch.setattr("rag_api.routes.models.upsert_model_preferences", _fake_upsert)
-    monkeypatch.setattr(
-        "rag_api.routes.models._run_ollama_command",
-        lambda *args, **kwargs: "{}" if args[1] == "show" else "",
-    )
+    async def _noop(settings, model_name):  # noqa: ANN001
+        return None
+
+    monkeypatch.setattr("rag_api.routes.models._assert_model_installed", _noop)
 
     async with _client(settings) as client:
         response = await client.patch(
@@ -269,12 +281,10 @@ async def test_update_model_defaults_rejects_missing_model(monkeypatch):
 
     monkeypatch.setattr("rag_api.routes.models.get_settings", lambda: settings)
 
-    def _fake_run(*args, **kwargs):  # noqa: ANN001
-        if args[1] == "show":
-            raise HTTPException(status_code=502, detail="model not found")
-        return ""
+    async def _raise(settings, model_name):  # noqa: ANN001
+        raise HTTPException(status_code=404, detail="Model 'llama3.1' is not installed")
 
-    monkeypatch.setattr("rag_api.routes.models._run_ollama_command", _fake_run)
+    monkeypatch.setattr("rag_api.routes.models._assert_model_installed", _raise)
 
     async with _client(settings) as client:
         response = await client.patch(

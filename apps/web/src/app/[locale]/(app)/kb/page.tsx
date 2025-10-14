@@ -2,7 +2,6 @@ import { redirect } from "@/i18n/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getTranslations } from "next-intl/server";
 
 import { KnowledgeBaseGallery, KnowledgeBaseGalleryItem } from "./_components/gallery";
 
@@ -15,14 +14,11 @@ export default async function KnowledgeBasesPage({ params }: { params: Promise<{
         redirect({ href: "/login", locale });
     }
 
-    const [knowledgeBases, tList] = await Promise.all([
-        prisma.knowledgeBase.findMany({
-            where: { ownerId: userId },
-            orderBy: { createdAt: "desc" },
-            include: { _count: { select: { documents: true } } },
-        }),
-        getTranslations({ locale, namespace: "kb.list" }),
-    ]);
+    const knowledgeBases = await prisma.knowledgeBase.findMany({
+        where: { ownerId: userId },
+        orderBy: { createdAt: "desc" },
+        include: { _count: { select: { documents: true } } },
+    });
 
     const dateFormatter = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" });
     const relativeFormatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
@@ -74,17 +70,6 @@ export default async function KnowledgeBasesPage({ params }: { params: Promise<{
                   )
                 : null,
     };
-
-    if (items.length === 0) {
-        return (
-            <div className="mx-auto flex w-full max-w-3xl flex-1 items-center justify-center py-12">
-                <div className="space-y-4 text-center">
-                    <h1 className="text-2xl font-semibold text-foreground">{tList("empty")}</h1>
-                    <p className="text-muted-foreground">{tList("subtitle")}</p>
-                </div>
-            </div>
-        );
-    }
 
     return <KnowledgeBaseGallery items={items} summary={summary} />;
 }

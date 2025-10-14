@@ -35,9 +35,10 @@ import {
   CHAT_CONVERSATIONS_UPDATED_EVENT,
   CHAT_CONVERSATION_RESET_REQUESTED_EVENT,
 } from "@/lib/chat-events";
-import { SquareIcon } from "lucide-react";
+import { ChevronDown, SquareIcon } from "lucide-react";
 
 export const DEFAULT_MODEL = process.env.NEXT_PUBLIC_DEFAULT_CHAT_MODEL ?? "";
+const DEFAULT_RERANK_MODEL = process.env.NEXT_PUBLIC_DEFAULT_RERANK_MODEL ?? "";
 
 type ConversationMessage = {
   id: string | null;
@@ -58,6 +59,10 @@ type RagContextSource = {
 type ModelOption = {
   id: string;
   label: string;
+  provider?: string | null;
+  source?: "ollama" | "openrouter" | string;
+  description?: string | null;
+  kind?: "chat" | "rerank";
 };
 
 type ConversationSummary = {
@@ -93,10 +98,14 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
 
-  const [models, setModels] = useState<ModelOption[]>([]);
-  const [modelsLoading, setModelsLoading] = useState(true);
-  const [modelsError, setModelsError] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
+  const [chatModels, setChatModels] = useState<ModelOption[]>([]);
+  const [chatModelsLoading, setChatModelsLoading] = useState(true);
+  const [chatModelsError, setChatModelsError] = useState<string | null>(null);
+  const [selectedChatModel, setSelectedChatModel] = useState(DEFAULT_MODEL);
+
+  const [rerankModels, setRerankModels] = useState<ModelOption[]>([]);
+  const [rerankModelsError, setRerankModelsError] = useState<string | null>(null);
+  const [selectedRerankModel, setSelectedRerankModel] = useState(DEFAULT_RERANK_MODEL);
 
   const [statusMessage, setStatusMessage] = useState("");
   const [statusTone, setStatusTone] = useState<LiveTone>("polite");
@@ -294,7 +303,17 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
         });
 
         setActiveConversationId(data.conversation.id, { syncSearchParams: false });
-        setSelectedModel((current) => conversationSummary.model ?? current);
+        setSelectedChatModel((current) => conversationSummary.model ?? current);
+        const rerankFromMeta = extractRerankModel(conversationSummary.meta);
+        setSelectedRerankModel((current) => {
+          if (rerankFromMeta === undefined) {
+            return current;
+          }
+          if (rerankFromMeta === null) {
+            return "";
+          }
+          return rerankFromMeta;
+        });
         const mappedMessages = conversationMessages.map((message) => {
           const metaSources = ((message.meta as { sources?: unknown } | null) ?? null)?.sources;
           return {
@@ -420,8 +439,9 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     let cancelled = false;
 
     async function loadModels() {
-      setModelsLoading(true);
-      setModelsError(null);
+      setChatModelsLoading(true);
+      setChatModelsError(null);
+      setRerankModelsError(null);
 
       try {
         const response = await fetch("/api/models");
@@ -429,35 +449,66 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
           throw new Error(`HTTP ${response.status}`);
         }
 
-        const data = (await response.json()) as { models?: unknown };
-        const normalized = normalizeModels(data.models);
+        const data = (await response.json()) as {
+          chatModels?: unknown;
+          models?: unknown;
+          rerankModels?: unknown;
+        };
+        const chatList = normalizeModels(data.chatModels ?? data.models, {
+          defaultSource: "ollama",
+          defaultProvider: "Ollama",
+          kind: "chat",
+        });
+        const rerankList = normalizeModels(data.rerankModels, {
+          defaultSource: "openrouter",
+          defaultProvider: "OpenRouter",
+          kind: "rerank",
+        });
 
         if (!cancelled) {
-          setModels(normalized);
+          setChatModels(chatList);
+          setRerankModels(rerankList);
 
-          setSelectedModel((current) => {
-            if (current && normalized.some((option) => option.id === current)) {
+          setSelectedChatModel((current) => {
+            if (current && chatList.some((option) => option.id === current)) {
               return current;
             }
 
-            if (DEFAULT_MODEL && normalized.some((option) => option.id === DEFAULT_MODEL)) {
+            if (DEFAULT_MODEL && chatList.some((option) => option.id === DEFAULT_MODEL)) {
               return DEFAULT_MODEL;
             }
 
-            const preferred = normalized.find((option) => option.id.toLowerCase().includes("llama")) ?? normalized[0];
+            const preferred =
+              chatList.find((option) => option.id.toLowerCase().includes("llama")) ?? chatList[0];
             return preferred?.id ?? "";
+          });
+
+          setSelectedRerankModel((current) => {
+            if (current && rerankList.some((option) => option.id === current)) {
+              return current;
+            }
+
+            if (
+              DEFAULT_RERANK_MODEL &&
+              rerankList.some((option) => option.id === DEFAULT_RERANK_MODEL)
+            ) {
+              return DEFAULT_RERANK_MODEL;
+            }
+
+            return "";
           });
         }
       } catch (error) {
         console.warn("[chat] Failed to load models", error);
         if (!cancelled) {
           const message = t("modelsError");
-          setModelsError(message);
+          setChatModelsError(message);
+          setRerankModelsError(t("modelsRerankError"));
           updateStatus(t("announceError", { message }), "assertive");
         }
       } finally {
         if (!cancelled) {
-          setModelsLoading(false);
+          setChatModelsLoading(false);
         }
       }
     }
@@ -470,16 +521,17 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     };
   }, [t, updateStatus]);
 
-  const currentModelValue = selectedModel ?? "";
+  const currentChatModel = selectedChatModel ?? "";
+  const currentRerankValue = selectedRerankModel ?? "";
 
   const canSend = useMemo(() => {
     return (
       !isStreaming &&
       input.trim().length > 0 &&
       kbId.length > 0 &&
-      currentModelValue.trim().length > 0
+      currentChatModel.trim().length > 0
     );
-  }, [input, isStreaming, kbId.length, currentModelValue]);
+  }, [input, isStreaming, kbId.length, currentChatModel]);
 
   function handleStop() {
     abortControllerRef.current?.abort();
@@ -536,15 +588,30 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     abortControllerRef.current = controller;
 
     try {
+      const metaPayload: Record<string, unknown> = {};
+      if (currentRerankValue) {
+        metaPayload.rerankModel = currentRerankValue;
+      } else {
+        metaPayload.rerankModel = null;
+      }
+
+      const payload: Record<string, unknown> = {
+        kbId,
+        question,
+        model: currentChatModel,
+        conversationId: activeConversationId ?? undefined,
+      };
+      if (currentRerankValue) {
+        payload.rerankModel = currentRerankValue;
+      }
+      if (Object.keys(metaPayload).length > 0) {
+        payload.meta = metaPayload;
+      }
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kbId,
-          question,
-          model: currentModelValue,
-          conversationId: activeConversationId ?? undefined,
-        }),
+        body: JSON.stringify(payload),
         signal: controller.signal,
       });
 
@@ -704,15 +771,43 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   const conversationStatusId = `${baseId}-conversation-status`;
   const modelSelectId = `${baseId}-model-select`;
   const modelStatusId = `${baseId}-model-status`;
+  const rerankSelectId = `${baseId}-rerank-select`;
+  const rerankStatusId = `${baseId}-rerank-status`;
   const messageFieldId = `${baseId}-message`;
   const errorMessageId = `${baseId}-error`;
 
   const defaultStatus = t("status");
   const statusDisplay = statusMessage || defaultStatus;
-  const showModelHelper = Boolean(modelsLoading || modelsError);
-  const modelHelperText = modelsLoading ? t("modelsLoading") : modelsError ?? "";
-  const modelDescribedBy = showModelHelper ? modelStatusId : undefined;
+  const sourceLabels = useMemo(
+    () => ({
+      heading: t("sourcesHeading"),
+      vector: t("sourceKindVector"),
+      web: t("sourceKindWeb"),
+      fallback: t("sourceKindFallback"),
+      open: t("sourceLinkLabel"),
+      unknown: t("sourceUnknown"),
+    }),
+    [t],
+  );
+  const rerankModelsLoading = chatModelsLoading && rerankModels.length === 0;
+  const showChatModelHelper = Boolean(chatModelsLoading || chatModelsError);
+  const chatModelHelperText = chatModelsLoading ? t("modelsLoading") : chatModelsError ?? "";
+  const modelDescribedBy = showChatModelHelper ? modelStatusId : undefined;
+  const showRerankHelper = Boolean(rerankModelsLoading || rerankModelsError);
+  const rerankModelHelperText = rerankModelsLoading ? t("modelsRerankLoading") : rerankModelsError ?? "";
+  const rerankModelDescribedBy = showRerankHelper ? rerankStatusId : undefined;
   const messageErrorId = streamError ? errorMessageId : undefined;
+  const rerankOptions = useMemo(() => {
+    const noneOption: ModelOption = {
+      id: "",
+      label: t("modelsRerankNone"),
+      provider: null,
+      source: "none",
+      description: t("modelsRerankNoneDescription"),
+      kind: "rerank",
+    };
+    return [noneOption, ...rerankModels];
+  }, [rerankModels, t]);
   const activeConversation = useMemo(
     () => conversations.find((item) => item.id === activeConversationId) ?? null,
     [conversations, activeConversationId],
@@ -758,9 +853,12 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       role="region"
       aria-labelledby={headingId}
       aria-describedby={descriptionId}
-      className={cn("flex min-h-[540px] w-full flex-col gap-6", className)}
+      className={cn(
+        "mx-auto flex w-full max-w-5xl flex-col gap-6 px-3 py-4 sm:px-6 lg:px-0",
+        className,
+      )}
     >
-      <Card className="flex h-full flex-col gap-6 p-6">
+      <Card className="flex h-full flex-col gap-6 rounded-3xl border border-border/40 bg-card/95 p-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className="flex flex-col gap-2">
             <h1 id={headingId} className="text-2xl font-semibold">
@@ -797,9 +895,9 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
                 aria-labelledby={conversationTitleId}
                 aria-describedby={conversationStatusId}
                 aria-busy={isStreaming ? "true" : "false"}
-                className="flex-1 rounded-2xl border border-border/40 bg-card/80"
+                className="flex-1 overflow-hidden rounded-2xl border border-border/40 bg-card/80"
               >
-                <ConversationContent className="flex flex-1 flex-col gap-4 p-6">
+                <ConversationContent className="flex flex-1 flex-col gap-4 p-4 sm:p-6">
                   {messages.map((message) => (
                     <ChatMessageItem
                       key={message.id ?? `${message.sequence}`}
@@ -810,14 +908,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
                       userLabel={t("messageUserLabel")}
                       streamingLabel={t("messageStreaming")}
                       emptyLabel={t("messageEmpty")}
-                      sourceLabels={{
-                        heading: t("sourcesHeading"),
-                        vector: t("sourceKindVector"),
-                        web: t("sourceKindWeb"),
-                        fallback: t("sourceKindFallback"),
-                        open: t("sourceLinkLabel"),
-                        unknown: t("sourceUnknown"),
-                      }}
+                      sourceLabels={sourceLabels}
                     />
                   ))}
                 </ConversationContent>
@@ -826,54 +917,139 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
             ) : null}
 
             <PromptInput onSubmit={handleSubmit} aria-busy={isStreaming ? "true" : "false"} className="mt-2">
-              <PromptInputToolbar className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex w-full flex-col gap-2 text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{t("modelsLabel")}</span>
-                  {models.length > 0 ? (
-                    <PromptInputModelSelect
-                      value={currentModelValue || undefined}
-                      onValueChange={setSelectedModel}
-                      disabled={isStreaming}
-                    >
-                      <PromptInputModelSelectTrigger
-                        id={modelSelectId}
-                        aria-describedby={modelDescribedBy}
-                        aria-invalid={modelsError ? "true" : undefined}
-                        aria-label={t("modelsAriaLabel")}
+              <PromptInputToolbar className="flex flex-col gap-4 px-4 py-3">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">{t("modelsLabel")}</span>
+                    {chatModels.length > 0 ? (
+                      <PromptInputModelSelect
+                        value={currentChatModel || undefined}
+                        onValueChange={setSelectedChatModel}
+                        disabled={isStreaming}
                       >
-                        <PromptInputModelSelectValue placeholder={t("modelsPlaceholder")} />
-                      </PromptInputModelSelectTrigger>
-                      <PromptInputModelSelectContent>
-                        {models.map((option) => (
-                          <PromptInputModelSelectItem key={option.id} value={option.id}>
-                            {option.label}
-                          </PromptInputModelSelectItem>
-                        ))}
-                      </PromptInputModelSelectContent>
-                    </PromptInputModelSelect>
-                  ) : (
-                    <Input
-                      id={modelSelectId}
-                      value={currentModelValue}
-                      onChange={(event) => setSelectedModel(event.target.value)}
-                      placeholder={t("modelsPlaceholder")}
-                      aria-describedby={modelDescribedBy}
-                      aria-invalid={modelsError ? "true" : undefined}
-                      aria-label={t("modelsAriaLabel")}
-                      disabled={isStreaming}
-                    />
-                  )}
-                  {showModelHelper ? (
-                    <span
-                      id={modelStatusId}
-                      className={cn(
-                        "text-xs",
-                        modelsError ? "text-red-600 dark:text-red-300" : "text-muted-foreground",
-                      )}
-                    >
-                      {modelHelperText}
-                    </span>
-                  ) : null}
+                        <PromptInputModelSelectTrigger
+                          id={modelSelectId}
+                          aria-describedby={modelDescribedBy}
+                          aria-invalid={chatModelsError ? "true" : undefined}
+                          aria-label={t("modelsAriaLabel")}
+                        >
+                          <PromptInputModelSelectValue placeholder={t("modelsPlaceholder")} />
+                        </PromptInputModelSelectTrigger>
+                        <PromptInputModelSelectContent>
+                          {chatModels.map((option) => {
+                            const secondary =
+                              option.source === "openrouter"
+                                ? `${option.provider ?? "OpenRouter"} • OpenRouter`
+                                : option.provider ?? "Ollama (local)";
+
+                            return (
+                              <PromptInputModelSelectItem key={option.id} value={option.id}>
+                                <div className="flex flex-col">
+                                  <span className="font-medium text-foreground">{option.label}</span>
+                                  <span className="text-xs text-muted-foreground">{secondary}</span>
+                                  {option.description ? (
+                                    <span className="text-[11px] text-muted-foreground/80">
+                                      {option.description}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </PromptInputModelSelectItem>
+                            );
+                          })}
+                        </PromptInputModelSelectContent>
+                      </PromptInputModelSelect>
+                    ) : (
+                      <Input
+                        id={modelSelectId}
+                        value={currentChatModel}
+                        onChange={(event) => setSelectedChatModel(event.target.value)}
+                        placeholder={t("modelsPlaceholder")}
+                        aria-describedby={modelDescribedBy}
+                        aria-invalid={chatModelsError ? "true" : undefined}
+                        aria-label={t("modelsAriaLabel")}
+                        disabled={isStreaming}
+                      />
+                    )}
+                    {showChatModelHelper ? (
+                      <span
+                        id={modelStatusId}
+                        className={cn(
+                          "text-xs",
+                          chatModelsError ? "text-red-600 dark:text-red-300" : "text-muted-foreground",
+                        )}
+                      >
+                        {chatModelHelperText}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">{t("modelsRerankLabel")}</span>
+                    {rerankOptions.length > 0 ? (
+                      <PromptInputModelSelect
+                        value={currentRerankValue}
+                        onValueChange={setSelectedRerankModel}
+                        disabled={isStreaming}
+                      >
+                        <PromptInputModelSelectTrigger
+                          id={rerankSelectId}
+                          aria-describedby={rerankModelDescribedBy}
+                          aria-invalid={rerankModelsError ? "true" : undefined}
+                          aria-label={t("modelsRerankAriaLabel")}
+                        >
+                          <PromptInputModelSelectValue placeholder={t("modelsRerankPlaceholder")} />
+                        </PromptInputModelSelectTrigger>
+                        <PromptInputModelSelectContent>
+                          {rerankOptions.map((option) => {
+                            const key = option.id || "none";
+                            let secondary = option.provider ?? "";
+                            if (option.source === "openrouter") {
+                              secondary = `${option.provider ?? "OpenRouter"} • OpenRouter`;
+                            } else if (option.id === "") {
+                              secondary = t("modelsRerankNoneSecondary");
+                            }
+                            return (
+                              <PromptInputModelSelectItem key={key} value={option.id}>
+                                <div className="flex flex-col">
+                                  <span className="font-medium text-foreground">{option.label}</span>
+                                  {secondary ? (
+                                    <span className="text-xs text-muted-foreground">{secondary}</span>
+                                  ) : null}
+                                  {option.description ? (
+                                    <span className="text-[11px] text-muted-foreground/80">
+                                      {option.description}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </PromptInputModelSelectItem>
+                            );
+                          })}
+                        </PromptInputModelSelectContent>
+                      </PromptInputModelSelect>
+                    ) : (
+                      <Input
+                        id={rerankSelectId}
+                        value={currentRerankValue}
+                        onChange={(event) => setSelectedRerankModel(event.target.value)}
+                        placeholder={t("modelsRerankPlaceholder")}
+                        aria-describedby={rerankModelDescribedBy}
+                        aria-invalid={rerankModelsError ? "true" : undefined}
+                        aria-label={t("modelsRerankAriaLabel")}
+                        disabled={isStreaming}
+                      />
+                    )}
+                    {showRerankHelper ? (
+                      <span
+                        id={rerankStatusId}
+                        className={cn(
+                          "text-xs",
+                          rerankModelsError ? "text-red-600 dark:text-red-300" : "text-muted-foreground",
+                        )}
+                      >
+                        {rerankModelHelperText}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </PromptInputToolbar>
 
@@ -1062,10 +1238,30 @@ function extractContentField(source: unknown): string {
   return "";
 }
 
-function normalizeModels(models: unknown): ModelOption[] {
+function extractRerankModel(meta: unknown): string | null | undefined {
+  if (!meta || typeof meta !== "object") {
+    return undefined;
+  }
+  const value = (meta as Record<string, unknown>).rerankModel;
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value === null) {
+    return null;
+  }
+  return undefined;
+}
+
+function normalizeModels(
+  models: unknown,
+  options: { defaultSource?: string; defaultProvider?: string; kind?: ModelOption["kind"] } = {},
+): ModelOption[] {
   if (!Array.isArray(models)) {
     return [];
   }
+
+  const defaultSource = options.defaultSource ?? "ollama";
+  const defaultProvider = options.defaultProvider ?? null;
 
   return models
     .map((model) => {
@@ -1088,7 +1284,42 @@ function normalizeModels(models: unknown): ModelOption[] {
         label = (meta as Record<string, unknown>).display_name as string;
       }
 
-      return { id, label } satisfies ModelOption;
+      let provider: string | null = null;
+      if (typeof record.provider === "string") {
+        provider = record.provider;
+      } else if (meta && typeof meta === "object" && typeof (meta as Record<string, unknown>).provider === "string") {
+        provider = (meta as Record<string, unknown>).provider as string;
+      }
+
+      let source: string | undefined;
+      if (typeof record.source === "string") {
+        source = record.source;
+      } else if (meta && typeof meta === "object" && typeof (meta as Record<string, unknown>).source === "string") {
+        source = (meta as Record<string, unknown>).source as string;
+      }
+
+      let description: string | null = null;
+      if (typeof record.description === "string") {
+        description = record.description;
+      } else if (meta && typeof meta === "object" && typeof (meta as Record<string, unknown>).description === "string") {
+        description = (meta as Record<string, unknown>).description as string;
+      }
+
+      if (!source) {
+        source = defaultSource;
+      }
+      if (!provider && defaultProvider) {
+        provider = defaultProvider;
+      }
+
+      return {
+        id,
+        label,
+        provider,
+        source,
+        description,
+        kind: options.kind,
+      } satisfies ModelOption;
     })
     .filter(Boolean) as ModelOption[];
 }
@@ -1206,39 +1437,42 @@ function ChatMessageItem({
           )}
 
           {hasSources ? (
-            <div className="mt-3 space-y-2 rounded-lg border border-border/40 bg-muted/20 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {sourceLabels.heading}
-              </p>
-              <ul className="space-y-2">
-                {sources!.map((source, index) => {
-                  const displayLabel = source.title?.trim() || source.source?.trim() || `${kindLabels[source.kind]} ${index + 1}`;
-                  const kindLabel = kindLabels[source.kind] ?? sourceLabels.vector;
-                  return (
-                    <li
-                      key={source.id || `${source.kind}-${index}`}
-                      className="rounded-md bg-background/70 p-2 text-xs text-muted-foreground"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-foreground">{displayLabel ?? sourceLabels.unknown}</span>
-                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground/80">
-                          {kindLabel}
-                        </span>
-                      </div>
-                      {source.source ? (
-                        <a
-                          className="mt-1 inline-flex text-[11px] text-primary hover:underline"
-                          href={source.source}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {sourceLabels.open}
-                        </a>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
+            <div className="mt-3">
+              <details className="group rounded-lg border border-border/40 bg-muted/20 p-3">
+                <summary className="flex cursor-pointer items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {sourceLabels.heading}
+                  <ChevronDown className="h-4 w-4 transition-transform duration-200 ease-out group-open:-rotate-180" />
+                </summary>
+                <ul className="mt-2 space-y-2 text-xs">
+                  {sources!.map((source, index) => {
+                    const displayLabel = source.title?.trim() || source.source?.trim() || `${kindLabels[source.kind]} ${index + 1}`;
+                    const kindLabel = kindLabels[source.kind] ?? sourceLabels.vector;
+                    return (
+                      <li
+                        key={source.id || `${source.kind}-${index}`}
+                        className="rounded-md bg-background/80 p-2 text-muted-foreground"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-medium text-foreground">{displayLabel ?? sourceLabels.unknown}</span>
+                          <span className="text-[11px] uppercase tracking-wide text-muted-foreground/80">
+                            {kindLabel}
+                          </span>
+                        </div>
+                        {source.source ? (
+                          <a
+                            className="mt-1 inline-flex text-[11px] text-primary hover:underline"
+                            href={source.source}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {sourceLabels.open}
+                          </a>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </details>
             </div>
           ) : null}
         </div>

@@ -88,6 +88,9 @@ uv run uvicorn rag_api.main:app --reload --port 8000
 
 # (Optionnel) Détection matériel / backend recommandé
 python services/rag-api/scripts/hardware_probe.py
+
+# Démarrage combiné Next.js + FastAPI
+./dev-stack.sh
 ```
 
 > Par défaut, l’application cible directement le service FastAPI ; activez
@@ -106,6 +109,10 @@ python services/rag-api/scripts/hardware_probe.py
   activent le job périodique de resynchronisation des connaissances.
 - `RAG_EMBEDDING_BACKEND` : `auto` (défaut), `ollama`, `huggingface`.
   Ajuster `RAG_FALLBACK_EMBEDDING_DEVICE` pour forcer `cpu`/`cuda` si besoin.
+- `OPENROUTER_API_KEY` (Next.js + FastAPI) : active les modèles hébergés OpenRouter
+  pour le chat et le reranking (ex. GPT-4o, Claude 3.5, Gemini 1.5). Compléter
+  éventuellement `OPENROUTER_API_URL`, `OPENROUTER_SITE_URL`, `OPENROUTER_APP_NAME`
+  côté web, ainsi que `RAG_OPENROUTER_RERANK_MODEL` dans le service FastAPI.
 
 ---
 

@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     )
 
     ollama_base_url: HttpUrl | None = Field(
-        default=None,
+        default="http://127.0.0.1:11434",
         description="Endpoint of the Ollama service used for LLM inference.",
     )
     ollama_llm_model: str = Field(
@@ -120,6 +120,32 @@ class Settings(BaseSettings):
         default=0,
         ge=0,
         description="Interval in seconds for the automatic knowledge base reconciliation job (0 disables).",
+    )
+
+    openrouter_api_key: str | None = Field(
+        default=None,
+        description="OpenRouter API key used for hosted LLM/Rerank providers.",
+    )
+    openrouter_api_url: HttpUrl | None = Field(
+        default="https://openrouter.ai/api/v1",
+        description="Base URL for OpenRouter API calls.",
+    )
+    openrouter_app_name: str | None = Field(
+        default=None,
+        description="Application name sent to OpenRouter via X-Title header.",
+    )
+    openrouter_site_url: HttpUrl | None = Field(
+        default=None,
+        description="Referer URL communicated to OpenRouter (HTTP-Referer header).",
+    )
+    openrouter_rerank_model: str | None = Field(
+        default="cohere/rerank-english-v3.0",
+        description="Identifier of the OpenRouter rerank model to use when available.",
+    )
+    openrouter_timeout_seconds: float = Field(
+        default=30.0,
+        ge=1.0,
+        description="Timeout (seconds) for OpenRouter HTTP calls.",
     )
 
     @property

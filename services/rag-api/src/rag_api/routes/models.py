@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
-import subprocess
 from typing import Annotated
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..config import Settings, get_settings
@@ -37,77 +37,107 @@ def _ensure_ollama_configured(settings: Settings) -> str:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Ollama base URL is not configured.",
         )
-    return settings.ollama_base_url
+    return str(settings.ollama_base_url).rstrip("/")
 
 
-def _run_ollama_command(*args: str, timeout: float = 60.0) -> str:
+async def _ollama_request(
+    settings: Settings,
+    method: str,
+    path: str,
+    *,
+    json_body: dict[str, object] | None = None,
+    timeout: float = 60.0,
+) -> httpx.Response:
+    base_url = _ensure_ollama_configured(settings)
+    url = f"{base_url}{path}"
+
     try:
-        completed = subprocess.run(
-            args,
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.request(method, url, json=json_body)
+    except httpx.HTTPError as exc:  # pragma: no cover - network failure
+        log.warning("ollama.http.failed", url=url, error=str(exc))
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    if response.status_code >= 400:
+        detail = response.text or response.reason_phrase
+        raise HTTPException(response.status_code, detail)
+
+    return response
+
+
+async def _ollama_json(
+    settings: Settings,
+    method: str,
+    path: str,
+    *,
+    json_body: dict[str, object] | None = None,
+    timeout: float = 60.0,
+) -> dict[str, object] | list[object]:
+    response = await _ollama_request(settings, method, path, json_body=json_body, timeout=timeout)
+    try:
+        return response.json()
+    except json.JSONDecodeError as exc:  # pragma: no cover - defensive
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=f"Invalid JSON from Ollama: {exc}") from exc
+
+
+async def _assert_model_installed(settings: Settings, model_name: str) -> None:
+    try:
+        payload = await _ollama_json(
+            settings,
+            "POST",
+            "/api/show",
+            json_body={"name": model_name},
+            timeout=30.0,
         )
-    except subprocess.CalledProcessError as exc:
-        log.warning("ollama.command_failed", args=args, stderr=exc.stderr.strip())
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Ollama command failed: {exc.stderr.strip() or exc.stdout.strip()}",
-        ) from exc
-    except subprocess.TimeoutExpired as exc:
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail=f"Ollama command timed out: {' '.join(args)}",
-        ) from exc
-
-    return completed.stdout
-
-
-def _assert_model_installed(model_name: str) -> None:
-    try:
-        _run_ollama_command("ollama", "show", model_name)
     except HTTPException as exc:
         detail = str(exc.detail).lower()
-        if exc.status_code == status.HTTP_502_BAD_GATEWAY and any(marker in detail for marker in _NOT_FOUND_MARKERS):
+        if exc.status_code in (status.HTTP_404_NOT_FOUND, status.HTTP_400_BAD_REQUEST) and any(
+            marker in detail for marker in _NOT_FOUND_MARKERS
+        ):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Model '{model_name}' is not installed on Ollama.",
             ) from exc
         raise
+    else:
+        if not payload:
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND,
+                detail=f"Model '{model_name}' is not installed on Ollama.",
+            )
 
 
-def _validate_requested_models(chat_model: str | None, embedding_model: str | None) -> None:
+async def _validate_requested_models(settings: Settings, chat_model: str | None, embedding_model: str | None) -> None:
     for model in (chat_model, embedding_model):
         if model:
-            _assert_model_installed(model)
+            await _assert_model_installed(settings, model)
 
 
 @router.get("/models", summary="List installed Ollama models")
 async def list_models(settings: Annotated[Settings, Depends(get_settings)]) -> dict[str, list[dict[str, str]]]:
-    _ensure_ollama_configured(settings)
-    output = _run_ollama_command("ollama", "list", "--json")
-    try:
-        models = json.loads(output)
-        if not isinstance(models, list):
-            raise ValueError("Unexpected response structure")
-    except (json.JSONDecodeError, ValueError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Invalid response from ollama list: {exc}",
-        ) from exc
+    payload = await _ollama_json(settings, "GET", "/api/tags", timeout=15.0)
 
-    # Normalize response
+    models_raw = []
+    if isinstance(payload, dict):
+        models_raw = payload.get("models") or []
+    elif isinstance(payload, list):
+        models_raw = payload
+
+    if not isinstance(models_raw, list):
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail="Unexpected response format from Ollama tags API")
+
     normalized: list[dict[str, str]] = []
-    for entry in models:
+    for entry in models_raw:
         if not isinstance(entry, dict):
             continue
-        normalized.append({
-            "name": str(entry.get("name", "")),
-            "modified_at": str(entry.get("modified_at", "")),
-            "size": str(entry.get("size", "")),
-            "digest": str(entry.get("digest", "")),
-        })
+        normalized.append(
+            {
+                "name": str(entry.get("name", "")),
+                "modified_at": str(entry.get("modified_at", "")),
+                "size": str(entry.get("size", "")),
+                "digest": str(entry.get("digest", "")),
+            }
+        )
 
     return {"models": normalized}
 
@@ -119,9 +149,33 @@ def _background_pull_job(settings: Settings, job_id: str, model_name: str) -> as
         log.info("models.pull.job.start", job_id=job_id, name=model_name)
         try:
             mark_model_job_started(settings, job_id)
-            summary = await loop.run_in_executor(
-                None, lambda: _run_ollama_command("ollama", "pull", model_name, timeout=10 * 60)
-            )
+
+            summary_lines: list[str] = []
+            async with httpx.AsyncClient(timeout=None) as client:
+                url = f"{_ensure_ollama_configured(settings)}/api/pull"
+                async with client.stream("POST", url, json={"name": model_name}) as response:
+                    if response.status_code >= 400:
+                        detail = response.text
+                        raise HTTPException(response.status_code, detail)
+
+                    async for line in response.aiter_lines():
+                        if not line:
+                            continue
+                        try:
+                            data = json.loads(line)
+                        except json.JSONDecodeError:
+                            summary_lines.append(line)
+                            continue
+
+                        status_text = str(data.get("status") or "").lower()
+                        if status_text:
+                            summary_lines.append(data.get("status", ""))
+                        if data.get("error"):
+                            raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=str(data["error"]))
+
+            summary = "\n".join(filter(None, summary_lines)) or f"Model '{model_name}' pulled successfully"
+            mark_model_job_succeeded(settings, job_id, summary)
+            log.info("models.pull.job.completed", job_id=job_id, name=model_name)
         except HTTPException as exc:
             detail = str(exc.detail)
             mark_model_job_failed(settings, job_id, detail)
@@ -129,9 +183,6 @@ def _background_pull_job(settings: Settings, job_id: str, model_name: str) -> as
         except Exception as exc:  # pragma: no cover - unexpected failures
             mark_model_job_failed(settings, job_id, str(exc))
             log.exception("models.pull.job.crashed", job_id=job_id, name=model_name)
-        else:
-            mark_model_job_succeeded(settings, job_id, summary.strip())
-            log.info("models.pull.job.completed", job_id=job_id, name=model_name)
 
     return loop.create_task(_runner())
 
@@ -195,13 +246,11 @@ async def get_model_defaults(settings: Annotated[Settings, Depends(get_settings)
 
 @router.delete("/models/{name}", summary="Delete an Ollama model")
 async def delete_model(name: str, settings: Annotated[Settings, Depends(get_settings)]) -> dict[str, str]:
-    _ensure_ollama_configured(settings)
-
     if not name:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Model name is required")
 
     log.info("models.delete.start", name=name)
-    _run_ollama_command("ollama", "delete", name)
+    await _ollama_request(settings, "POST", "/api/delete", json_body={"name": name}, timeout=60.0)
     log.info("models.delete.completed", name=name)
     return {"status": "deleted", "name": name}
 
@@ -222,7 +271,7 @@ async def update_model_defaults(
             detail="Provide chat_model and/or embedding_model",
         )
 
-    _validate_requested_models(chat_model, embedding_model)
+    await _validate_requested_models(settings, chat_model, embedding_model)
 
     previous_chat = settings.ollama_llm_model
     previous_embedding = settings.ollama_embedding_model

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
     Dialog,
     DialogContent,
@@ -19,7 +20,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-export function CreateKbForm() {
+type ButtonVariant = NonNullable<Parameters<typeof Button>[0]["variant"]>;
+type ButtonSize = NonNullable<Parameters<typeof Button>[0]["size"]>;
+
+type CreateKbFormProps = {
+    ctaVariant?: ButtonVariant;
+    ctaSize?: ButtonSize;
+    ctaClassName?: string;
+};
+
+export function CreateKbForm({ ctaVariant = "default", ctaSize = "sm", ctaClassName }: CreateKbFormProps = {}) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const [name, setName] = useState("");
@@ -57,7 +67,7 @@ export function CreateKbForm() {
     return (
         <Dialog open={open} onOpenChange={(next) => !isLoading && setOpen(next)}>
             <DialogTrigger asChild>
-                <Button size="sm" className="gap-2" variant="default">
+                <Button size={ctaSize} className={cn("gap-2", ctaClassName)} variant={ctaVariant}>
                     <Plus className="h-4 w-4" aria-hidden />
                     {tList("cta")}
                 </Button>

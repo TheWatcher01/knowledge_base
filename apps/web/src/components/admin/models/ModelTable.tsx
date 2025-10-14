@@ -461,70 +461,78 @@ export default function ModelTable({ initialModels, initialDefaults, initialErro
         </div>
       </div>
 
-      <Table className="mt-4">
-        <TableHeader>
-          <TableRow>
-            <TableHead>{tTable("name")}</TableHead>
-            <TableHead>{tTable("size")}</TableHead>
-            <TableHead>{tTable("modified")}</TableHead>
-          <TableHead>{tTable("digest")}</TableHead>
-          <TableHead className="text-right">{t("table.actions")}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {models.map((model) => (
-          <TableRow key={model.name}>
-            <TableCell className="font-medium text-foreground">{model.name}</TableCell>
-            <TableCell>{model.size ?? "—"}</TableCell>
-            <TableCell>{model.modified_at ?? "—"}</TableCell>
-            <TableCell className="break-all text-xs text-muted-foreground">
-              {model.digest ?? "—"}
-            </TableCell>
-            <TableCell className="space-y-2 text-right">
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                {defaults.chat_model === model.name ? (
-                  <Badge variant="outline" className="border-primary/50 text-primary">
-                    {t("badgeChat")}
-                  </Badge>
-                ) : null}
-                {defaults.embedding_model === model.name ? (
-                  <Badge variant="outline" className="border-amber-500/70 text-amber-500">
-                    {t("badgeEmbedding")}
-                  </Badge>
-                ) : null}
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={updatingDefaults || loading}
-                  onClick={() => updateDefaults({ chat_model: model.name })}
-                >
-                  {t("actions.setChat")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={updatingDefaults || loading}
-                  onClick={() => updateDefaults({ embedding_model: model.name })}
-                >
-                  {t("actions.setEmbedding")}
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={loading || installing}
-                  onClick={() => handleDelete(model.name)}
-                >
-                  {t("actions.delete")}
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-        {models.length === 0 ? <TableCaption>{t("empty")}</TableCaption> : null}
-      </Table>
+      <div className="mt-4 overflow-x-auto rounded-2xl border border-border/30 bg-card/60">
+        <Table className="min-w-full">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="min-w-[160px]">{tTable("name")}</TableHead>
+              <TableHead className="min-w-[120px]">{tTable("size")}</TableHead>
+              <TableHead className="min-w-[140px]">{tTable("modified")}</TableHead>
+              <TableHead className="min-w-[200px]">{tTable("digest")}</TableHead>
+              <TableHead className="min-w-[220px] text-right sm:text-right">{t("table.actions")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {models.map((model) => (
+              <TableRow key={model.name}>
+                <TableCell className="font-medium text-foreground">{model.name}</TableCell>
+                <TableCell>{model.size ?? "—"}</TableCell>
+                <TableCell>{model.modified_at ?? "—"}</TableCell>
+                <TableCell className="break-all text-xs text-muted-foreground">
+                  {model.digest ?? "—"}
+                </TableCell>
+                <TableCell className="space-y-3 text-right sm:space-y-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {defaults.chat_model === model.name ? (
+                      <Badge variant="outline" className="border-primary/50 text-primary">
+                        {t("badgeChat")}
+                      </Badge>
+                    ) : null}
+                    {defaults.embedding_model === model.name ? (
+                      <Badge variant="outline" className="border-amber-500/70 text-amber-500">
+                        {t("badgeEmbedding")}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <div
+                    className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end"
+                    data-testid="model-action-buttons"
+                  >
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                      disabled={updatingDefaults || loading}
+                      onClick={() => updateDefaults({ chat_model: model.name })}
+                    >
+                      {t("actions.setChat")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                      disabled={updatingDefaults || loading}
+                      onClick={() => updateDefaults({ embedding_model: model.name })}
+                    >
+                      {t("actions.setEmbedding")}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                      disabled={loading || installing}
+                      onClick={() => handleDelete(model.name)}
+                    >
+                      {t("actions.delete")}
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+          {models.length === 0 ? <TableCaption>{t("empty")}</TableCaption> : null}
+        </Table>
+      </div>
 
       {error ? (
         <p className="mt-4 text-sm text-red-500">{t("loadError", { error })}</p>

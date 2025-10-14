@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { ragApiJson, RAG_SERVICE_DISABLED_MESSAGE } from "@/lib/rag";
 import { RAG_API_BASE, RAG_API_TOKEN, collectionName } from "@/lib/config";
+import { getOpenRouterConfig } from "@/lib/openrouter";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import { assertRole, handleAuthError } from "@/lib/authz";
@@ -126,6 +127,7 @@ const ChatRequestSchema = z.object({
     conversationId: z.string().uuid().optional(),
     title: z.string().trim().min(1).max(120).optional(),
     meta: z.record(z.string(), z.unknown()).optional(),
+    rerankModel: z.string().trim().min(1).max(120).optional(),
 });
 
 // POST /api/chat
@@ -148,7 +150,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
         }
 
-        const { kbId, model, question, conversationId, title, meta } = parsed.data;
+        const { kbId, model, question, conversationId, title, meta, rerankModel } = parsed.data;
 
         const kb = await prisma.knowledgeBase.findFirst({
             where: { id: kbId, ownerId: userId },
@@ -166,6 +168,7 @@ export async function POST(req: NextRequest) {
             conversationId,
             title,
             meta,
+            rerankModel,
             question,
         });
 
@@ -174,6 +177,9 @@ export async function POST(req: NextRequest) {
         }
 
         const { conversation, history, nextSequence } = resolved;
+        const resolvedModel = conversation.model ?? model ?? null;
+        const openRouterConfig = getOpenRouterConfig();
+        const useOpenRouter = Boolean(resolvedModel && resolvedModel.includes("/"));
 
     let docs: RetrievedDoc[] = [];
 
@@ -270,23 +276,49 @@ export async function POST(req: NextRequest) {
             prompt,
         });
 
-        if (!RAG_API_BASE) {
-            return NextResponse.json({ error: RAG_SERVICE_DISABLED_MESSAGE }, { status: 503 });
-        }
+        let upstream: Response | null = null;
 
         try {
-            const upstream = await fetch(`${RAG_API_BASE}/api/v1/chat/completions`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(RAG_API_TOKEN ? { Authorization: `Bearer ${RAG_API_TOKEN}` } : {}),
-                },
-                body: JSON.stringify({
-                    model: conversation.model ?? model,
-                    stream: true,
-                    messages: upstreamMessages,
-                }),
-            });
+            if (useOpenRouter) {
+                if (!openRouterConfig.enabled) {
+                    return NextResponse.json(
+                        { error: "OpenRouter API key missing" },
+                        { status: 503 },
+                    );
+                }
+
+                upstream = await fetch(`${openRouterConfig.baseUrl}/chat/completions`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${openRouterConfig.apiKey}`,
+                        "HTTP-Referer": openRouterConfig.referer,
+                        "X-Title": openRouterConfig.appName,
+                    },
+                    body: JSON.stringify({
+                        model: resolvedModel,
+                        stream: true,
+                        messages: upstreamMessages,
+                    }),
+                });
+            } else {
+                if (!RAG_API_BASE) {
+                    return NextResponse.json({ error: RAG_SERVICE_DISABLED_MESSAGE }, { status: 503 });
+                }
+
+                upstream = await fetch(`${RAG_API_BASE}/api/v1/chat/completions`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(RAG_API_TOKEN ? { Authorization: `Bearer ${RAG_API_TOKEN}` } : {}),
+                    },
+                    body: JSON.stringify({
+                        model: resolvedModel,
+                        stream: true,
+                        messages: upstreamMessages,
+                    }),
+                });
+            }
 
             if (!upstream.ok || !upstream.body) {
                 const message = await upstream.text();
@@ -301,7 +333,7 @@ export async function POST(req: NextRequest) {
                 conversationId: conversation.id,
                 question,
                 sequence: nextSequence,
-                model: conversation.model ?? model ?? null,
+                model: resolvedModel,
                 sources,
             });
 
@@ -329,14 +361,18 @@ async function resolveConversation(params: {
     conversationId?: string;
     title?: string;
     meta?: Record<string, unknown>;
+    rerankModel?: string;
     question: string;
 }) {
-    const { kbId, userId, model, conversationId, title, meta, question } = params;
+    const { kbId, userId, model, conversationId, title, meta, rerankModel, question } = params;
 
     if (conversationId) {
         const existing = await prisma.chatConversation.findFirst({
             where: { id: conversationId, kbId, userId },
-            include: {
+            select: {
+                id: true,
+                model: true,
+                meta: true,
                 messages: {
                     orderBy: { sequence: "asc" },
                     select: {
@@ -356,8 +392,12 @@ async function resolveConversation(params: {
             updateData.model = model;
             existing.model = model;
         }
-        if (meta) {
-            updateData.meta = meta as Prisma.JsonObject;
+        const nextMeta = mergeConversationMeta(existing.meta ?? null, meta, rerankModel);
+        const existingMetaJson = JSON.stringify(existing.meta ?? null);
+        const nextMetaJson = JSON.stringify(nextMeta);
+        if (existingMetaJson !== nextMetaJson) {
+            updateData.meta = nextMeta ?? null;
+            existing.meta = nextMeta ?? null;
         }
         if (Object.keys(updateData).length > 0) {
             await prisma.chatConversation.update({
@@ -377,13 +417,14 @@ async function resolveConversation(params: {
     }
 
     const fallbackTitle = question.slice(0, 60) || "Conversation";
+    const initialMeta = mergeConversationMeta(null, meta, rerankModel);
     const created = await prisma.chatConversation.create({
         data: {
             kbId,
             userId,
             title: title ?? fallbackTitle,
             model: model ?? null,
-            meta: meta ? (meta as Prisma.JsonObject) : undefined,
+            meta: initialMeta ?? undefined,
         },
     });
 
@@ -395,6 +436,44 @@ async function resolveConversation(params: {
         history: [] as Array<{ role: ChatMessageRole; content: string }>,
         nextSequence: 0,
     };
+}
+
+function mergeConversationMeta(
+    existing: unknown,
+    incoming: Record<string, unknown> | undefined,
+    rerankModel?: string,
+): Record<string, unknown> | null {
+    const base = normalizeMetaRecord(existing);
+
+    if (typeof rerankModel === "string" && rerankModel.length > 0) {
+        base.rerankModel = rerankModel;
+    }
+
+    if (incoming) {
+        for (const [key, value] of Object.entries(incoming)) {
+            if (value === undefined) {
+                continue;
+            }
+            if (value === null) {
+                delete base[key];
+            } else {
+                base[key] = value;
+            }
+        }
+    }
+
+    return Object.keys(base).length > 0 ? base : null;
+}
+
+function normalizeMetaRecord(source: unknown): Record<string, unknown> {
+    if (!source || typeof source !== "object" || Array.isArray(source)) {
+        return {};
+    }
+
+    const entries = Object.entries(source as Record<string, unknown>).filter(
+        ([, value]) => value !== undefined,
+    );
+    return Object.fromEntries(entries);
 }
 
 function buildUpstreamMessages(params: {
@@ -418,7 +497,7 @@ function createStreamingResponse(params: {
     model: string | null;
     sources: RetrievedDocSummary[];
 }) {
-    const { upstream, conversationId, question, sequence, model, sources } = params;
+    const { upstream, conversationId, question, sequence, sources } = params;
     const reader = upstream.body!.getReader();
     const decoder = new TextDecoder();
     const encoder = new TextEncoder();
@@ -560,7 +639,7 @@ function createStreamingResponse(params: {
                         data: {
                             lastActivityAt: new Date(),
                             updatedAt: new Date(),
-                            model: model ?? undefined,
+                            model: resolvedModel ?? undefined,
                         },
                     }),
                 ]);

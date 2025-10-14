@@ -168,7 +168,10 @@
           "documents": "Documents",
           "actions": "Actions"
         }
-      }
+      },
+      "emptyTitle": "Create your first knowledge base",
+      "emptyDescription": "Kickstart your workspace by creating a dedicated knowledge base.",
+      "emptyHelper": "Great for separating projects, teams, or content types."
     },
     "createForm": {
       "namePlaceholder": "Knowledge Base Name",
@@ -191,17 +194,7 @@
       "missingDescription": "Add a description to provide context for this knowledge base.",
       "createdOn": "Created on",
       "sources": "Sources",
-      "documents": "Documents",
-      "ragSyncLabel": "Re-sync knowledge",
-      "ragSyncRunningButton": "Re-sync in progress…",
-      "ragSyncRunning": "Checking RAG service collection…",
-      "ragSyncAlready": "The RAG service collection already exists – no re-index required.",
-      "ragSyncReembedded": "Re-index request sent for {count, plural, one {# item} other {# items}}.",
-      "ragSyncNoEntries": "No stored knowledge to re-index.",
-      "ragSyncError": "Re-sync failed: {error}.",
-      "ragSyncErrorFallback": "unknown error",
-      "ragSyncErrorUnexpectedResponse": "unexpected RAG service response",
-      "ragSyncErrorTimeout": "request to RAG service timed out"
+      "documents": "Documents"
     },
     "ragStatus": {
       "title": "RAG service unavailable",
@@ -391,6 +384,14 @@
       "modelsPlaceholder": "e.g. llama3.1:8b",
       "modelsLoading": "Loading available models…",
       "modelsError": "Unable to load the models list. Enter a model identifier manually.",
+      "modelsRerankLabel": "Rerank",
+      "modelsRerankPlaceholder": "Optional rerank model",
+      "modelsRerankLoading": "Loading rerank models…",
+      "modelsRerankError": "Unable to load rerank models. Documents will stay in original order.",
+      "modelsRerankAriaLabel": "Available rerank models",
+      "modelsRerankNone": "No rerank (default)",
+      "modelsRerankNoneDescription": "Keep the retrieval order without applying rerank.",
+      "modelsRerankNoneSecondary": "Original retrieval order",
       "status": "Pick a model and start chatting with your knowledge base.",
       "label": "Message",
       "placeholder": "Ask a question about this knowledge base…",

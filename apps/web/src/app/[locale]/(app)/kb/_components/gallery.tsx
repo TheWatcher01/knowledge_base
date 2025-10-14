@@ -130,10 +130,14 @@ export function KnowledgeBaseGallery({ items, summary }: KnowledgeBaseGalleryPro
             </div>
 
             {filteredItems.length === 0 ? (
-                <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-3 text-center">
+                <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-5 text-center">
                     <div className="rounded-3xl border border-border/40 bg-card/95 px-8 py-10 shadow-sm">
-                        <h2 className="text-xl font-semibold text-foreground">{t("empty.title")}</h2>
-                        <p className="mt-2 text-sm text-muted-foreground">{t("empty.description")}</p>
+                        <h2 className="text-xl font-semibold text-foreground">{t("emptyTitle")}</h2>
+                        <p className="mt-2 text-sm text-muted-foreground">{t("emptyDescription")}</p>
+                        <div className="mt-6 flex flex-col items-center gap-3">
+                            <CreateKbForm ctaSize="lg" ctaClassName="w-full sm:w-auto" />
+                            <p className="text-xs text-muted-foreground/80">{t("emptyHelper")}</p>
+                        </div>
                     </div>
                 </div>
             ) : viewMode === "grid" ? (

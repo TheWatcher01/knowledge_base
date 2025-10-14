@@ -62,6 +62,7 @@ class QueryRequest(BaseModel):
     query: str
     collection_name: str
     k: int = Field(default=5, ge=1, le=50)
+    rerank_model: str | None = Field(default=None, max_length=120)
 
 
 class DeleteRequest(BaseModel):
@@ -274,6 +275,7 @@ async def query_collection(
             collection_name=payload.collection_name,
             query=payload.query,
             limit=payload.k,
+            rerank_model=payload.rerank_model,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
