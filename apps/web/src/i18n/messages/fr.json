@@ -42,17 +42,28 @@
     "description": "Votre tableau de bord apparaîtra ici."
   },
   "auth": {
-    "login": {
-      "title": "Connexion",
-      "submit": "Se connecter",
-      "submitting": "Chargement...",
-      "error": "Échec de la connexion",
-      "prompt": "Pas encore de compte ? Contactez l'administrateur.",
-      "register": "Inscription"
-    },
-    "register": {
-      "title": "Inscription",
-      "submit": "S'inscrire",
+  "login": {
+    "title": "Connexion",
+    "subtitle": "Accédez en toute sécurité à vos bases de connaissance.",
+    "submit": "Se connecter",
+    "submitting": "Chargement...",
+    "error": "Échec de la connexion",
+    "prompt": "Pas encore de compte ? Contactez l'administrateur.",
+    "register": "Inscription",
+    "dialogTitle": "Connexion en cours",
+    "dialogDescription": "Veuillez patienter pendant la vérification de vos identifiants.",
+    "signingIn": "Connexion à votre espace..."
+  },
+  "logout": {
+    "title": "Déconnexion",
+    "description": "Voulez-vous vraiment vous déconnecter de l'application ?",
+    "confirm": "Se déconnecter",
+    "cancel": "Rester connecté",
+    "signingOut": "Déconnexion..."
+  },
+  "register": {
+    "title": "Inscription",
+    "submit": "S'inscrire",
       "submitting": "Inscription en cours...",
       "success": "Inscription réussie ! Vous pouvez maintenant vous connecter.",
       "error": "Échec de l'inscription"

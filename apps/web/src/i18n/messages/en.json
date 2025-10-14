@@ -42,18 +42,29 @@
     "description": "Your dashboard will appear here."
   },
   "auth": {
-    "login": {
-      "title": "Login",
-      "submit": "Login",
-      "submitting": "Loading...",
-      "error": "Failed to login",
-      "prompt": "Do not have an account? Please contact the administrator.",
-      "register": "Register"
-    },
-    "register": {
-      "title": "Register",
-      "submit": "Register",
-      "submitting": "Registering...",
+  "login": {
+    "title": "Login",
+    "subtitle": "Access your knowledge bases securely.",
+    "submit": "Login",
+    "submitting": "Loading...",
+    "error": "Failed to login",
+    "prompt": "Do not have an account? Please contact the administrator.",
+    "register": "Register",
+    "dialogTitle": "Signing in",
+    "dialogDescription": "Please wait while we verify your credentials.",
+    "signingIn": "Connecting to your workspace..."
+  },
+  "logout": {
+    "title": "Sign out",
+    "description": "You are about to sign out of the application.",
+    "confirm": "Sign out",
+    "cancel": "Stay logged in",
+    "signingOut": "Signing out..."
+  },
+  "register": {
+    "title": "Register",
+    "submit": "Register",
+    "submitting": "Registering...",
       "success": "Registration successful! You can now log in.",
       "error": "Failed to register"
     }

@@ -9,7 +9,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.18.1",
+  "packageManager": "pnpm@10.18.3",
   "devDependencies": {
     "markdownlint-cli2": "^0.18.1",
     "prettier": "^3.6.2",

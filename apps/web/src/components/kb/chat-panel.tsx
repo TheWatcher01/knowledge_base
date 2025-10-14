@@ -39,6 +39,7 @@ import { ChevronDown, SquareIcon } from "lucide-react";
 
 export const DEFAULT_MODEL = process.env.NEXT_PUBLIC_DEFAULT_CHAT_MODEL ?? "";
 const DEFAULT_RERANK_MODEL = process.env.NEXT_PUBLIC_DEFAULT_RERANK_MODEL ?? "";
+const NO_RERANK_VALUE = "__none__";
 
 type ConversationMessage = {
   id: string | null;
@@ -105,7 +106,9 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
 
   const [rerankModels, setRerankModels] = useState<ModelOption[]>([]);
   const [rerankModelsError, setRerankModelsError] = useState<string | null>(null);
-  const [selectedRerankModel, setSelectedRerankModel] = useState(DEFAULT_RERANK_MODEL);
+  const [selectedRerankModel, setSelectedRerankModel] = useState(
+    DEFAULT_RERANK_MODEL ? DEFAULT_RERANK_MODEL : NO_RERANK_VALUE,
+  );
 
   const [statusMessage, setStatusMessage] = useState("");
   const [statusTone, setStatusTone] = useState<LiveTone>("polite");
@@ -310,7 +313,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
             return current;
           }
           if (rerankFromMeta === null) {
-            return "";
+            return NO_RERANK_VALUE;
           }
           return rerankFromMeta;
         });
@@ -495,7 +498,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
               return DEFAULT_RERANK_MODEL;
             }
 
-            return "";
+            return NO_RERANK_VALUE;
           });
         }
       } catch (error) {
@@ -522,7 +525,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   }, [t, updateStatus]);
 
   const currentChatModel = selectedChatModel ?? "";
-  const currentRerankValue = selectedRerankModel ?? "";
+  const currentRerankValue = selectedRerankModel ?? NO_RERANK_VALUE;
 
   const canSend = useMemo(() => {
     return (
@@ -549,7 +552,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     if (!canSend) return;
 
     const question = input.trim();
-    if (!currentModelValue) {
+    if (!currentChatModel) {
       const message = t("errorModelRequired");
       setStreamError(message);
       updateStatus(t("announceError", { message }), "assertive");
@@ -589,11 +592,8 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
 
     try {
       const metaPayload: Record<string, unknown> = {};
-      if (currentRerankValue) {
-        metaPayload.rerankModel = currentRerankValue;
-      } else {
-        metaPayload.rerankModel = null;
-      }
+      const effectiveRerank = currentRerankValue === NO_RERANK_VALUE ? null : currentRerankValue;
+      metaPayload.rerankModel = effectiveRerank;
 
       const payload: Record<string, unknown> = {
         kbId,
@@ -601,8 +601,8 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
         model: currentChatModel,
         conversationId: activeConversationId ?? undefined,
       };
-      if (currentRerankValue) {
-        payload.rerankModel = currentRerankValue;
+      if (effectiveRerank) {
+        payload.rerankModel = effectiveRerank;
       }
       if (Object.keys(metaPayload).length > 0) {
         payload.meta = metaPayload;
@@ -799,7 +799,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   const messageErrorId = streamError ? errorMessageId : undefined;
   const rerankOptions = useMemo(() => {
     const noneOption: ModelOption = {
-      id: "",
+      id: NO_RERANK_VALUE,
       label: t("modelsRerankNone"),
       provider: null,
       source: "none",
@@ -1005,7 +1005,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
                             let secondary = option.provider ?? "";
                             if (option.source === "openrouter") {
                               secondary = `${option.provider ?? "OpenRouter"} • OpenRouter`;
-                            } else if (option.id === "") {
+                            } else if (option.id === NO_RERANK_VALUE) {
                               secondary = t("modelsRerankNoneSecondary");
                             }
                             return (
@@ -1068,7 +1068,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
                       }
                     }}
                     placeholder={t("placeholder")}
-                    disabled={!kbId || isStreaming || currentModelValue.trim().length === 0}
+                    disabled={!kbId || isStreaming || currentChatModel.trim().length === 0}
                     aria-describedby={messageErrorId}
                     aria-invalid={streamError ? "true" : undefined}
                     aria-label={t("label")}
