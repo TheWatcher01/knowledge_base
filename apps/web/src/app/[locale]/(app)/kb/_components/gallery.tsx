@@ -24,6 +24,7 @@ export type KnowledgeBaseGalleryItem = {
         notes: number;
         files: number;
         urls: number;
+        chat: number;
     };
 };
 

@@ -5,21 +5,29 @@ import { useSelectedLayoutSegments } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { CHAT_CONVERSATION_RESET_REQUESTED_EVENT } from "@/lib/chat-events";
+import { Badge } from "@/components/ui/badge";
 
 import { ChatHistoryNav } from "./chat-history-nav";
 
-const tabs = [
-    { segment: undefined, key: "overview" as const, path: "" },
-    { segment: "notes", key: "notes" as const, path: "notes" },
-    { segment: "files", key: "files" as const, path: "files" },
-    { segment: "urls", key: "urls" as const, path: "urls" },
-    { segment: "chat", key: "chat" as const, path: "chat" },
+type TabKey = "overview" | "notes" | "files" | "urls" | "chat";
+
+const COUNT_BADGE_BASE = "h-6 min-w-[2rem] justify-center gap-0 rounded-full px-2 text-[11px] font-semibold leading-none text-center";
+const COUNT_BADGE_MUTED = "border-border/50 bg-background/80 text-muted-foreground";
+const COUNT_BADGE_ACTIVE = "border-transparent bg-primary/90 text-primary-foreground shadow-sm";
+
+const tabs: Array<{ segment: string | undefined; key: TabKey; path: string }> = [
+    { segment: undefined, key: "overview", path: "" },
+    { segment: "notes", key: "notes", path: "notes" },
+    { segment: "files", key: "files", path: "files" },
+    { segment: "urls", key: "urls", path: "urls" },
+    { segment: "chat", key: "chat", path: "chat" },
 ];
 
-export function KnowledgeBaseTabs({ kbId }: { kbId: string }) {
+export function KnowledgeBaseTabs({ kbId, counts }: { kbId: string; counts: Record<TabKey, number> }) {
     const segments = useSelectedLayoutSegments();
     const activeSegment = segments[0] ?? undefined;
     const t = useTranslations("kb.tabs");
+    const tWorkspace = useTranslations("kb.workspace");
 
     return (
         <nav>
@@ -28,6 +36,8 @@ export function KnowledgeBaseTabs({ kbId }: { kbId: string }) {
                     const href = tab.path ? `/kb/${kbId}/${tab.path}` : `/kb/${kbId}`;
                     const isActive = (activeSegment ?? undefined) === tab.segment;
 
+                    const countValue = counts[tab.key] ?? 0;
+                    const badgeLabel = tWorkspace(`counts.${tab.key}`, { count: countValue });
                     return (
                         <li key={tab.key}>
                             <Link
@@ -49,6 +59,18 @@ export function KnowledgeBaseTabs({ kbId }: { kbId: string }) {
                                 }}
                             >
                                 <span>{t(tab.key)}</span>
+                                <Badge
+                                    variant="outline"
+                                    className={cn(
+                                        "ml-auto",
+                                        COUNT_BADGE_BASE,
+                                        isActive ? COUNT_BADGE_ACTIVE : COUNT_BADGE_MUTED,
+                                    )}
+                                    aria-label={badgeLabel}
+                                    title={badgeLabel}
+                                >
+                                    {countValue}
+                                </Badge>
                             </Link>
                             {tab.key === "chat" ? <ChatHistoryNav kbId={kbId} /> : null}
                         </li>

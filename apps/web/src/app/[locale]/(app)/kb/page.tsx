@@ -20,6 +20,19 @@ export default async function KnowledgeBasesPage({ params }: { params: Promise<{
         include: { _count: { select: { documents: true } } },
     });
 
+    const kbIds = knowledgeBases.map((kb) => kb.id);
+    const chatCounts = kbIds.length
+        ? await prisma.chatConversation.groupBy({
+              by: ["kbId"],
+              _count: { _all: true },
+              where: {
+                  userId,
+                  kbId: { in: kbIds },
+              },
+          })
+        : [];
+    const chatCountMap = new Map(chatCounts.map((entry) => [entry.kbId, entry._count._all]));
+
     const dateFormatter = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" });
     const relativeFormatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
     const now = Date.now();
@@ -37,6 +50,7 @@ export default async function KnowledgeBasesPage({ params }: { params: Promise<{
                 notes: 0,
                 files: 0,
                 urls: 0,
+                chat: chatCountMap.get(kb.id) ?? 0,
             };
 
             for (const entry of grouped) {

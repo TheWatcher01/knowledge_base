@@ -6,10 +6,16 @@ import { BookMarked, FileText, Link2, NotebookPen, Search, Sparkles } from "luci
 
 import { KnowledgeBaseChatPanel } from "@/components/kb/chat-panel";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { KnowledgeBaseStudio } from "../[id]/_components/kb-studio";
+
+const COUNT_BADGE_BASE = "h-6 min-w-[2rem] justify-center gap-0 rounded-full px-2 text-[11px] font-semibold leading-none text-center";
+const COUNT_BADGE_MUTED = "border-border/50 bg-background/80 text-muted-foreground";
+const COUNT_BADGE_ACTIVE = "border-transparent bg-primary/90 text-primary-foreground shadow-sm";
 
 export type KnowledgeBaseWorkspaceItem = {
     id: string;
@@ -23,6 +29,7 @@ export type KnowledgeBaseWorkspaceItem = {
         notes: number;
         files: number;
         urls: number;
+        chat: number;
     };
 };
 
@@ -126,16 +133,16 @@ export function KnowledgeBaseWorkspace({ items, initialId }: KnowledgeBaseWorksp
     ];
 
     const navigationActions = [
-        { key: "overview" as const, label: tTabs("overview"), href: `/kb/${selected.id}`, icon: NotebookPen },
-        { key: "notes" as const, label: tTabs("notes"), href: `/kb/${selected.id}/notes`, icon: NotebookPen },
-        { key: "files" as const, label: tTabs("files"), href: `/kb/${selected.id}/files`, icon: FileText },
-        { key: "urls" as const, label: tTabs("urls"), href: `/kb/${selected.id}/urls`, icon: Link2 },
-        { key: "chat" as const, label: tTabs("chat"), href: `/kb/${selected.id}/chat`, icon: Sparkles },
+        { key: 'overview' as const, label: tWorkspace('sourceLabels.overview'), href: `/kb/${selected.id}`, icon: NotebookPen, count: selected.stats.documents },
+        { key: 'notes' as const, label: tWorkspace('sourceLabels.notes'), href: `/kb/${selected.id}/notes`, icon: NotebookPen, count: selected.stats.notes },
+        { key: 'files' as const, label: tWorkspace('sourceLabels.files'), href: `/kb/${selected.id}/files`, icon: FileText, count: selected.stats.files },
+        { key: 'urls' as const, label: tWorkspace('sourceLabels.urls'), href: `/kb/${selected.id}/urls`, icon: Link2, count: selected.stats.urls },
+        { key: 'chat' as const, label: tWorkspace('sourceLabels.chat'), href: `/kb/${selected.id}/chat`, icon: Sparkles, count: selected.stats.chat ?? 0 },
     ];
 
     return (
-        <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)_300px] 2xl:grid-cols-[320px_minmax(0,1fr)_360px]">
-            <aside className="flex max-h-[calc(100vh-160px)] flex-col rounded-3xl border border-border/30 bg-card p-4 shadow-sm backdrop-blur dark:bg-slate-950/60">
+        <div className="grid w-full max-w-full gap-6 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)_300px] 2xl:grid-cols-[320px_minmax(0,1fr)_360px]">
+            <aside className="flex w-full max-h-[calc(100vh-160px)] flex-col rounded-3xl border border-border/30 bg-card p-4 shadow-sm backdrop-blur dark:bg-slate-950/60">
                 <div className="flex items-center justify-between gap-2">
                     <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                         {tWorkspace("sources")}
@@ -189,12 +196,11 @@ export function KnowledgeBaseWorkspace({ items, initialId }: KnowledgeBaseWorksp
                                         : "border-transparent bg-background/60 text-foreground hover:border-primary/30 hover:bg-primary/10",
                                 )}
                             >
-                                <input
-                                    type="checkbox"
+                                <Checkbox
                                     checked={isSelected}
-                                    onChange={(event) => handleToggle(item.id, event.target.checked)}
-                                    className="mt-1 h-4 w-4 rounded border border-border/50 text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                    onCheckedChange={(checked) => handleToggle(item.id, Boolean(checked))}
                                     aria-label={tWorkspace("selection.toggle", { name: item.name })}
+                                    className="mt-1"
                                 />
                                 <button
                                     type="button"
@@ -208,6 +214,71 @@ export function KnowledgeBaseWorkspace({ items, initialId }: KnowledgeBaseWorksp
                                     {item.description ? (
                                         <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
                                     ) : null}
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                        <Badge
+                                            variant="outline"
+                                            className={cn(
+                                                COUNT_BADGE_BASE,
+                                                active ? COUNT_BADGE_ACTIVE : COUNT_BADGE_MUTED,
+                                            )}
+                                            aria-label={tWorkspace("counts.overview", { count: item.stats.documents })}
+                                            title={tWorkspace("counts.overview", { count: item.stats.documents })}
+                                        >
+                                            {item.stats.documents}
+                                        </Badge>
+                                        {item.stats.notes ? (
+                                            <Badge
+                                                variant="outline"
+                                                className={cn(
+                                                    COUNT_BADGE_BASE,
+                                                    active ? COUNT_BADGE_ACTIVE : COUNT_BADGE_MUTED,
+                                                )}
+                                                aria-label={tWorkspace("counts.notes", { count: item.stats.notes })}
+                                                title={tWorkspace("counts.notes", { count: item.stats.notes })}
+                                            >
+                                                {item.stats.notes}
+                                            </Badge>
+                                        ) : null}
+                                        {item.stats.files ? (
+                                            <Badge
+                                                variant="outline"
+                                                className={cn(
+                                                    COUNT_BADGE_BASE,
+                                                    active ? COUNT_BADGE_ACTIVE : COUNT_BADGE_MUTED,
+                                                )}
+                                                aria-label={tWorkspace("counts.files", { count: item.stats.files })}
+                                                title={tWorkspace("counts.files", { count: item.stats.files })}
+                                            >
+                                                {item.stats.files}
+                                            </Badge>
+                                        ) : null}
+                                        {item.stats.urls ? (
+                                            <Badge
+                                                variant="outline"
+                                                className={cn(
+                                                    COUNT_BADGE_BASE,
+                                                    active ? COUNT_BADGE_ACTIVE : COUNT_BADGE_MUTED,
+                                                )}
+                                                aria-label={tWorkspace("counts.urls", { count: item.stats.urls })}
+                                                title={tWorkspace("counts.urls", { count: item.stats.urls })}
+                                            >
+                                                {item.stats.urls}
+                                            </Badge>
+                                        ) : null}
+                                        {item.stats.chat ? (
+                                            <Badge
+                                                variant="outline"
+                                                className={cn(
+                                                    COUNT_BADGE_BASE,
+                                                    active ? COUNT_BADGE_ACTIVE : COUNT_BADGE_MUTED,
+                                                )}
+                                                aria-label={tWorkspace("counts.chat", { count: item.stats.chat })}
+                                                title={tWorkspace("counts.chat", { count: item.stats.chat })}
+                                            >
+                                                {item.stats.chat}
+                                            </Badge>
+                                        ) : null}
+                                    </div>
                                 </button>
                             </div>
                         );
@@ -215,7 +286,7 @@ export function KnowledgeBaseWorkspace({ items, initialId }: KnowledgeBaseWorksp
                 </div>
             </aside>
 
-            <section className="flex flex-col gap-4">
+            <section className="flex w-full flex-col gap-4">
                 <div className="sticky top-0 z-10 shrink-0 space-y-4 rounded-3xl border border-border/40 bg-card/95 p-6 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 dark:bg-slate-950/70">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div>
@@ -252,9 +323,17 @@ export function KnowledgeBaseWorkspace({ items, initialId }: KnowledgeBaseWorksp
                     <div className="flex flex-wrap items-center gap-2 pt-4">
                         {navigationActions.map((action) => (
                             <Button key={action.key} asChild size="sm" variant="outline" className="gap-2">
-                                <Link href={action.href}>
+                                <Link href={action.href} className="flex items-center gap-2">
                                     <action.icon className="h-4 w-4" aria-hidden />
-                                    {action.label}
+                                    <span>{action.label}</span>
+                                    <Badge
+                                        variant="outline"
+                                        className={cn("ml-1", COUNT_BADGE_BASE, COUNT_BADGE_MUTED)}
+                                        aria-label={tWorkspace(`counts.${action.key}`, { count: action.count })}
+                                        title={tWorkspace(`counts.${action.key}`, { count: action.count })}
+                                    >
+                                        {action.count}
+                                    </Badge>
                                 </Link>
                             </Button>
                         ))}
@@ -269,7 +348,7 @@ export function KnowledgeBaseWorkspace({ items, initialId }: KnowledgeBaseWorksp
                 </div>
             </section>
 
-            <aside className="max-h-[calc(100vh-160px)] overflow-y-auto rounded-3xl border border-border/30 bg-card p-4 shadow-sm backdrop-blur dark:bg-slate-950/60">
+            <aside className="w-full max-h-[calc(100vh-160px)] overflow-y-auto rounded-3xl border border-border/30 bg-card p-4 shadow-sm backdrop-blur dark:bg-slate-950/60">
                 <KnowledgeBaseStudio kbId={selected.id} />
             </aside>
         </div>
