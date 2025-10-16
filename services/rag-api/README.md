@@ -53,7 +53,7 @@ Avant de lancer les tests front (Vitest/Playwright), exécuter côté monorepo `
 
 ## Structure principale
 
-```
+```bash
 rag_api/
   api.py                # Factory FastAPI, route import, instrumentation
   config.py             # Paramétrage Pydantic (Settings)
@@ -79,3 +79,4 @@ rag_api/
 3. Supprimer un document depuis l’UI et confirmer la suppression dans PGVector (`SELECT COUNT(*) FROM data_kb_<id>`).
 4. Ouvrir le chat et s’assurer que le streaming SSE fonctionne (console réseau → `EventStream`).
 5. Valider les métriques sur `GET /metrics` et que les limites de rate limit renvoient bien 429/413 en cas de dépassement.
+6. Contrôler dans l’UI que les badges numériques des panneaux **Sources**/onglets correspondent bien au nombre d’éléments (notes, fichiers, liens, conversations) exposés par l’API.

@@ -225,6 +225,7 @@ POST   /api/chat                                           # Send message (with 
 - Dropdown menus and context menus
 - Cards (KB, notes, files, URLs)
 - Forms with Zod validation
+- Mobile sheets/accordions for KB navigation (Sources & Outils) + dropzone-based file replacement
 
 **Theme Component:**
 

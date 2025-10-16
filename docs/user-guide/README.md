@@ -20,6 +20,12 @@ Bienvenue dans **Knowledge Base** ! Ce guide vous aidera à tirer le meilleur pa
 - Renommez une conversation en cliquant sur ✏️
 - Supprimez une conversation en cliquant sur 🗑️
 
+### Compteurs de contenu
+
+- Les panneaux **Sources** (desktop et mobile) affichent désormais une pastille numérique pour chaque catégorie : notes, fichiers, liens et conversations.
+- Les onglets de navigation de la base reprennent les mêmes compteurs afin d'indiquer en temps réel le volume d'items disponibles avant d'ouvrir un onglet.
+- Lorsque le compteur vaut zéro, la pastille reste visible afin de signaler qu'aucun contenu n'est encore enregistré dans cette section.
+
 ### Bonnes pratiques
 
 - ✅ Nommer vos conversations de manière descriptive
