@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Loader } from "@/components/ui/shadcn-io/ai/loader";
+import { Button } from "@/components/ui/button";
 
 type NavItem = {
   href: string;
@@ -101,12 +102,14 @@ export function AppNav({
               {userEmail}
             </span>
           ) : null}
-          <button
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full sm:w-auto"
             onClick={handleLogout}
-            className="w-full rounded-md border px-3 py-1.5 text-xs font-semibold transition hover:bg-muted sm:w-auto"
           >
             {tCta("logout")}
-          </button>
+          </Button>
         </div>
       </div>
       <Dialog open={logoutOpen} onOpenChange={(next) => !logoutLoading && setLogoutOpen(next)}>
