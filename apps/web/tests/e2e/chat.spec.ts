@@ -8,7 +8,14 @@ async function login(page: import('@playwright/test').Page) {
     await page.getByPlaceholder('Adresse e-mail').fill(DEMO_EMAIL);
     await page.getByPlaceholder('Mot de passe').fill(DEMO_PASSWORD);
     await page.getByRole('button', { name: 'Se connecter' }).click();
-    await page.waitForURL('**/fr/dashboard');
+
+    const useRealRag = process.env.USE_RAG_MOCK !== 'true';
+    if (useRealRag) {
+        await page.waitForURL('**/fr/dashboard');
+    } else {
+        await page.waitForURL('**/fr/kb');
+        await expect(page.getByRole('heading', { name: 'Bases de connaissance', level: 1 })).toBeVisible();
+    }
 }
 
 test.describe('Chat des bases de connaissance', () => {
@@ -36,26 +43,42 @@ test.describe('Chat des bases de connaissance', () => {
             page.waitForURL(/\/fr\/kb\/[\w-]+$/),
             firstOpenLink.click(),
         ]);
-        const navChatLink = page.getByRole('link', { name: 'Chat', exact: true }).first();
+        const navChatLink = page.getByRole('link', { name: /^Chat\b/i }).first();
+        await expect(navChatLink).toBeVisible({ timeout: 15_000 });
         await Promise.all([
-            page.waitForURL(/\/fr\/kb\/[\w-]+\/chat$/),
+            page.waitForURL(/\/fr\/kb\/[\w-]+\/chat(\?.*)?$/, { timeout: 30_000 }),
             navChatLink.click(),
         ]);
         await page.waitForLoadState('networkidle');
 
-        const modelCombobox = page.getByRole('combobox', { name: 'Modèles disponibles pour le chat' });
-        if (await modelCombobox.count()) {
-            await modelCombobox.click();
+        const settingsButton = page.getByTestId('chat-settings-button');
+        await expect(settingsButton).toBeVisible({ timeout: 10_000 });
+        await settingsButton.click();
+
+        const settingsDialog = page.getByTestId('chat-settings-dialog');
+        await expect(settingsDialog).toBeVisible();
+
+        const dialogModelCombobox = settingsDialog.getByRole('combobox', {
+            name: 'Modèles disponibles pour le chat',
+        });
+
+        if (await dialogModelCombobox.count()) {
+            const modelTrigger = dialogModelCombobox.first();
+            await modelTrigger.click();
             const llamaModelOption = page.getByRole('option', { name: 'llama3.1:8b' }).first();
             await expect(llamaModelOption, 'llama3.1:8b doit être disponible').toBeVisible();
             await llamaModelOption.click();
-            await expect(modelCombobox).toHaveText(/llama3\.1:8b/i);
+            await expect(modelTrigger).toHaveText(/llama3\.1:8b/i);
         } else {
-            const modelInput = page.getByLabel('Modèles disponibles pour le chat');
+            const modelInput = settingsDialog.getByLabel('Modèles disponibles pour le chat');
             await expect(modelInput).toBeVisible();
             await modelInput.fill('llama3.1:8b');
             await modelInput.blur();
         }
+
+        const closeSettingsButton = page.getByTestId('chat-settings-close');
+        await closeSettingsButton.click();
+        await expect(settingsDialog).not.toBeVisible();
 
         const messageTextarea = page.getByRole('textbox', { name: 'Message' });
         await expect(messageTextarea, 'le champ message doit être activé une fois le modèle renseigné').toBeEnabled({ timeout: 10_000 });
@@ -88,7 +111,7 @@ test.describe('Chat des bases de connaissance', () => {
         await expect(page.locator('a[href*="/chat?conversation="]').filter({ hasText: messageText }).first())
             .toBeVisible({ timeout: 15_000 });
 
-        const reopenChatLink = page.getByRole('link', { name: 'Chat', exact: true }).first();
+        const reopenChatLink = page.getByRole('link', { name: /^Chat\b/i }).first();
         await Promise.all([
             page.waitForURL((url) => url.pathname.endsWith('/chat') && !url.searchParams.has('conversation')),
             reopenChatLink.click(),

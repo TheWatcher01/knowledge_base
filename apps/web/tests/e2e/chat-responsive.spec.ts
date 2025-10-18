@@ -24,10 +24,19 @@ test.describe('Chat responsive layout', () => {
       page.waitForURL(/\/fr\/kb\//),
       firstOpenLink.click(),
     ]);
-    await Promise.all([
-      page.waitForURL(/\/fr\/kb\/[^/]+\/chat$/),
-      page.getByRole('link', { name: 'Chat', exact: true }).first().click(),
-    ]);
+    const chatLink = page.getByRole('link', { name: /^Chat\b/i }).first();
+
+    if (await chatLink.count()) {
+      await chatLink.click();
+      await expect(page).toHaveURL(/\/fr\/kb\/[^/]+\/chat(\?.*)?$/);
+    } else {
+      const sourcesTrigger = page.getByRole('button', { name: 'Sources' });
+      await expect(sourcesTrigger).toBeVisible();
+      await sourcesTrigger.click();
+      const sheetChatLink = page.getByRole('link', { name: /^Chat\b/i }).first();
+      await sheetChatLink.click();
+      await expect(page).toHaveURL(/\/fr\/kb\/[^/]+\/chat(\?.*)?$/);
+    }
 
     const kbOverflow = await page.evaluate(() => {
       const doc = document.documentElement;
