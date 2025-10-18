@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, PenLine, Search, Trash2 } from "lucide-react";
@@ -8,14 +8,22 @@ import { Loader2, PenLine, Search, Trash2 } from "lucide-react";
 import CreateUserForm, { CreatedUser } from "@/components/admin/users/CreateUserForm";
 import { Button } from "@/components/ui/button";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -428,33 +436,36 @@ export default function UserTable({ initialUsers, total, initialPage, pageSize, 
 
                     <div className="grid gap-4 py-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Rôle</label>
-                            <select
-                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm"
+                            <label htmlFor="user-role" className="text-sm font-medium">
+                                Rôle
+                            </label>
+                            <Select
                                 value={nextRole}
-                                onChange={(event: ChangeEvent<HTMLSelectElement>) =>
-                                    setNextRole(event.target.value as Role)
-                                }
+                                onValueChange={(value) => setNextRole(value as Role)}
                                 disabled={loading}
                             >
-                                <option value="VIEWER">Viewer</option>
-                                <option value="EDITOR">Editor</option>
-                                <option value="ADMIN">Admin</option>
-                            </select>
+                                <SelectTrigger id="user-role" className="w-full text-sm">
+                                    <SelectValue placeholder="Choisir un rôle" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="VIEWER">Viewer</SelectItem>
+                                    <SelectItem value="EDITOR">Editor</SelectItem>
+                                    <SelectItem value="ADMIN">Admin</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
 
-                        <label className="flex items-center justify-between gap-3 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
-                            <span className="font-medium">Désactiver l&apos;utilisateur</span>
-                            <input
-                                type="checkbox"
-                                className="h-4 w-4"
+                        <div className="flex items-center justify-between gap-3 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
+                            <label htmlFor="user-disabled" className="font-medium text-foreground">
+                                Désactiver l&apos;utilisateur
+                            </label>
+                            <Checkbox
+                                id="user-disabled"
                                 checked={nextDisabled}
-                                onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                                    setNextDisabled(event.target.checked)
-                                }
+                                onCheckedChange={(checked) => setNextDisabled(Boolean(checked))}
                                 disabled={loading}
                             />
-                        </label>
+                        </div>
                     </div>
 
                     <DialogFooter>

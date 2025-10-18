@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, Copy, UserPlus } from "lucide-react";
 
@@ -168,18 +169,18 @@ export default function CreateUserForm({ onSuccess }: { onSuccess?: (user: Creat
                         <label className="text-sm font-medium" htmlFor="role">
                             Rôle
                         </label>
-                        <select
-                            id="role"
-                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm"
-                            value={role}
-                            onChange={(event) => setRole(event.target.value as RoleValue)}
-                        >
-                            {roles.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
+                        <Select value={role} onValueChange={(value) => setRole(value as RoleValue)}>
+                            <SelectTrigger id="role" className="w-full text-sm">
+                                <SelectValue placeholder="Choisir un rôle" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {roles.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <DialogFooter className="gap-2">
