@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 
-import { ragApiJson, RAG_SERVICE_DISABLED_MESSAGE } from "@/lib/rag";
+import { isRagMockEnabled, ragApiJson, RAG_SERVICE_DISABLED_MESSAGE } from "@/lib/rag";
 import { RAG_API_BASE, RAG_API_TOKEN, collectionName } from "@/lib/config";
 import { getOpenRouterConfig } from "@/lib/openrouter";
 import { prisma } from "@/lib/prisma";
@@ -277,9 +277,15 @@ export async function POST(req: NextRequest) {
         });
 
         let upstream: Response | null = null;
+        const shouldMockChat = isRagMockEnabled();
 
         try {
-            if (useOpenRouter) {
+            if (shouldMockChat) {
+                upstream = createMockChatCompletionStream({
+                    content: `Réponse simulée pour ${kb.name ?? "cette base"}.`,
+                    model: resolvedModel ?? undefined,
+                });
+            } else if (useOpenRouter) {
                 if (!openRouterConfig.enabled) {
                     return NextResponse.json(
                         { error: "OpenRouter API key missing" },
@@ -670,6 +676,35 @@ function createStreamingResponse(params: {
     });
 
     return stream;
+}
+
+function createMockChatCompletionStream(params: { content: string; model?: string | null }) {
+    const encoder = new TextEncoder();
+    const payload = {
+        choices: [
+            {
+                delta: { content: params.content },
+                finish_reason: "stop",
+            },
+        ],
+        model: params.model ?? null,
+    };
+
+    const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+        },
+    });
+
+    return new Response(stream, {
+        status: 200,
+        headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+        },
+    });
 }
 
 function extractAssistantDelta(buffer: string) {
