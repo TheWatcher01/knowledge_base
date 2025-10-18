@@ -67,7 +67,14 @@ describe("KnowledgeBaseChatPanel accessibility", () => {
     );
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/models"));
-    await waitFor(() => expect(screen.getByRole("combobox")).toHaveTextContent("Mock Model"));
+    const settingsButton = await screen.findByRole("button", { name: /chat settings/i });
+    settingsButton.click();
+
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: /available chat models/i })).toHaveTextContent(
+        "Mock Model",
+      ),
+    );
 
     const results = await axe.run(container);
 
