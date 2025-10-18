@@ -79,4 +79,4 @@ rag_api/
 3. Supprimer un document depuis l’UI et confirmer la suppression dans PGVector (`SELECT COUNT(*) FROM data_kb_<id>`).
 4. Ouvrir le chat et s’assurer que le streaming SSE fonctionne (console réseau → `EventStream`).
 5. Valider les métriques sur `GET /metrics` et que les limites de rate limit renvoient bien 429/413 en cas de dépassement.
-6. Contrôler dans l’UI que les badges numériques des panneaux **Sources**/onglets correspondent bien au nombre d’éléments (notes, fichiers, liens, conversations) exposés par l’API.
+6. Contrôler dans l’UI que les badges numériques des panneaux **Sources**/onglets correspondent bien au nombre d’éléments (notes, fichiers, liens, conversations) exposés par l’API, tout en vérifiant que « Vue d’ensemble » reste sans pastille (le total documents est déjà visible dans les cartes statistiques).

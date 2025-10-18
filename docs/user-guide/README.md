@@ -20,11 +20,25 @@ Bienvenue dans **Knowledge Base** ! Ce guide vous aidera à tirer le meilleur pa
 - Renommez une conversation en cliquant sur ✏️
 - Supprimez une conversation en cliquant sur 🗑️
 
+#### Démarrer une nouvelle conversation (pas à pas)
+
+1. Ouvrez la base souhaitée puis l’onglet **Chat** (sur mobile, utilisez le bouton **Sources** pour atteindre la section).
+2. Vérifiez le modèle utilisé : la barre au-dessus du champ de message affiche *Modèle : …*.  
+   - Besoin de changer ? Cliquez sur **Paramètres du chat** (icône engrenage), sélectionnez le modèle et le rerank dans la modale, puis fermez-la.
+3. Saisissez votre question dans le champ **Message**. Ajoutez, si besoin, les suggestions proposées sous le champ.
+4. Cliquez sur **Envoyer** (ou utilisez `Ctrl + Enter`) pour lancer la génération.
+5. Une fois la réponse reçue, renommez la conversation pour la retrouver facilement.
+
 ### Compteurs de contenu
 
-- Les panneaux **Sources** (desktop et mobile) affichent désormais une pastille numérique pour chaque catégorie : notes, fichiers, liens et conversations.
-- Les onglets de navigation de la base reprennent les mêmes compteurs afin d'indiquer en temps réel le volume d'items disponibles avant d'ouvrir un onglet.
-- Lorsque le compteur vaut zéro, la pastille reste visible afin de signaler qu'aucun contenu n'est encore enregistré dans cette section.
+- Les panneaux **Sources** (desktop et mobile) affichent des pastilles numériques cohérentes pour les catégories « Notes », « Fichiers », « Liens » et « Chat ».
+- L’entrée « Vue d’ensemble » reste sans badge pour éviter la redondance avec le total de documents déjà mis en avant dans les statistiques principales.
+- Lorsque le compteur vaut zéro, la pastille reste visible afin de signaler qu'aucun contenu n'est encore enregistré dans la section correspondante.
+
+### Paramètres du chat
+
+- Le bouton **Paramètres du chat** (icône engrenage) ouvre une modale dédiée pour choisir le modèle et, si disponible, le rerank utilisé par l’assistant.
+- Le modèle actif est rappelé sous le champ de message afin que l’utilisateur sache toujours quel moteur sera sollicité.
 
 ### Bonnes pratiques
 
