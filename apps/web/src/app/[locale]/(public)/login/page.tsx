@@ -12,6 +12,16 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Loader } from "@/components/ui/shadcn-io/ai/loader";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -50,21 +60,20 @@ export default function LoginPage() {
     return (
         <>
             <div className="min-h-svh bg-background">
-                <div className="mx-auto flex min-h-svh w-full max-w-5xl items-center justify-center px-4">
-                    <div className="w-full max-w-sm rounded-2xl border border-border/50 bg-card/80 p-6 shadow-lg backdrop-blur-sm">
-                        <div className="space-y-6">
-                            <div className="space-y-1">
-                                <h1 className="text-2xl font-semibold text-foreground">{t("title")}</h1>
-                                <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-                            </div>
+                <div className="mx-auto flex min-h-svh w-full max-w-5xl items-center justify-center px-4 py-10">
+                    <Card className="w-full max-w-md">
+                        <CardHeader className="space-y-2">
+                            <CardTitle className="text-2xl">{t("title")}</CardTitle>
+                            <CardDescription>{t("subtitle")}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
                             <form onSubmit={onSubmit} className="space-y-4">
                                 <div className="space-y-2">
                                     <label htmlFor="email" className="text-sm font-medium text-foreground">
                                         {tForm("email")}
                                     </label>
-                                    <input
+                                    <Input
                                         id="email"
-                                        className="w-full rounded-md border border-border/60 bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                                         type="email"
                                         placeholder={tForm("email")}
                                         value={email}
@@ -77,9 +86,8 @@ export default function LoginPage() {
                                     <label htmlFor="password" className="text-sm font-medium text-foreground">
                                         {tForm("password")}
                                     </label>
-                                    <input
+                                    <Input
                                         id="password"
-                                        className="w-full rounded-md border border-border/60 bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                                         type="password"
                                         placeholder={tForm("password")}
                                         value={password}
@@ -89,13 +97,9 @@ export default function LoginPage() {
                                     />
                                 </div>
 
-                                <button
-                                    type="submit"
-                                    className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-60"
-                                    disabled={loading}
-                                >
+                                <Button type="submit" className="w-full" disabled={loading}>
                                     {t("submit")}
-                                </button>
+                                </Button>
 
                                 {error ? (
                                     <p role="alert" className="text-sm text-destructive">
@@ -103,15 +107,14 @@ export default function LoginPage() {
                                     </p>
                                 ) : null}
                             </form>
-
-                            <p className="text-sm text-muted-foreground">
-                                {t("prompt")}{" "}
-                                <Link className="font-medium text-primary underline-offset-4 hover:underline" href="/register">
-                                    {t("register")}
-                                </Link>
-                            </p>
-                        </div>
-                    </div>
+                        </CardContent>
+                        <CardFooter className="flex-col items-stretch gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                            <span>{t("prompt")}</span>
+                            <Link className="font-medium text-primary underline-offset-4 hover:underline" href="/register">
+                                {t("register")}
+                            </Link>
+                        </CardFooter>
+                    </Card>
                 </div>
             </div>
 
