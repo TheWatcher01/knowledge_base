@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RAG_SERVICE_DISABLED_MESSAGE } from "@/lib/rag";
 
 const STATUSES = ["draft", "queued", "processing", "synced", "error"] as const;
@@ -258,22 +259,27 @@ export function CreateUrlForm({ kbId, canEdit }: CreateUrlFormProps) {
                 <span className="text-xs text-muted-foreground/80">{tForm("descriptionHint")}</span>
               </label>
 
-              <label className="flex flex-col gap-2 text-sm text-muted-foreground" htmlFor={statusFieldId}>
-                <span className="font-medium text-foreground">{tForm("statusLabel")}</span>
-                <select
-                  id={statusFieldId}
-                  className="w-full rounded-2xl border border-border/40 bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                <label className="font-medium text-foreground" htmlFor={statusFieldId}>
+                  {tForm("statusLabel")}
+                </label>
+                <Select
                   value={status}
-                  onChange={(event) => setStatus(event.target.value as UrlStatus)}
+                  onValueChange={(value) => setStatus(value as UrlStatus)}
                   disabled={submitting || !canEdit}
                 >
-                  {STATUSES.map((item) => (
-                    <option key={item} value={item}>
-                      {tStatuses(item)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  <SelectTrigger id={statusFieldId} className="w-full rounded-2xl bg-background text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUSES.map((item) => (
+                      <SelectItem key={item} value={item}>
+                        {tStatuses(item)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {error ? (

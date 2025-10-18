@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Dropzone, DropzoneEmptyState } from "@/components/ui/dropzone";
+import { Loader2 } from "lucide-react";
 
 type FileEntry = {
     id: string;
@@ -55,11 +64,11 @@ function FileRow({ file, canEdit }: RowProps) {
     const router = useRouter();
     const tActions = useTranslations("kb.fileActions");
     const tForm = useTranslations("kb.fileForm");
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [title, setTitle] = useState(file.title);
     const [isRenaming, setIsRenaming] = useState(false);
     const [busy, setBusy] = useState<BusyState>(null);
     const [error, setError] = useState<string | null>(null);
+    const [replaceOpen, setReplaceOpen] = useState(false);
 
     useEffect(() => {
         setTitle(file.title);
@@ -131,19 +140,7 @@ function FileRow({ file, canEdit }: RowProps) {
         router.refresh();
     }
 
-    async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-        if (!canEdit) {
-            event.target.value = "";
-            return;
-        }
-
-        const nextFile = event.target.files?.[0];
-        event.target.value = "";
-
-        if (!nextFile) {
-            return;
-        }
-
+    async function uploadReplacement(nextFile: File) {
         setBusy("replace");
         setError(null);
 
@@ -163,14 +160,8 @@ function FileRow({ file, canEdit }: RowProps) {
         }
 
         setBusy(null);
+        setReplaceOpen(false);
         router.refresh();
-    }
-
-    function handleReplaceClick() {
-        if (!canEdit) {
-            return;
-        }
-        fileInputRef.current?.click();
     }
 
     const formattedSize = formatBytes(file.size);
@@ -250,18 +241,17 @@ function FileRow({ file, canEdit }: RowProps) {
                     variant="outline"
                     size="sm"
                     className="rounded-full px-4"
-                    onClick={handleReplaceClick}
+                    onClick={() => {
+                        if (!canEdit) {
+                            return;
+                        }
+                        setReplaceOpen(true);
+                        setError(null);
+                    }}
                     disabled={!canEdit || busy !== null || isRenaming}
                 >
                     {busy === "replace" ? tActions("replacing") : tActions("replace")}
                 </Button>
-                <input
-                    ref={fileInputRef}
-                    type="file"
-                    className="hidden"
-                    onChange={handleFileChange}
-                    disabled={!canEdit}
-                />
                 <Button
                     type="button"
                     variant="destructive"
@@ -275,6 +265,36 @@ function FileRow({ file, canEdit }: RowProps) {
             </div>
 
             {error ? <p className="text-xs text-red-500">{error}</p> : null}
+
+            <Dialog open={replaceOpen} onOpenChange={(open) => !busy && setReplaceOpen(open)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{tActions("replaceDialogTitle", { name: file.title })}</DialogTitle>
+                        <DialogDescription>{tActions("replaceDialogDescription")}</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <Dropzone
+                            maxFiles={1}
+                            disabled={!canEdit || busy === "replace"}
+                            onDrop={(accepted) => {
+                                const nextFile = accepted[0];
+                                if (nextFile) {
+                                    void uploadReplacement(nextFile);
+                                }
+                            }}
+                            onError={(dropError) => setError(dropError.message)}
+                        >
+                            <DropzoneEmptyState />
+                        </Dropzone>
+                        {busy === "replace" ? (
+                            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                                <span>{tActions("replacing")}</span>
+                            </div>
+                        ) : null}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

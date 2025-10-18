@@ -36,8 +36,11 @@ export function KnowledgeBaseTabs({ kbId, counts }: { kbId: string; counts: Reco
                     const href = tab.path ? `/kb/${kbId}/${tab.path}` : `/kb/${kbId}`;
                     const isActive = (activeSegment ?? undefined) === tab.segment;
 
-                    const countValue = counts[tab.key] ?? 0;
-                    const badgeLabel = tWorkspace(`counts.${tab.key}`, { count: countValue });
+                    const countValue = tab.key === "overview" ? undefined : counts[tab.key] ?? 0;
+                    const badgeLabel =
+                        typeof countValue === "number"
+                            ? tWorkspace(`counts.${tab.key}`, { count: countValue })
+                            : undefined;
                     return (
                         <li key={tab.key}>
                             <Link
@@ -59,18 +62,20 @@ export function KnowledgeBaseTabs({ kbId, counts }: { kbId: string; counts: Reco
                                 }}
                             >
                                 <span>{t(tab.key)}</span>
-                                <Badge
-                                    variant="outline"
-                                    className={cn(
-                                        "ml-auto",
-                                        COUNT_BADGE_BASE,
-                                        isActive ? COUNT_BADGE_ACTIVE : COUNT_BADGE_MUTED,
-                                    )}
-                                    aria-label={badgeLabel}
-                                    title={badgeLabel}
-                                >
-                                    {countValue}
-                                </Badge>
+                                {typeof countValue === "number" ? (
+                                    <Badge
+                                        variant="outline"
+                                        className={cn(
+                                            "ml-auto",
+                                            COUNT_BADGE_BASE,
+                                            isActive ? COUNT_BADGE_ACTIVE : COUNT_BADGE_MUTED,
+                                        )}
+                                        aria-label={badgeLabel}
+                                        title={badgeLabel}
+                                    >
+                                        {countValue}
+                                    </Badge>
+                                ) : null}
                             </Link>
                             {tab.key === "chat" ? <ChatHistoryNav kbId={kbId} /> : null}
                         </li>

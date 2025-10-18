@@ -13,6 +13,8 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { KnowledgeBaseStudio } from "../[id]/_components/kb-studio";
 
+type LucideIcon = typeof NotebookPen;
+
 const COUNT_BADGE_BASE = "h-6 min-w-[2rem] justify-center gap-0 rounded-full px-2 text-[11px] font-semibold leading-none text-center";
 const COUNT_BADGE_MUTED = "border-border/50 bg-background/80 text-muted-foreground";
 const COUNT_BADGE_ACTIVE = "border-transparent bg-primary/90 text-primary-foreground shadow-sm";
@@ -132,12 +134,18 @@ export function KnowledgeBaseWorkspace({ items, initialId }: KnowledgeBaseWorksp
         { label: tTabs("urls"), value: selected.stats.urls },
     ];
 
-    const navigationActions = [
-        { key: 'overview' as const, label: tWorkspace('sourceLabels.overview'), href: `/kb/${selected.id}`, icon: NotebookPen, count: selected.stats.documents },
-        { key: 'notes' as const, label: tWorkspace('sourceLabels.notes'), href: `/kb/${selected.id}/notes`, icon: NotebookPen, count: selected.stats.notes },
-        { key: 'files' as const, label: tWorkspace('sourceLabels.files'), href: `/kb/${selected.id}/files`, icon: FileText, count: selected.stats.files },
-        { key: 'urls' as const, label: tWorkspace('sourceLabels.urls'), href: `/kb/${selected.id}/urls`, icon: Link2, count: selected.stats.urls },
-        { key: 'chat' as const, label: tWorkspace('sourceLabels.chat'), href: `/kb/${selected.id}/chat`, icon: Sparkles, count: selected.stats.chat ?? 0 },
+    const navigationActions: Array<{
+        key: "overview" | "notes" | "files" | "urls" | "chat";
+        label: string;
+        href: string;
+        icon: LucideIcon;
+        count?: number;
+    }> = [
+        { key: "overview", label: tWorkspace("sourceLabels.overview"), href: `/kb/${selected.id}`, icon: NotebookPen },
+        { key: "notes", label: tWorkspace("sourceLabels.notes"), href: `/kb/${selected.id}/notes`, icon: NotebookPen, count: selected.stats.notes },
+        { key: "files", label: tWorkspace("sourceLabels.files"), href: `/kb/${selected.id}/files`, icon: FileText, count: selected.stats.files },
+        { key: "urls", label: tWorkspace("sourceLabels.urls"), href: `/kb/${selected.id}/urls`, icon: Link2, count: selected.stats.urls },
+        { key: "chat", label: tWorkspace("sourceLabels.chat"), href: `/kb/${selected.id}/chat`, icon: Sparkles, count: selected.stats.chat ?? 0 },
     ];
 
     return (
@@ -215,17 +223,6 @@ export function KnowledgeBaseWorkspace({ items, initialId }: KnowledgeBaseWorksp
                                         <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
                                     ) : null}
                                     <div className="mt-2 flex flex-wrap gap-1">
-                                        <Badge
-                                            variant="outline"
-                                            className={cn(
-                                                COUNT_BADGE_BASE,
-                                                active ? COUNT_BADGE_ACTIVE : COUNT_BADGE_MUTED,
-                                            )}
-                                            aria-label={tWorkspace("counts.overview", { count: item.stats.documents })}
-                                            title={tWorkspace("counts.overview", { count: item.stats.documents })}
-                                        >
-                                            {item.stats.documents}
-                                        </Badge>
                                         {item.stats.notes ? (
                                             <Badge
                                                 variant="outline"
@@ -326,14 +323,16 @@ export function KnowledgeBaseWorkspace({ items, initialId }: KnowledgeBaseWorksp
                                 <Link href={action.href} className="flex items-center gap-2">
                                     <action.icon className="h-4 w-4" aria-hidden />
                                     <span>{action.label}</span>
-                                    <Badge
-                                        variant="outline"
-                                        className={cn("ml-1", COUNT_BADGE_BASE, COUNT_BADGE_MUTED)}
-                                        aria-label={tWorkspace(`counts.${action.key}`, { count: action.count })}
-                                        title={tWorkspace(`counts.${action.key}`, { count: action.count })}
-                                    >
-                                        {action.count}
-                                    </Badge>
+                                    {typeof action.count === "number" ? (
+                                        <Badge
+                                            variant="outline"
+                                            className={cn("ml-1", COUNT_BADGE_BASE, COUNT_BADGE_MUTED)}
+                                            aria-label={tWorkspace(`counts.${action.key}`, { count: action.count })}
+                                            title={tWorkspace(`counts.${action.key}`, { count: action.count })}
+                                        >
+                                            {action.count}
+                                        </Badge>
+                                    ) : null}
                                 </Link>
                             </Button>
                         ))}
