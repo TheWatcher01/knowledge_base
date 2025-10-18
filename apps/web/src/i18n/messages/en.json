@@ -42,31 +42,36 @@
     "description": "Your dashboard will appear here."
   },
   "auth": {
-  "login": {
-    "title": "Login",
-    "subtitle": "Access your knowledge bases securely.",
-    "submit": "Login",
-    "submitting": "Loading...",
-    "error": "Failed to login",
-    "prompt": "Do not have an account? Please contact the administrator.",
-    "register": "Register",
-    "dialogTitle": "Signing in",
-    "dialogDescription": "Please wait while we verify your credentials.",
-    "signingIn": "Connecting to your workspace..."
-  },
-  "logout": {
-    "title": "Sign out",
-    "description": "You are about to sign out of the application.",
-    "confirm": "Sign out",
-    "cancel": "Stay logged in",
-    "signingOut": "Signing out..."
-  },
-  "register": {
-    "title": "Register",
-    "submit": "Register",
-    "submitting": "Registering...",
+    "login": {
+      "title": "Login",
+      "subtitle": "Access your knowledge bases securely.",
+      "submit": "Login",
+      "submitting": "Loading...",
+      "error": "Failed to login",
+      "prompt": "Do not have an account? Please contact the administrator.",
+      "register": "Register",
+      "dialogTitle": "Signing in",
+      "dialogDescription": "Please wait while we verify your credentials.",
+      "signingIn": "Connecting to your workspace..."
+    },
+    "logout": {
+      "title": "Sign out",
+      "description": "You are about to sign out of the application.",
+      "confirm": "Sign out",
+      "cancel": "Stay logged in",
+      "signingOut": "Signing out..."
+    },
+    "register": {
+      "title": "Register",
+      "subtitle": "Create your workspace account in a few seconds.",
+      "submit": "Register",
+      "submitting": "Registering...",
       "success": "Registration successful! You can now log in.",
-      "error": "Failed to register"
+      "error": "Failed to register",
+      "dialogTitle": "Creating your account",
+      "dialogDescription": "We are preparing your workspace — this should only take a moment.",
+      "signingUp": "Registering your account...",
+      "footer": "An invitation email will be sent once the administrator approves your account."
     }
   },
   "admin": {
@@ -205,7 +210,9 @@
       "missingDescription": "Add a description to provide context for this knowledge base.",
       "createdOn": "Created on",
       "sources": "Sources",
-      "documents": "Documents"
+      "documents": "Documents",
+      "studioButton": "Tools",
+      "studioAccordionTitle": "Tools"
     },
     "ragStatus": {
       "title": "RAG service unavailable",
@@ -310,6 +317,8 @@
       "renaming": "Saving...",
       "replace": "Replace file",
       "replacing": "Replacing...",
+      "replaceDialogTitle": "Upload a new file for \"{name}\"",
+      "replaceDialogDescription": "Drag and drop or click the zone below to choose the replacement file.",
       "delete": "Delete",
       "deleting": "Deleting...",
       "deleteConfirm": "Delete the file \"{title}\"?",
@@ -431,6 +440,16 @@
       "errorModelRequired": "Select a model before asking a question.",
       "errorAborted": "Generation cancelled.",
       "modelsAriaLabel": "Available chat models",
+      "settings": {
+        "button": "Chat settings",
+        "title": "Chat configuration",
+        "description": "Select the model and rerank options used for this chat.",
+        "activeModel": "Model: {model}",
+        "activeRerank": "Rerank: {model}",
+        "noModel": "No model selected",
+        "noRerank": "No rerank",
+        "close": "Close"
+      },
       "sourcesHeading": "References",
       "sourceKindVector": "Document",
       "sourceKindWeb": "Web",
@@ -462,7 +481,7 @@
         "content": "Use the assistant to summarise your sources and quickly enrich this base."
       },
       "studio": {
-        "title": "Studio",
+        "title": "Tools",
         "description": "Generate new assets from this knowledge base in a single click.",
         "audio": "Audio summary",
         "video": "Video summary",
@@ -470,7 +489,28 @@
         "report": "Report",
         "flashcards": "Learning flashcards",
         "quiz": "Quiz",
-        "cta": "AI powered workflows"
+        "cta": "Use tools to enrich this base"
+      },
+      "counts": {
+        "overview": "{count, plural, one {# document} other {# documents}}",
+        "notes": "{count, plural, one {# note} other {# notes}}",
+        "files": "{count, plural, one {# file} other {# files}}",
+        "urls": "{count, plural, one {# link} other {# links}}",
+        "chat": "{count, plural, one {# conversation} other {# conversations}}"
+      },
+      "sourceLabels": {
+        "overview": "Overview",
+        "notes": "Notes",
+        "files": "Files",
+        "urls": "Links",
+        "chat": "Chat"
+      },
+      "sourceCounts": {
+        "overview": "{count, plural, one {# document} other {# documents}}",
+        "notes": "{count, plural, one {# note} other {# notes}}",
+        "files": "{count, plural, one {# file} other {# files}}",
+        "urls": "{count, plural, one {# link} other {# links}}",
+        "chat": "{count, plural, one {# conversation} other {# conversations}}"
       }
     }
   }

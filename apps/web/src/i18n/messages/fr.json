@@ -42,31 +42,36 @@
     "description": "Votre tableau de bord apparaîtra ici."
   },
   "auth": {
-  "login": {
-    "title": "Connexion",
-    "subtitle": "Accédez en toute sécurité à vos bases de connaissance.",
-    "submit": "Se connecter",
-    "submitting": "Chargement...",
-    "error": "Échec de la connexion",
-    "prompt": "Pas encore de compte ? Contactez l'administrateur.",
-    "register": "Inscription",
-    "dialogTitle": "Connexion en cours",
-    "dialogDescription": "Veuillez patienter pendant la vérification de vos identifiants.",
-    "signingIn": "Connexion à votre espace..."
-  },
-  "logout": {
-    "title": "Déconnexion",
-    "description": "Voulez-vous vraiment vous déconnecter de l'application ?",
-    "confirm": "Se déconnecter",
-    "cancel": "Rester connecté",
-    "signingOut": "Déconnexion..."
-  },
-  "register": {
-    "title": "Inscription",
-    "submit": "S'inscrire",
+    "login": {
+      "title": "Connexion",
+      "subtitle": "Accédez en toute sécurité à vos bases de connaissance.",
+      "submit": "Se connecter",
+      "submitting": "Chargement...",
+      "error": "Échec de la connexion",
+      "prompt": "Pas encore de compte ? Contactez l'administrateur.",
+      "register": "Inscription",
+      "dialogTitle": "Connexion en cours",
+      "dialogDescription": "Veuillez patienter pendant la vérification de vos identifiants.",
+      "signingIn": "Connexion à votre espace..."
+    },
+    "logout": {
+      "title": "Déconnexion",
+      "description": "Voulez-vous vraiment vous déconnecter de l'application ?",
+      "confirm": "Se déconnecter",
+      "cancel": "Rester connecté",
+      "signingOut": "Déconnexion..."
+    },
+    "register": {
+      "title": "Inscription",
+      "subtitle": "Créez votre compte en quelques secondes.",
+      "submit": "S'inscrire",
       "submitting": "Inscription en cours...",
       "success": "Inscription réussie ! Vous pouvez maintenant vous connecter.",
-      "error": "Échec de l'inscription"
+      "error": "Échec de l'inscription",
+      "dialogTitle": "Création du compte",
+      "dialogDescription": "Nous préparons votre espace de travail — cela ne prendra qu'un instant.",
+      "signingUp": "Inscription en cours...",
+      "footer": "Une invitation sera envoyée dès que l'administrateur aura validé votre compte."
     }
   },
   "admin": {
@@ -205,7 +210,9 @@
       "missingDescription": "Ajoutez une description pour contextualiser cette base de connaissance.",
       "createdOn": "Créée le",
       "sources": "Sources",
-      "documents": "Documents"
+      "documents": "Documents",
+      "studioButton": "Outils",
+      "studioAccordionTitle": "Outils"
     },
     "ragStatus": {
       "title": "Service RAG indisponible",
@@ -310,6 +317,8 @@
       "renaming": "Enregistrement...",
       "replace": "Remplacer le fichier",
       "replacing": "Remplacement...",
+      "replaceDialogTitle": "Téléverser un nouveau fichier pour « {name} »",
+      "replaceDialogDescription": "Glissez-déposez ou cliquez sur la zone ci-dessous pour choisir le fichier de remplacement.",
       "delete": "Supprimer",
       "deleting": "Suppression...",
       "deleteConfirm": "Supprimer le fichier \"{title}\" ?",
@@ -431,6 +440,16 @@
       "errorModelRequired": "Sélectionnez un modèle avant d’envoyer une question.",
       "errorAborted": "Génération interrompue.",
       "modelsAriaLabel": "Modèles disponibles pour le chat",
+      "settings": {
+        "button": "Paramètres du chat",
+        "title": "Configuration du chat",
+        "description": "Choisissez le modèle et le rerank utilisés pour cette conversation.",
+        "activeModel": "Modèle : {model}",
+        "activeRerank": "Rerank : {model}",
+        "noModel": "Aucun modèle sélectionné",
+        "noRerank": "Aucun rerank",
+        "close": "Fermer"
+      },
       "sourcesHeading": "Références",
       "sourceKindVector": "Document",
       "sourceKindWeb": "Web",
@@ -463,7 +482,7 @@
         "content": "Utilisez l’assistant pour résumer vos sources et enrichir rapidement cette base."
       },
       "studio": {
-        "title": "Studio",
+        "title": "Outils",
         "description": "Générez de nouveaux contenus pour cette base en un clic.",
         "audio": "Résumé audio",
         "video": "Résumé vidéo",
@@ -471,7 +490,28 @@
         "report": "Rapport",
         "flashcards": "Fiches d’apprentissage",
         "quiz": "Quiz",
-        "cta": "Workflows IA"
+        "cta": "Utilisez ces outils pour enrichir la base"
+      },
+      "counts": {
+        "overview": "{count, plural, one {# document} other {# documents}}",
+        "notes": "{count, plural, one {# note} other {# notes}}",
+        "files": "{count, plural, one {# fichier} other {# fichiers}}",
+        "urls": "{count, plural, one {# lien} other {# liens}}",
+        "chat": "{count, plural, one {# conversation} other {# conversations}}"
+      },
+      "sourceLabels": {
+        "overview": "Vue d'ensemble",
+        "notes": "Notes",
+        "files": "Fichiers",
+        "urls": "Liens",
+        "chat": "Chat"
+      },
+      "sourceCounts": {
+        "overview": "{count, plural, one {# document} other {# documents}}",
+        "notes": "{count, plural, one {# note} other {# notes}}",
+        "files": "{count, plural, one {# fichier} other {# fichiers}}",
+        "urls": "{count, plural, one {# lien} other {# liens}}",
+        "chat": "{count, plural, one {# conversation} other {# conversations}}"
       }
     }
   }
