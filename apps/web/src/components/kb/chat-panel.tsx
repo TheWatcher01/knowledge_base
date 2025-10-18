@@ -6,6 +6,16 @@ import { usePathname, useSearchParams, useRouter } from "next/navigation";
 
 import { LiveMessage } from "@/components/a11y/live-message";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { ChatStatus } from "ai";
 import {
@@ -35,7 +45,7 @@ import {
   CHAT_CONVERSATIONS_UPDATED_EVENT,
   CHAT_CONVERSATION_RESET_REQUESTED_EVENT,
 } from "@/lib/chat-events";
-import { ChevronDown, SquareIcon } from "lucide-react";
+import { ChevronDown, Settings2, SquareIcon } from "lucide-react";
 
 export const DEFAULT_MODEL = process.env.NEXT_PUBLIC_DEFAULT_CHAT_MODEL ?? "";
 const DEFAULT_RERANK_MODEL = process.env.NEXT_PUBLIC_DEFAULT_RERANK_MODEL ?? "";
@@ -98,6 +108,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [chatModels, setChatModels] = useState<ModelOption[]>([]);
   const [chatModelsLoading, setChatModelsLoading] = useState(true);
@@ -593,7 +604,6 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     try {
       const metaPayload: Record<string, unknown> = {};
       const effectiveRerank = currentRerankValue === NO_RERANK_VALUE ? null : currentRerankValue;
-      metaPayload.rerankModel = effectiveRerank;
 
       const payload: Record<string, unknown> = {
         kbId,
@@ -603,6 +613,7 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       };
       if (effectiveRerank) {
         payload.rerankModel = effectiveRerank;
+        metaPayload.rerankModel = effectiveRerank;
       }
       if (Object.keys(metaPayload).length > 0) {
         payload.meta = metaPayload;
@@ -808,6 +819,22 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
     };
     return [noneOption, ...rerankModels];
   }, [rerankModels, t]);
+  const currentChatModelOption = useMemo(
+    () => chatModels.find((option) => option.id === currentChatModel) ?? null,
+    [chatModels, currentChatModel],
+  );
+  const chatModelSummary = chatModelsLoading
+    ? t("modelsLoading")
+    : currentChatModelOption?.label ?? (currentChatModel ? currentChatModel : t("settings.noModel"));
+  const currentRerankOption = useMemo(
+    () => rerankOptions.find((option) => option.id === currentRerankValue) ?? null,
+    [rerankOptions, currentRerankValue],
+  );
+  const hasRerankChoices = rerankOptions.length > 1;
+  const rerankSummaryLabel =
+    currentRerankValue === NO_RERANK_VALUE
+      ? t("settings.noRerank")
+      : currentRerankOption?.label ?? currentRerankValue;
   const activeConversation = useMemo(
     () => conversations.find((item) => item.id === activeConversationId) ?? null,
     [conversations, activeConversationId],
@@ -830,6 +857,12 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
       .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
       .slice(0, 4);
   }, [activeConversation]);
+  const handleSettingsOpenChange = useCallback(
+    (open: boolean) => {
+      setSettingsOpen(open);
+    },
+    [],
+  );
   const chatStatus: ChatStatus | undefined = streamError
     ? "error"
     : isStreaming
@@ -917,141 +950,181 @@ export function KnowledgeBaseChatPanel({ kbId, className }: KnowledgeBaseChatPan
             ) : null}
 
             <PromptInput onSubmit={handleSubmit} aria-busy={isStreaming ? "true" : "false"} className="mt-2">
-              <PromptInputToolbar className="flex flex-col gap-4 px-4 py-3">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">{t("modelsLabel")}</span>
-                    {chatModels.length > 0 ? (
-                      <PromptInputModelSelect
-                        value={currentChatModel || undefined}
-                        onValueChange={setSelectedChatModel}
-                        disabled={isStreaming}
-                      >
-                        <PromptInputModelSelectTrigger
+            <PromptInputToolbar className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div
+                className="flex flex-col gap-1 text-xs text-muted-foreground"
+                data-testid="chat-settings-summary"
+              >
+                <span>{t("settings.activeModel", { model: chatModelSummary })}</span>
+                {hasRerankChoices ? (
+                  <span>{t("settings.activeRerank", { model: rerankSummaryLabel })}</span>
+                ) : null}
+              </div>
+              <Dialog open={settingsOpen} onOpenChange={handleSettingsOpenChange}>
+                <DialogTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-2"
+                    disabled={chatModelsLoading && rerankModelsLoading}
+                    data-testid="chat-settings-button"
+                  >
+                    <Settings2 className="h-4 w-4" aria-hidden="true" />
+                    <span>{t("settings.button")}</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-xl" data-testid="chat-settings-dialog">
+                  <DialogHeader>
+                    <DialogTitle>{t("settings.title")}</DialogTitle>
+                    <DialogDescription>{t("settings.description")}</DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-6">
+                    <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">{t("modelsLabel")}</span>
+                      {chatModels.length > 0 ? (
+                        <PromptInputModelSelect
+                          value={currentChatModel || undefined}
+                          onValueChange={setSelectedChatModel}
+                          disabled={isStreaming}
+                        >
+                          <PromptInputModelSelectTrigger
+                            id={modelSelectId}
+                            aria-describedby={modelDescribedBy}
+                            aria-invalid={chatModelsError ? "true" : undefined}
+                            aria-label={t("modelsAriaLabel")}
+                          >
+                            <PromptInputModelSelectValue placeholder={t("modelsPlaceholder")} />
+                          </PromptInputModelSelectTrigger>
+                          <PromptInputModelSelectContent>
+                            {chatModels.map((option) => {
+                              const secondary =
+                                option.source === "openrouter"
+                                  ? `${option.provider ?? "OpenRouter"} • OpenRouter`
+                                  : option.provider ?? "Ollama (local)";
+
+                              return (
+                                <PromptInputModelSelectItem key={option.id} value={option.id}>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium text-foreground">{option.label}</span>
+                                    <span className="text-xs text-muted-foreground">{secondary}</span>
+                                    {option.description ? (
+                                      <span className="text-[11px] text-muted-foreground/80">
+                                        {option.description}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </PromptInputModelSelectItem>
+                              );
+                            })}
+                          </PromptInputModelSelectContent>
+                        </PromptInputModelSelect>
+                      ) : (
+                        <Input
                           id={modelSelectId}
+                          value={currentChatModel}
+                          onChange={(event) => setSelectedChatModel(event.target.value)}
+                          placeholder={t("modelsPlaceholder")}
                           aria-describedby={modelDescribedBy}
                           aria-invalid={chatModelsError ? "true" : undefined}
                           aria-label={t("modelsAriaLabel")}
+                          disabled={isStreaming}
+                        />
+                      )}
+                      {showChatModelHelper ? (
+                        <span
+                          id={modelStatusId}
+                          className={cn(
+                            "text-xs",
+                            chatModelsError ? "text-red-600 dark:text-red-300" : "text-muted-foreground",
+                          )}
                         >
-                          <PromptInputModelSelectValue placeholder={t("modelsPlaceholder")} />
-                        </PromptInputModelSelectTrigger>
-                        <PromptInputModelSelectContent>
-                          {chatModels.map((option) => {
-                            const secondary =
-                              option.source === "openrouter"
-                                ? `${option.provider ?? "OpenRouter"} • OpenRouter`
-                                : option.provider ?? "Ollama (local)";
+                          {chatModelHelperText}
+                        </span>
+                      ) : null}
+                    </div>
 
-                            return (
-                              <PromptInputModelSelectItem key={option.id} value={option.id}>
-                                <div className="flex flex-col">
-                                  <span className="font-medium text-foreground">{option.label}</span>
-                                  <span className="text-xs text-muted-foreground">{secondary}</span>
-                                  {option.description ? (
-                                    <span className="text-[11px] text-muted-foreground/80">
-                                      {option.description}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </PromptInputModelSelectItem>
-                            );
-                          })}
-                        </PromptInputModelSelectContent>
-                      </PromptInputModelSelect>
-                    ) : (
-                      <Input
-                        id={modelSelectId}
-                        value={currentChatModel}
-                        onChange={(event) => setSelectedChatModel(event.target.value)}
-                        placeholder={t("modelsPlaceholder")}
-                        aria-describedby={modelDescribedBy}
-                        aria-invalid={chatModelsError ? "true" : undefined}
-                        aria-label={t("modelsAriaLabel")}
-                        disabled={isStreaming}
-                      />
-                    )}
-                    {showChatModelHelper ? (
-                      <span
-                        id={modelStatusId}
-                        className={cn(
-                          "text-xs",
-                          chatModelsError ? "text-red-600 dark:text-red-300" : "text-muted-foreground",
-                        )}
-                      >
-                        {chatModelHelperText}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">{t("modelsRerankLabel")}</span>
-                    {rerankOptions.length > 0 ? (
-                      <PromptInputModelSelect
-                        value={currentRerankValue}
-                        onValueChange={setSelectedRerankModel}
-                        disabled={isStreaming}
-                      >
-                        <PromptInputModelSelectTrigger
+                    <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">{t("modelsRerankLabel")}</span>
+                      {rerankOptions.length > 0 ? (
+                        <PromptInputModelSelect
+                          value={currentRerankValue}
+                          onValueChange={setSelectedRerankModel}
+                          disabled={isStreaming}
+                        >
+                          <PromptInputModelSelectTrigger
+                            id={rerankSelectId}
+                            aria-describedby={rerankModelDescribedBy}
+                            aria-invalid={rerankModelsError ? "true" : undefined}
+                            aria-label={t("modelsRerankAriaLabel")}
+                          >
+                            <PromptInputModelSelectValue placeholder={t("modelsRerankPlaceholder")} />
+                          </PromptInputModelSelectTrigger>
+                          <PromptInputModelSelectContent>
+                            {rerankOptions.map((option) => {
+                              const key = option.id || "none";
+                              let secondary = option.provider ?? "";
+                              if (option.source === "openrouter") {
+                                secondary = `${option.provider ?? "OpenRouter"} • OpenRouter`;
+                              } else if (option.id === NO_RERANK_VALUE) {
+                                secondary = t("modelsRerankNoneSecondary");
+                              }
+                              return (
+                                <PromptInputModelSelectItem key={key} value={option.id}>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium text-foreground">{option.label}</span>
+                                    {secondary ? (
+                                      <span className="text-xs text-muted-foreground">{secondary}</span>
+                                    ) : null}
+                                    {option.description ? (
+                                      <span className="text-[11px] text-muted-foreground/80">
+                                        {option.description}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </PromptInputModelSelectItem>
+                              );
+                            })}
+                          </PromptInputModelSelectContent>
+                        </PromptInputModelSelect>
+                      ) : (
+                        <Input
                           id={rerankSelectId}
+                          value={currentRerankValue}
+                          onChange={(event) => setSelectedRerankModel(event.target.value)}
+                          placeholder={t("modelsRerankPlaceholder")}
                           aria-describedby={rerankModelDescribedBy}
                           aria-invalid={rerankModelsError ? "true" : undefined}
                           aria-label={t("modelsRerankAriaLabel")}
+                          disabled={isStreaming}
+                        />
+                      )}
+                      {showRerankHelper ? (
+                        <span
+                          id={rerankStatusId}
+                          className={cn(
+                            "text-xs",
+                            rerankModelsError ? "text-red-600 dark:text-red-300" : "text-muted-foreground",
+                          )}
                         >
-                          <PromptInputModelSelectValue placeholder={t("modelsRerankPlaceholder")} />
-                        </PromptInputModelSelectTrigger>
-                        <PromptInputModelSelectContent>
-                          {rerankOptions.map((option) => {
-                            const key = option.id || "none";
-                            let secondary = option.provider ?? "";
-                            if (option.source === "openrouter") {
-                              secondary = `${option.provider ?? "OpenRouter"} • OpenRouter`;
-                            } else if (option.id === NO_RERANK_VALUE) {
-                              secondary = t("modelsRerankNoneSecondary");
-                            }
-                            return (
-                              <PromptInputModelSelectItem key={key} value={option.id}>
-                                <div className="flex flex-col">
-                                  <span className="font-medium text-foreground">{option.label}</span>
-                                  {secondary ? (
-                                    <span className="text-xs text-muted-foreground">{secondary}</span>
-                                  ) : null}
-                                  {option.description ? (
-                                    <span className="text-[11px] text-muted-foreground/80">
-                                      {option.description}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </PromptInputModelSelectItem>
-                            );
-                          })}
-                        </PromptInputModelSelectContent>
-                      </PromptInputModelSelect>
-                    ) : (
-                      <Input
-                        id={rerankSelectId}
-                        value={currentRerankValue}
-                        onChange={(event) => setSelectedRerankModel(event.target.value)}
-                        placeholder={t("modelsRerankPlaceholder")}
-                        aria-describedby={rerankModelDescribedBy}
-                        aria-invalid={rerankModelsError ? "true" : undefined}
-                        aria-label={t("modelsRerankAriaLabel")}
-                        disabled={isStreaming}
-                      />
-                    )}
-                    {showRerankHelper ? (
-                      <span
-                        id={rerankStatusId}
-                        className={cn(
-                          "text-xs",
-                          rerankModelsError ? "text-red-600 dark:text-red-300" : "text-muted-foreground",
-                        )}
-                      >
-                        {rerankModelHelperText}
-                      </span>
-                    ) : null}
+                          {rerankModelHelperText}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              </PromptInputToolbar>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setSettingsOpen(false)}
+                      data-testid="chat-settings-close"
+                    >
+                      {t("settings.close")}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </PromptInputToolbar>
 
               <div className="space-y-3 px-4 py-3">
                 <label htmlFor={messageFieldId} className="flex flex-col gap-2 text-sm text-muted-foreground">
