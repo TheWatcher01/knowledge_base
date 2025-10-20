@@ -44,7 +44,7 @@ class Settings(BaseSettings):
         description="Endpoint of the Ollama service used for LLM inference.",
     )
     ollama_llm_model: str = Field(
-        default="llama3.1",
+        default="qwen3:8b",
         description="Default Ollama model for text generation.",
     )
     ollama_embedding_model: str = Field(
