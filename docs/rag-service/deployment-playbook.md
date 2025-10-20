@@ -12,6 +12,8 @@
 
 ## 2. Provisionner Postgres (pgvector)
 
+> ℹ️ L'image Postgres utilisée par `compose.yml` est désormais construite depuis `docker/postgres/Dockerfile`, qui installe automatiquement l'extension **pgvector**. Après toute mise à jour du `Dockerfile`, exécuter `docker compose build postgres` pour mettre à jour l'image locale `kb-postgres:16.4-pgvector`.
+
 ```bash
 docker compose up -d postgres
 
@@ -40,14 +42,19 @@ pnpm install
 pnpm --filter web exec prisma generate
 ```
 
-## 5. Charger les modèles Ollama
+## 5. Charger les modèles Ollama + HuggingFace
 
 ```bash
+# (Optionnel) modèles servis via Ollama
 docker compose exec ollama ollama pull llama3.1:8b
 docker compose exec ollama ollama pull mxbai-embed-large
+
+# Modèles Qwen3 pour SentenceTransformers
+cd services/rag-api
+./scripts/download_qwen_models.sh  # nécessite `huggingface-cli login`
 ```
 
-Mettre à jour `RAG_OLLAMA_LLM_MODEL` / `RAG_OLLAMA_EMBEDDING_MODEL` si vous utilisez d’autres modèles.
+Mettre à jour `RAG_OLLAMA_LLM_MODEL` / `RAG_OLLAMA_EMBEDDING_MODEL` si vous utilisez d’autres modèles. Les poids Qwen3 sont stockés dans `~/.cache/huggingface/models/Qwen/...` par défaut ; ajustez `HF_HOME` au besoin.
 
 ## 6. Configurer les variables d’environnement
 
@@ -72,21 +79,35 @@ RAG_TIKA_BASE_URL=http://localhost:9998
 RAG_SEARXNG_BASE_URL=http://localhost:8080
 RAG_WEB_BASE_URL=http://localhost:3001
 RAG_SYNC_SERVICE_TOKEN=kb-dev-token
-RAG_SYNC_INTERVAL_SECONDS=900
+RAG_SYNC_INTERVAL_SECONDS=0
 RAG_EMBEDDING_BACKEND=auto
 RAG_ENABLE_FALLBACK_EMBEDDINGS=true
-RAG_FALLBACK_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+RAG_FALLBACK_EMBEDDING_MODEL=Qwen/Qwen3-Embedding-0.6B
 RAG_FALLBACK_EMBEDDING_DEVICE=
+RAG_RERANK_BACKEND=huggingface
+RAG_HF_RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
+RAG_HF_RERANK_DEVICE=
+RAG_HYBRID_RETRIEVAL_ENABLED=true
+RAG_HYBRID_VECTOR_WEIGHT=0.6
+RAG_HYBRID_BM25_LIMIT=20
+RAG_HYBRID_BM25_CORPUS_LIMIT=2000
 ```
 
 Adapter les hôtes/ports si vous utilisez Docker Desktop (`host.docker.internal` côté service).
 
+> ⚠️ Après mise à jour des embeddings vers Qwen3, ré-ingérez les connaissances (ou purgez les tables `data_kb_*`) afin d’éviter les conflits de dimensions.
+
 ## 7. Lancer les services
 
 ```bash
+# Mettre à jour l'image Postgres custom si nécessaire
+docker compose build postgres
+
 # FastAPI
 cd services/rag-api
 uv run -- uvicorn rag_api.main:app --host 0.0.0.0 --port 8000 --reload
+
+> ⚠️ Après chaque modification des fichiers `.env` du service, interrompre puis relancer cette commande pour recharger la configuration (le reloader ne relit pas les variables d’environnement automatiquement).
 
 # Next.js (nouvelle session)
 cd apps/web
@@ -98,9 +119,10 @@ pnpm --filter web dev -- --port 3001
 1. Ouvrir `http://localhost:3001` : aucune bannière rouge « Service RAG indisponible ».
 2. `curl http://localhost:8000/health` → `{ "status": "ok" }`.
 3. `curl http://localhost:8000/api/v1/models` avec le header `Authorization: Bearer kb-dev-token` — la liste des modèles doit s’afficher.
+4. `curl http://localhost:8000/api/v1/models/jobs` avec le même header — les jobs terminés doivent apparaître lorsqu’un téléchargement est lancé depuis l’UI admin.
 4. Ingestion test : créer une base, ajouter un document texte, vérifier `/api/v1/retrieval/jobs`.
 5. Lancer `POST http://localhost:8000/api/v1/retrieval/process/text` (via HTTPie/curl) pour confirmer la persistance.
-6. Attendre l’auto-sync (intervalle) ou appeler `POST /api/kb/{id}/rag/reconcile` (Bearer `kb-dev-token`) et vérifier les logs FastAPI `autosync.reconcile_success`.
+6. L’auto-sync est désactivé en local (`RAG_SYNC_INTERVAL_SECONDS=0`). Tester ponctuellement la boucle en déclenchant `POST /api/kb/{id}/rag/reconcile` manuellement (Bearer `kb-dev-token`) ou en réactivant la variable avec une valeur ≥ 60 s sur un environnement de test dédié.
 
 ## 9. Générer / diffuser la doc OpenAPI
 

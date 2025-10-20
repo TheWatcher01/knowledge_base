@@ -64,22 +64,50 @@ Les redémarrages doivent être effectués manuellement en utilisant les command
 ### Variables d’environnement principales (`apps/web`)
 
 - `RAG_API_BASE` (ou `NEXT_PUBLIC_RAG_API_BASE`) : base URL du service FastAPI.
-- `RAG_API_TOKEN` : jeton Bearer envoyé par Next.js.
+- `RAG_API_TOKEN` / `NEXT_PUBLIC_RAG_API_TOKEN` : jeton Bearer envoyé par Next.js (exposé côté client pour les requêtes fetch).
+- `RAG_ALLOWED_ORIGINS` : (optionnel) liste séparée par des virgules des origines autorisées pour les appels front → FastAPI. Par défaut : `http://localhost:3001,http://localhost:3000`.
 - `USE_RAG_MOCK` : bascule vers le mock interne (doit rester `false` en mode service réel).
 - `RAG_SYNC_SERVICE_TOKEN` : secret partagé si le service RAG déclenche des synchronisations vers le web.
 - `AUTH_SECRET` *(optionnel)* : correspond au secret NextAuth côté middleware. À défaut, la webapp retombe automatiquement sur `NEXTAUTH_SECRET`.
 - `RAG_EMBEDDING_BACKEND` : `auto` (défaut), `ollama` ou `huggingface` selon le backend souhaité.
 - `RAG_ENABLE_FALLBACK_EMBEDDINGS`, `RAG_FALLBACK_EMBEDDING_MODEL`, `RAG_FALLBACK_EMBEDDING_DEVICE` : contrôlent SentenceTransformers (détection auto du device si valeur vide).
+- `RAG_HF_EMBED_MODEL` *(défaut : `Qwen/Qwen3-Embedding-0.6B`)* : modèle SentenceTransformers utilisé quand on retombe sur HuggingFace.
+- `RAG_RERANK_BACKEND` : `auto`, `openrouter`, `huggingface` ou `disabled` selon le reranker souhaité.
+- `RAG_HF_RERANK_MODEL` *(défaut : `Qwen/Qwen3-Reranker-0.6B`)* et `RAG_HF_RERANK_DEVICE` : configuration du cross-encoder local.
+- `RAG_HYBRID_RETRIEVAL_ENABLED`, `RAG_HYBRID_VECTOR_WEIGHT`, `RAG_HYBRID_BM25_LIMIT`, `RAG_HYBRID_BM25_CORPUS_LIMIT` : paramètrent la fusion vectorielle/BM25.
 
 ### Variables FastAPI (`services/rag-api`)
 
 - `RAG_AUTH_TOKEN` : jeton attendu pour toutes les requêtes entrantes.
-- `RAG_POSTGRES_DSN` et `RAG_MONGODB_URI` : connexions au vector store et au knowledge store.
+- `RAG_POSTGRES_DSN` et `RAG_MONGODB_URI` : connexions au vector store et au knowledge store. (L'image Postgres utilisée dans `compose.yml` est construite depuis `docker/postgres/Dockerfile` et embarque pgvector par défaut.)
 - `RAG_OLLAMA_BASE_URL`, `RAG_OLLAMA_LLM_MODEL`, `RAG_OLLAMA_EMBEDDING_MODEL` : configuration Ollama.
 - `RAG_TIKA_BASE_URL`, `RAG_SEARXNG_BASE_URL` : services d’extraction et de recherche.
+- `RAG_HF_EMBED_MODEL`, `RAG_HF_RERANK_MODEL` : modèles HuggingFace téléchargés localement (voir section Qwen3 ci-dessous).
 - `RAG_RATE_LIMIT`, `RAG_MAX_TEXT_CHARS`, `RAG_MAX_JSON_BYTES`, `RAG_MAX_CONCURRENT_JOBS` : garde-fous SlowAPI.
 - `RAG_SYNC_INTERVAL_SECONDS`, `RAG_WEB_BASE_URL` : activation du scheduler (à documenter avant mise en production).
 - `RAG_ENABLE_FALLBACK_EMBEDDINGS`, `RAG_FALLBACK_EMBEDDING_MODEL`, `RAG_FALLBACK_EMBEDDING_DEVICE` : contrôlent l’activation de SentenceTransformers lorsque Ollama est indisponible.
+- En développement local, définir `RAG_SYNC_INTERVAL_SECONDS=0` pour désactiver la boucle autosync et éviter les dépassements de quota ; ne réactivez la boucle (valeur ≥ 60) que dans les environnements où Postgres/Ollama supportent la charge.
+
+## Modèles Qwen3 (embeddings + reranker)
+
+- **Dépendances Python** : `services/rag-api/pyproject.toml` installe `torch>=2.2.0`, `transformers>=4.51.0` et `sentence-transformers>=3.2.0` pour charger Qwen3. Activez Flash Attention si vous exploitez un GPU.
+- **VRAM** : `Qwen3-Embedding-0.6B` et `Qwen3-Reranker-0.6B` consomment ~3–4 Go en FP16 (≈2 Go en FP8). Vérifiez la capacité de vos GPU/serveurs avant déploiement.
+- **Téléchargement** : `services/rag-api/scripts/download_qwen_models.sh` (basé sur `huggingface-cli download`) télécharge les modèles dans `~/.cache/huggingface/models/Qwen/...`. Ajustez `HF_HOME` ou `CACHE_DIR` si besoin.
+- **Variables d’environnement** :
+  - `RAG_HF_EMBED_MODEL=Qwen/Qwen3-Embedding-0.6B`
+  - `RAG_RERANK_BACKEND=huggingface` (ou `auto` si vous disposez encore d’une clé OpenRouter)
+  - `RAG_HF_RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B`
+  - `RAG_HF_RERANK_DEVICE=cuda:0` (ou `cpu` par défaut)
+- **Réindexation obligatoire** : les embeddings Qwen3 sont en 1024 dimensions. Après bascule, ré-ingérez les collections PGVector pour éviter les erreurs `different vector dimensions 384 and 1024`.
+- **Reranker instruction-aware** : adoptez un prompt du type `Query: {question}\nDocument: {passage}\nRelevance:` si vous utilisez directement le `CrossEncoder` SentenceTransformers.
+- **Option GGUF/Ollama** : des builds quantifiés existent sur le hub Ollama (`ollama pull dengcao/qwen3-reranker-0.6b`), mais la pile principale reste basée sur Sentence Transformers.
+
+### Gestion des jobs modèles Ollama
+
+- **Persistance obligatoire** : `RAG_POSTGRES_DSN` doit pointer vers la base Postgres contenant la table `ModelJob`. Sans cela, FastAPI logge `models.jobs.persistence_disabled` et les téléchargements restent transitoires dans l’UI.
+- **Redémarrage requis** : toute modification des fichiers `.env` du service doit être suivie d’un `Ctrl+C` / relance de `uvicorn` pour que les variables (DSN, tokens) soient prises en compte.
+- **Contrôle UI** : `/fr/admin/models` affiche désormais la file et l’historique via `/api/v1/models/jobs`. Vérifier après déploiement avec `curl -H "Authorization: Bearer $RAG_AUTH_TOKEN" http://localhost:8000/api/v1/models/jobs`.
+- **Tests associés** : `services/rag-api/tests/test_models_api.py` couvre la lecture/persistance et `apps/web/tests/e2e/chat-history-badge.spec.ts` valide l’actualisation du compteur côté UI. Exécuter ces suites avant toute PR.
 
 ## Intégration Next.js ↔ FastAPI
 
@@ -111,13 +139,20 @@ Les redémarrages doivent être effectués manuellement en utilisant les command
   - `/api/v1/retrieval/process/text` pour l’ingestion de notes et fichiers texte,
   - `/api/v1/retrieval/process/web` pour l’ingestion URL asynchrone,
   - `/api/v1/retrieval/delete` pour la suppression du vecteur,
-  - `/api/v1/retrieval/query/doc` pour les requêtes vectorielles,
-  - `/api/v1/chat/completions` pour le streaming SSE,
-  - `/api/v1/search/web` pour les recherches SearxNG (résultats temps réel injectés dans le chat),
-  - `/api/v1/retrieval/jobs` et `/api/v1/retrieval/status/{documentId}` pour l’historique.
+- `/api/v1/retrieval/query/doc` pour les requêtes vectorielles,
+- `/api/v1/chat/completions` pour le streaming SSE,
+- `/api/v1/search/web` pour les recherches SearxNG (résultats temps réel injectés dans le chat),
+- `/api/v1/retrieval/jobs` et `/api/v1/retrieval/status/{documentId}` pour l’historique.
 - Les services `ingestion.py`, `retrieval.py` et `vector_store.py` encapsulent LlamaIndex et la migration automatique des anciennes tables (`data-kb-...`).
 - `pipelines/web.py` s’occupe des jobs SearxNG/Tika, gère les statuts `UrlEntry` et publie des événements structlog.
 - `rate_limit.py` applique SlowAPI avec des clés fondées sur le token ou l’IP.
+
+### Retrieval hybride (dense + BM25)
+
+- Activé par défaut (`RAG_HYBRID_RETRIEVAL_ENABLED=true`). Le service combine le score vectoriel PGVector et un score BM25 (via `rank-bm25`) calculé sur les chunks de la table `data_<collection>`.
+- Pondération : `RAG_HYBRID_VECTOR_WEIGHT` contrôle la part vectorielle (0–1). Le complément est appliqué au score BM25.
+- Performance : `RAG_HYBRID_BM25_LIMIT` détermine le nombre de candidats renvoyés, `RAG_HYBRID_BM25_CORPUS_LIMIT` borne le nombre de chunks analysés côté SQL (par défaut 2 000).
+- Désactivation : positionnez `RAG_HYBRID_RETRIEVAL_ENABLED=false` pour revenir au mode vectoriel pur (utile en test ou si Postgres ne contient pas encore les chunks).
 
 ### Mode mock vs service réel
 
