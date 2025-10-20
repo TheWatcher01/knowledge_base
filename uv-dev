@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$SCRIPT_DIR"
+LOGS_DIR="$ROOT_DIR/.codex/logs"
+LOG_FILE="$LOGS_DIR/uvicorn.log"
+
+APPEND=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --append)
+            APPEND=true
+            shift
+            ;;
+        --help|-h)
+            cat <<'USAGE'
+Usage: ./uv-dev [--append] [-- <additional uvicorn args>]
+
+Launches the FastAPI service via uvicorn, streaming logs while writing
+to .codex/logs/uvicorn.log. The log file is reset by default; pass
+--append to keep existing content. Arguments after -- are forwarded to
+uvicorn.
+USAGE
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            exit 1
+            ;;
+    esac
+done
+
+mkdir -p "$LOGS_DIR"
+
+if [[ $APPEND == false ]]; then
+    : > "$LOG_FILE"
+fi
+
+cd "$ROOT_DIR"
+
+PYTHONPATH="$ROOT_DIR/services/rag-api/src" \
+    stdbuf -oL -eL uv run --project services/rag-api -- \
+    uvicorn rag_api.api:app --host 0.0.0.0 --port 8000 "$@" 2>&1 | tee -a "$LOG_FILE"

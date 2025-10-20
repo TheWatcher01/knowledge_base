@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$SCRIPT_DIR"
+LOGS_DIR="$ROOT_DIR/.codex/logs"
+LOG_FILE="$LOGS_DIR/next.log"
+
+APPEND=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --append)
+            APPEND=true
+            shift
+            ;;
+        --help|-h)
+            cat <<'USAGE'
+Usage: ./next-dev [--append] [-- <additional pnpm args>]
+
+Starts the Next.js dev server on port 3001, streaming logs live while
+writing to .codex/logs/next.log. By default, the log file is reset on
+each launch. Pass --append to keep existing log contents.
+
+Additional arguments after -- are forwarded to `pnpm --filter web dev`.
+USAGE
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            exit 1
+            ;;
+    esac
+done
+
+mkdir -p "$LOGS_DIR"
+
+if [[ $APPEND == false ]]; then
+    : > "$LOG_FILE"
+fi
+
+cd "$ROOT_DIR"
+
+stdbuf -oL -eL pnpm --filter web dev --port 3001 "$@" 2>&1 | tee -a "$LOG_FILE"

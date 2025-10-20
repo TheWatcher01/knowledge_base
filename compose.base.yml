@@ -1,0 +1,54 @@
+services:
+  rag-api:
+    build:
+      context: ./services/rag-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+      tika:
+        condition: service_started
+      searxng:
+        condition: service_started
+      ollama:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    environment:
+      - RAG_ENVIRONMENT=development
+      - RAG_RELOAD=true
+      - RAG_OLLAMA_BASE_URL=http://ollama:11434
+      - RAG_OLLAMA_LLM_MODEL=llama3.1
+      - RAG_OLLAMA_EMBEDDING_MODEL=mxbai-embed-large
+      - RAG_POSTGRES_DSN=postgresql://kb:kb@postgres:5432/kb
+      - RAG_MONGODB_URI=mongodb://mongo:27017
+      - RAG_MONGO_DB=kbapp
+      - RAG_TIKA_BASE_URL=http://tika:9998
+      - RAG_SEARXNG_BASE_URL=http://searxng:8080/search
+      - RAG_AUTH_TOKEN=${RAG_AUTH_TOKEN:-kb-dev-token}
+    networks: [ kbnet ]
+
+  web:
+    build:
+      context: ./apps/web
+    depends_on:
+      rag-api:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+      ollama:
+        condition: service_started
+    ports:
+      - "3001:3000"
+    environment:
+      NEXT_PUBLIC_APP_URL: http://localhost:3001
+      NEXTAUTH_URL: http://localhost:3001
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change-me}
+      RAG_API_BASE: http://rag-api:8000
+      RAG_API_TOKEN: ${RAG_AUTH_TOKEN:-kb-dev-token}
+      RAG_SYNC_SERVICE_TOKEN: ${RAG_AUTH_TOKEN:-kb-dev-token}
+      USE_RAG_MOCK: "false"
+    networks: [ kbnet ]
