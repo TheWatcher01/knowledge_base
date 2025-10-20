@@ -19,7 +19,13 @@ from .scheduler import start_scheduler, stop_scheduler
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Construct the FastAPI application instance."""
-    settings = settings or get_settings()
+    provided_settings = settings or get_settings()
+    get_settings.cache_clear()
+
+    def _settings_dependency() -> Settings:
+        return provided_settings
+
+    settings = provided_settings
 
     configure_logging()
     log = logger("api")
@@ -46,6 +52,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(models.router, prefix="/api/v1")
     app.include_router(retrieval.router, prefix="/api/v1")
     app.include_router(search.router, prefix="/api/v1")
+
+    app.dependency_overrides[get_settings] = _settings_dependency
 
     Instrumentator().instrument(app).expose(app, include_in_schema=False)
 

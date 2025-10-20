@@ -31,7 +31,8 @@ async def _reconcile_kb(client: httpx.AsyncClient, settings: Settings, kb_id: st
     if not settings.web_base_url or not settings.sync_service_token:
         return
 
-    url = f"{settings.web_base_url.rstrip('/')}/api/kb/{kb_id}/rag/reconcile"
+    base_url = str(settings.web_base_url).rstrip("/")
+    url = f"{base_url}/api/kb/{kb_id}/rag/reconcile"
     headers = {"Authorization": f"Bearer {settings.sync_service_token}"}
 
     try:

@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+from datetime import datetime, timezone
 from typing import Annotated
+from uuid import uuid4
+
+import re
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -29,6 +33,44 @@ log = logger("models")
 
 _NOT_FOUND_MARKERS = ("not found", "does not exist", "unknown model", "is not installed")
 _OLLAMA_PROVIDER = "ollama"
+
+_HF_MODEL_PATTERN = re.compile(r"^hf\.co/[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*(?::[A-Za-z0-9_.-]+)?$", re.IGNORECASE)
+_OLLAMA_MODEL_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*(?::[A-Za-z0-9_.-]+)?$")
+
+
+def _normalize_model_name(raw: str) -> str:
+    candidate = (raw or "").strip()
+    if not candidate:
+        return ""
+
+    lowered = candidate.lower()
+    prefixes = (
+        "https://huggingface.co/",
+        "http://huggingface.co/",
+        "huggingface.co/",
+    )
+
+    for prefix in prefixes:
+        if lowered.startswith(prefix):
+            suffix = candidate[len(prefix) :]
+            candidate = f"hf.co/{suffix}"
+            lowered = candidate.lower()
+            break
+
+    if lowered.startswith("hf.co://"):
+        candidate = "hf.co/" + candidate[7:]
+
+    return candidate
+
+
+def _is_supported_model_name(name: str) -> bool:
+    if not name:
+        return False
+    if _HF_MODEL_PATTERN.fullmatch(name):
+        return True
+    if _OLLAMA_MODEL_PATTERN.fullmatch(name):
+        return True
+    return False
 
 
 def _ensure_ollama_configured(settings: Settings) -> str:
@@ -187,6 +229,48 @@ def _background_pull_job(settings: Settings, job_id: str, model_name: str) -> as
     return loop.create_task(_runner())
 
 
+async def _pull_without_persistence(settings: Settings, model_name: str) -> dict[str, object]:
+    log.warning("models.pull.persistence_disabled", name=model_name)
+    summary_lines: list[str] = []
+    async with httpx.AsyncClient(timeout=None) as client:
+        url = f"{_ensure_ollama_configured(settings)}/api/pull"
+        async with client.stream("POST", url, json={"name": model_name}) as response:
+            if response.status_code >= 400:
+                detail = await response.aread()
+                raise HTTPException(response.status_code, detail.decode("utf-8") or response.reason_phrase)
+
+            async for line in response.aiter_lines():
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    summary_lines.append(line)
+                    continue
+
+                status_text = str(data.get("status") or "")
+                if status_text:
+                    summary_lines.append(data.get("status", ""))
+                if data.get("error"):
+                    raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=str(data["error"]))
+
+    now = datetime.now(tz=timezone.utc).isoformat()
+    summary = "\n".join(filter(None, summary_lines)) or f"Model '{model_name}' pulled successfully"
+    return {
+        "id": f"transient-{uuid4()}",
+        "provider": _OLLAMA_PROVIDER,
+        "model": model_name,
+        "status": "succeeded",
+        "summary": summary,
+        "error": None,
+        "queued_at": now,
+        "started_at": now,
+        "finished_at": now,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+
 @router.post("/models/pull", summary="Schedule an Ollama model pull", status_code=status.HTTP_202_ACCEPTED)
 async def pull_model(
     payload: dict[str, str],
@@ -194,18 +278,23 @@ async def pull_model(
 ) -> dict[str, object]:
     _ensure_ollama_configured(settings)
 
-    model_name = payload.get("name")
+    model_name_raw = payload.get("name", "")
+    model_name = _normalize_model_name(model_name_raw)
+
     if not model_name:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Model name is required")
 
+    if not _is_supported_model_name(model_name):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid model name. Use Ollama tags or hf.co/{org}/{model}.",
+        )
+
     try:
         job = create_model_job(settings, provider=_OLLAMA_PROVIDER, model=model_name)
-    except ValueError as exc:
-        log.error("models.pull.persistence_error", error=str(exc))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Persistence for model jobs is not configured",
-        ) from exc
+    except ValueError:
+        fallback_job = await _pull_without_persistence(settings, model_name)
+        return {"job": fallback_job}
 
     _background_pull_job(settings, job["id"], model_name)
 
@@ -324,14 +413,22 @@ async def list_model_pull_jobs(
     limit: int = 20,
 ) -> dict[str, list[dict[str, str | None]]]:
     _ensure_ollama_configured(settings)
-    jobs = list_model_jobs(settings, provider=_OLLAMA_PROVIDER, limit=max(1, min(limit, 50)))
+    try:
+        jobs = list_model_jobs(settings, provider=_OLLAMA_PROVIDER, limit=max(1, min(limit, 50)))
+    except ValueError as exc:
+        log.warning("models.jobs.persistence_disabled", error=str(exc))
+        jobs = []
     return {"jobs": jobs}
 
 
 @router.get("/models/jobs/{job_id}", summary="Get a specific Ollama model pull job")
 async def get_model_pull_job(job_id: str, settings: Annotated[Settings, Depends(get_settings)]) -> dict[str, str | None]:
     _ensure_ollama_configured(settings)
-    job = get_model_job(settings, job_id)
+    try:
+        job = get_model_job(settings, job_id)
+    except ValueError as exc:
+        log.warning("models.jobs.persistence_disabled", error=str(exc))
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found") from exc
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
     return job

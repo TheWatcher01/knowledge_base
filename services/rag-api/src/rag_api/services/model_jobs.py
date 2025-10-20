@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from uuid import uuid4
+
 import psycopg
 from psycopg.rows import dict_row
 
@@ -43,17 +45,18 @@ def _iso_or_none(value: Any) -> str | None:
 
 def create_model_job(settings: "Settings", *, provider: str, model: str) -> dict[str, Any]:
     dsn = _require_dsn(settings)
+    job_id = str(uuid4())
 
     with psycopg.connect(dsn, autocommit=True, row_factory=dict_row) as conn:
         with conn.cursor() as cur:
             cur.execute(
                 (
-                    'INSERT INTO "ModelJob" ("provider", "model") '
-                    'VALUES (%s, %s) '
+                    'INSERT INTO "ModelJob" ("id", "provider", "model", "updatedAt") '
+                    'VALUES (%s, %s, %s, NOW()) '
                     'RETURNING "id", "provider", "model", "status", "summary", "error", '
                     '"queuedAt", "startedAt", "finishedAt", "createdAt", "updatedAt"'
                 ),
-                (provider, model),
+                (job_id, provider, model),
             )
             row = cur.fetchone() or {}
 

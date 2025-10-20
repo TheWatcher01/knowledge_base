@@ -5,6 +5,8 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any, Dict, Optional
 
+import re
+
 import psycopg
 from psycopg import sql
 from psycopg.conninfo import conninfo_to_dict
@@ -13,12 +15,35 @@ from llama_index.vector_stores.postgres import PGVectorStore
 
 from ..config import Settings
 
+_COLLECTION_SANITIZE_RE = re.compile(r"[^a-z0-9_]")
+
 
 @lru_cache(maxsize=1)
 def _parsed_conninfo(dsn: str) -> Dict[str, Any]:
     """Parse and cache the Postgres DSN into connection parameters."""
 
     return conninfo_to_dict(dsn)
+
+
+def normalize_collection_name(name: str) -> str:
+    """Return a Postgres-safe identifier for vector store collections."""
+
+    sanitized = (name or "").strip()
+    if not sanitized:
+        raise ValueError("Collection name cannot be empty")
+
+    sanitized = sanitized.lower()
+    sanitized = sanitized.replace("-", "_")
+    sanitized = _COLLECTION_SANITIZE_RE.sub("_", sanitized)
+    sanitized = re.sub(r"_+", "_", sanitized)
+
+    # Avoid leading underscores or digits that would require quoting.
+    if sanitized[0].isdigit():
+        sanitized = f"kb_{sanitized}"
+
+    sanitized = sanitized.strip("_") or "kb_collection"
+
+    return sanitized
 
 
 def ensure_vector_extension(settings: Settings) -> None:
@@ -48,7 +73,9 @@ def build_pgvector_store(
 
     params = _parsed_conninfo(settings.postgres_dsn)
 
-    _migrate_legacy_collection(settings, collection_name)
+    normalized_name = normalize_collection_name(collection_name)
+
+    _migrate_legacy_collection(settings, normalized_name)
 
     return PGVectorStore.from_params(
         database=params.get("dbname"),
@@ -56,7 +83,7 @@ def build_pgvector_store(
         port=int(params.get("port" or 5432)),
         user=params.get("user"),
         password=params.get("password"),
-        table_name=collection_name,
+        table_name=normalized_name,
         embed_dim=embed_dim,
         hnsw_kwargs=hnsw_kwargs,
     )

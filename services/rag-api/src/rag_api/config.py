@@ -3,19 +3,29 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, HttpUrl
+from pydantic import Field, HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .logging import logger
 from .services.model_preferences import get_model_preferences
 
 
+_SERVICE_ROOT = Path(__file__).resolve().parents[2]
+_ENV_FILES = (
+    _SERVICE_ROOT / ".env.local",
+    _SERVICE_ROOT / ".env",
+    Path.cwd() / ".env.local",
+    Path.cwd() / ".env",
+)
+
+
 class Settings(BaseSettings):
     """Application runtime settings sourced from environment variables."""
 
-    model_config = SettingsConfigDict(env_prefix="RAG_", env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="RAG_", env_file=_ENV_FILES, extra="ignore")
 
     environment: Literal["development", "production", "staging", "test"] = Field(
         default="development",
@@ -51,7 +61,7 @@ class Settings(BaseSettings):
         description="Enable SentenceTransformers fallback when Ollama is unavailable or not selected.",
     )
     fallback_embedding_model: str = Field(
-        default="sentence-transformers/all-MiniLM-L6-v2",
+        default="Qwen/Qwen3-Embedding-0.6B",
         description="SentenceTransformers model used when the fallback backend is active.",
     )
     fallback_embedding_device: str | None = Field(
@@ -85,9 +95,18 @@ class Settings(BaseSettings):
     )
 
     allowed_origins: list[str] = Field(
-        default_factory=lambda: ["*"],
+        default_factory=lambda: ["http://localhost:3001", "http://localhost:3000"],
         description="CORS allowed origins.",
     )
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def _split_allowed_origins(cls, value: str | list[str]) -> list[str] | str:
+        if isinstance(value, str):
+            parts = [item.strip() for item in value.split(",") if item.strip()]
+            if parts:
+                return parts
+        return value
 
     rate_limit: str | None = Field(
         default="60/minute",
@@ -147,6 +166,46 @@ class Settings(BaseSettings):
         ge=1.0,
         description="Timeout (seconds) for OpenRouter HTTP calls.",
     )
+
+    rerank_backend: Literal["auto", "openrouter", "huggingface", "disabled"] = Field(
+        default="auto",
+        description="Preferred reranker backend. 'auto' tries OpenRouter then HuggingFace.",
+    )
+    hf_rerank_model: str | None = Field(
+        default="Qwen/Qwen3-Reranker-0.6B",
+        description="SentenceTransformers cross-encoder used when HuggingFace reranker is active.",
+    )
+    hf_rerank_device: str | None = Field(
+        default=None,
+        description="Preferred device for the HuggingFace CrossEncoder (leave empty for auto detection).",
+    )
+    hybrid_retrieval_enabled: bool = Field(
+        default=True,
+        description="Enable hybrid retrieval that combines vector similarity with BM25 scores.",
+    )
+    hybrid_vector_weight: float = Field(
+        default=0.6,
+        ge=0.0,
+        le=1.0,
+        description="Weight applied to vector similarity when merging with BM25 (0-1).",
+    )
+    hybrid_bm25_limit: int = Field(
+        default=20,
+        ge=1,
+        description="Maximum number of BM25 candidates fetched per query.",
+    )
+    hybrid_bm25_corpus_limit: int = Field(
+        default=2000,
+        ge=10,
+        description="Upper bound of chunks considered when computing BM25 (higher = more recall, more latency).",
+    )
+
+    @field_validator("auth_token", "sync_service_token", mode="before")
+    @classmethod
+    def _empty_str_to_none(cls, value: str | None) -> str | None:
+        if isinstance(value, str) and value.strip() == "":
+            return None
+        return value
 
     @property
     def cors_kwargs(self) -> dict[str, Any]:

@@ -75,7 +75,7 @@ def create_job(settings: AppSettings, document_id: str, *, url: str) -> tuple[st
 
             job_id = str(uuid.uuid4())
             cur.execute(
-                'INSERT INTO "UrlIngestionJob" ("id", "documentId", "status", "metadata") VALUES (%s, %s, %s, %s)',
+                'INSERT INTO "UrlIngestionJob" ("id", "documentId", "status", "metadata", "updatedAt") VALUES (%s, %s, %s, %s, NOW())',
                 (job_id, document_id, "queued", json.dumps({"url": url})),
             )
 
