@@ -18,6 +18,10 @@ BASE_ENV = {
     "RAG_MAX_TEXT_CHARS": "20000",
     "RAG_MAX_JSON_BYTES": "262144",
     "RAG_MAX_CONCURRENT_JOBS": "5",
+    "RAG_AUTH_TOKEN": "",
+    "RAG_SYNC_SERVICE_TOKEN": "",
+    "RAG_RERANK_BACKEND": "disabled",
+    "RAG_HYBRID_RETRIEVAL_ENABLED": "false",
 }
 
 

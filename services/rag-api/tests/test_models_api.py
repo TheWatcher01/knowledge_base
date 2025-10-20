@@ -9,11 +9,14 @@ from fastapi import HTTPException
 
 from rag_api.api import create_app
 from rag_api.config import Settings
+from rag_api.dependencies.auth import verify_bearer_token
 
 
 @asynccontextmanager
 async def _client(settings: Settings) -> AsyncIterator[httpx.AsyncClient]:
+    settings.auth_token = None
     app = create_app(settings)
+    app.dependency_overrides[verify_bearer_token] = lambda: None
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
         yield client
@@ -104,6 +107,93 @@ async def test_pull_model_success(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_pull_model_accepts_huggingface_names(monkeypatch):
+    settings = _DummySettings()
+    settings.ollama_base_url = "http://ollama:11434"
+
+    monkeypatch.setattr("rag_api.routes.models.get_settings", lambda: settings)
+    monkeypatch.setattr(
+        "rag_api.routes.models.create_model_job",
+        lambda s, provider, model: {
+            "id": "job-hf",
+            "provider": provider,
+            "model": model,
+            "status": "queued",
+        },
+    )
+
+    captured: dict[str, str] = {}
+
+    def _fake_background(settings, job_id, model_name):  # noqa: ANN001
+        captured["job_id"] = job_id
+        captured["model"] = model_name
+        return None
+
+    monkeypatch.setattr("rag_api.routes.models._background_pull_job", _fake_background)
+
+    async with _client(settings) as client:
+        response = await client.post(
+            "/api/v1/models/pull",
+            json={"name": "https://huggingface.co/bigcode/starcoder2"},
+        )
+
+    assert response.status_code == 202
+    assert captured["model"] == "hf.co/bigcode/starcoder2"
+    assert captured["job_id"] == "job-hf"
+
+
+@pytest.mark.asyncio
+async def test_pull_model_without_persistence(monkeypatch):
+    settings = _DummySettings()
+    settings.ollama_base_url = "http://ollama:11434"
+
+    monkeypatch.setattr("rag_api.routes.models.get_settings", lambda: settings)
+
+    async def _fake_fallback(settings, model_name):  # noqa: ANN001
+        return {
+            "id": "transient-test",
+            "provider": "ollama",
+            "model": model_name,
+            "status": "succeeded",
+            "summary": "done",
+            "error": None,
+            "queued_at": "2025-10-18T00:00:00Z",
+            "started_at": "2025-10-18T00:00:00Z",
+            "finished_at": "2025-10-18T00:00:01Z",
+            "created_at": "2025-10-18T00:00:00Z",
+            "updated_at": "2025-10-18T00:00:01Z",
+        }
+
+    def _raise(*_, **__):  # noqa: ANN001
+        raise ValueError("no dsn")
+
+    monkeypatch.setattr("rag_api.routes.models.create_model_job", _raise)
+    monkeypatch.setattr("rag_api.routes.models._pull_without_persistence", _fake_fallback)
+
+    async with _client(settings) as client:
+        response = await client.post("/api/v1/models/pull", json={"name": "llama3.1:8b"})
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["job"]["id"] == "transient-test"
+    assert body["job"]["status"] == "succeeded"
+
+
+@pytest.mark.asyncio
+async def test_pull_model_rejects_invalid_name(monkeypatch):
+    settings = _DummySettings()
+    settings.ollama_base_url = "http://ollama:11434"
+
+    monkeypatch.setattr("rag_api.routes.models.get_settings", lambda: settings)
+
+    async with _client(settings) as client:
+        response = await client.post("/api/v1/models/pull", json={"name": "hf.co/"})
+
+    assert response.status_code == 400
+    assert "Invalid model name" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
 async def test_delete_model_success(monkeypatch):
     settings = _DummySettings()
     settings.ollama_base_url = "http://ollama:11434"
@@ -161,6 +251,25 @@ async def test_list_model_jobs(monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["jobs"][0]["id"] == "job-1"
+
+
+@pytest.mark.asyncio
+async def test_list_model_jobs_missing_persistence(monkeypatch):
+    settings = _DummySettings()
+    settings.ollama_base_url = "http://ollama:11434"
+
+    monkeypatch.setattr("rag_api.routes.models.get_settings", lambda: settings)
+
+    def _raise_value_error(*args, **kwargs):  # noqa: ANN001
+        raise ValueError("Persistence disabled")
+
+    monkeypatch.setattr("rag_api.routes.models.list_model_jobs", _raise_value_error)
+
+    async with _client(settings) as client:
+        response = await client.get("/api/v1/models/jobs")
+
+    assert response.status_code == 200
+    assert response.json()["jobs"] == []
 
 
 @pytest.mark.asyncio
@@ -316,6 +425,7 @@ async def test_get_model_defaults(monkeypatch):
     settings.ollama_base_url = "http://ollama:11434"
     settings.ollama_llm_model = "llama3"
     settings.ollama_embedding_model = "nomic-embed"
+    settings.postgres_dsn = None
 
     monkeypatch.setattr("rag_api.routes.models.get_settings", lambda: settings)
 
