@@ -25,12 +25,22 @@ test.describe('Admin modèles', () => {
         const table = page.locator('[data-slot="table"]');
         await expect(table).toBeVisible();
 
-        page.once('dialog', (dialog) => dialog.accept('demo-chat').catch(() => undefined));
-        await page.getByRole('button', { name: 'Installer un modèle' }).click();
+        const installInput = page.getByTestId('ollama-install-input');
+        const installButton = page.getByTestId('ollama-install-submit');
+
+        await installInput.fill('demo-chat');
+        await installButton.click();
 
         await page.getByTestId('ollama-jobs-refresh').click();
         await expect(page.getByTestId('ollama-job-recent')).toContainText('demo-chat', { timeout: 15_000 });
         await expect(page.getByText("Dernière erreur : Model 'demo-chat' failed")).toBeVisible({ timeout: 15_000 });
+
+        await installInput.fill('hf.co/bigcode/starcoder2');
+        await installButton.click();
+        await page.getByTestId('ollama-jobs-refresh').click();
+        await expect(page.getByTestId('ollama-job-recent')).toContainText('hf.co/bigcode/starcoder2', {
+            timeout: 15_000,
+        });
 
         const snapshotBeforeDefaults = await page.request.get('/api/test/rag-mock/state');
         const beforeState = (await snapshotBeforeDefaults.json()) as { defaults: { chat_model: string | null } };

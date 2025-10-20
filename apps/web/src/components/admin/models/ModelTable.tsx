@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -41,6 +42,8 @@ export default function ModelTable({ initialModels, initialDefaults, initialErro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [installing, setInstalling] = useState(false);
+  const [installName, setInstallName] = useState("");
+  const [installErrorMessage, setInstallErrorMessage] = useState<string | null>(null);
   const [defaults, setDefaults] = useState<ModelDefaults>(initialDefaults);
   const [updatingDefaults, setUpdatingDefaults] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -52,6 +55,56 @@ export default function ModelTable({ initialModels, initialDefaults, initialErro
   useEffect(() => {
     jobsRef.current = jobs;
   }, [jobs]);
+
+  useEffect(() => {
+    setInstallErrorMessage(null);
+  }, [installName]);
+
+  const normalizeModelInput = useCallback((value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+
+    const lower = trimmed.toLowerCase();
+    const prefixes = [
+      "https://huggingface.co/",
+      "http://huggingface.co/",
+      "huggingface.co/",
+    ];
+
+    for (const prefix of prefixes) {
+      if (lower.startsWith(prefix)) {
+        const suffix = trimmed.slice(prefix.length);
+        return `hf.co/${suffix}`;
+      }
+    }
+
+    if (lower.startsWith("hf.co://")) {
+      return `hf.co/${trimmed.slice(7)}`;
+    }
+
+    return trimmed;
+  }, []);
+
+  const modelNamePattern = useMemo(
+    () => ({
+      hf: /^hf\.co\/[A-Za-z0-9][A-Za-z0-9_.-]*\/[A-Za-z0-9][A-Za-z0-9_.-]*(?::[A-Za-z0-9_.-]+)?$/i,
+      ollama: /^[A-Za-z0-9][A-Za-z0-9_.-]*(?::[A-Za-z0-9_.-]+)?$/,
+    }),
+    [],
+  );
+
+  const normalizedInstallName = useMemo(
+    () => normalizeModelInput(installName),
+    [installName, normalizeModelInput],
+  );
+
+  const isValidModelName = useMemo(() => {
+    if (!normalizedInstallName) return false;
+    if (modelNamePattern.hf.test(normalizedInstallName)) {
+      return true;
+    }
+    return modelNamePattern.ollama.test(normalizedInstallName);
+  }, [modelNamePattern, normalizedInstallName]);
 
   useEffect(() => {
     let cancelled = false;
@@ -263,21 +316,24 @@ export default function ModelTable({ initialModels, initialDefaults, initialErro
     .slice(0, 5);
 
   const handleInstall = useCallback(async () => {
-    const modelName = window.prompt(t("installPrompt"));
-    if (!modelName) {
+    const normalized = normalizeModelInput(installName);
+
+    if (!normalized) {
+      setInstallErrorMessage(t("installRequired"));
       return;
     }
 
-    const trimmed = modelName.trim();
-    if (!trimmed) {
+    if (!modelNamePattern.hf.test(normalized) && !modelNamePattern.ollama.test(normalized)) {
+      setInstallErrorMessage(t("installInvalid"));
       return;
     }
 
     setInstalling(true);
     try {
-      const job = await pullModel(trimmed);
-      toast.success(t("installQueued", { name: trimmed }));
+      const job = await pullModel(normalized);
+      toast.success(t("installQueued", { name: normalized }));
       setActionError(null);
+      setInstallName("");
       setJobs((previous) => {
         const filtered = previous.filter((item) => item.id !== job.id);
         const next = [job, ...filtered];
@@ -293,7 +349,7 @@ export default function ModelTable({ initialModels, initialDefaults, initialErro
     } finally {
       setInstalling(false);
     }
-  }, [pollJobs, t]);
+  }, [installName, modelNamePattern, normalizeModelInput, pollJobs, t]);
 
   const handleDelete = useCallback(
     async (name: string) => {
@@ -361,13 +417,36 @@ export default function ModelTable({ initialModels, initialDefaults, initialErro
           <h2 className="text-xl font-semibold text-foreground">{t("table.title")}</h2>
           <p className="text-sm text-muted-foreground">{t("table.subtitle")}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
           <Button variant="outline" onClick={refresh} disabled={loading || installing}>
             {loading ? t("refreshing") : t("actions.refresh")}
           </Button>
-          <Button onClick={handleInstall} disabled={installing || loading}>
-            {installing ? t("installing") : t("actions.install")}
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-1 sm:w-64">
+              <Input
+                value={installName}
+                onChange={(event) => setInstallName(event.target.value)}
+                placeholder={t("installPlaceholder")}
+                disabled={installing || loading}
+                data-testid="ollama-install-input"
+                spellCheck={false}
+                autoCapitalize="none"
+                autoCorrect="off"
+              />
+              <p
+                className={`text-xs ${installErrorMessage ? "text-destructive" : "text-muted-foreground"}`}
+              >
+                {installErrorMessage ?? t("installHelper")}
+              </p>
+            </div>
+            <Button
+              onClick={handleInstall}
+              disabled={installing || loading || !isValidModelName}
+              data-testid="ollama-install-submit"
+            >
+              {installing ? t("installing") : t("actions.install")}
+            </Button>
+          </div>
         </div>
       </div>
 

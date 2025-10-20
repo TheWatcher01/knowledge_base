@@ -12,6 +12,7 @@ import { Trash2Icon } from "lucide-react";
 
 interface ChatHistoryNavProps {
   kbId: string;
+  onCountChange?: (count: number) => void;
 }
 
 interface ConversationNavItem {
@@ -26,7 +27,7 @@ type ConversationsUpdatedDetail = {
   conversations?: Array<{ id: string; title: string; lastActivityAt: string }> | null;
 };
 
-export function ChatHistoryNav({ kbId }: ChatHistoryNavProps) {
+export function ChatHistoryNav({ kbId, onCountChange }: ChatHistoryNavProps) {
   const t = useTranslations("kb.chatNav");
   const params = useSearchParams();
   const router = useRouter();
@@ -98,6 +99,12 @@ export function ChatHistoryNav({ kbId }: ChatHistoryNavProps) {
     };
   }, [load, t]);
 
+  useEffect(() => {
+    if (!loading) {
+      onCountChange?.(items.length);
+    }
+  }, [items.length, loading, onCountChange]);
+
   const formattedItems = useMemo(
     () =>
       items.map((item) => ({
@@ -158,7 +165,7 @@ export function ChatHistoryNav({ kbId }: ChatHistoryNavProps) {
             const href = `/kb/${kbId}/chat?conversation=${item.id}`;
             const isActive = item.id === activeConversationId;
             return (
-              <li key={item.id} role="listitem">
+              <li key={item.id} role="listitem" data-testid="chat-history-item">
                 <div className="flex items-center gap-2 overflow-hidden">
                   <Link
                     href={href}
@@ -186,6 +193,7 @@ export function ChatHistoryNav({ kbId }: ChatHistoryNavProps) {
                       void handleDelete(item.id, item.title);
                     }}
                     disabled={deletingId === item.id}
+                    data-testid="chat-history-delete"
                   >
                     <Trash2Icon className="h-3.5 w-3.5" />
                     <span className="sr-only">{t("delete")}</span>

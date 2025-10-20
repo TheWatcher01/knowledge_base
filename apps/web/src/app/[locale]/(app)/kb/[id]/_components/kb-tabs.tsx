@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { useSelectedLayoutSegments } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,11 @@ export function KnowledgeBaseTabs({ kbId, counts }: { kbId: string; counts: Reco
     const activeSegment = segments[0] ?? undefined;
     const t = useTranslations("kb.tabs");
     const tWorkspace = useTranslations("kb.workspace");
+    const [chatCount, setChatCount] = useState(counts.chat ?? 0);
+
+    useEffect(() => {
+        setChatCount(counts.chat ?? 0);
+    }, [counts.chat]);
 
     return (
         <nav>
@@ -36,7 +42,12 @@ export function KnowledgeBaseTabs({ kbId, counts }: { kbId: string; counts: Reco
                     const href = tab.path ? `/kb/${kbId}/${tab.path}` : `/kb/${kbId}`;
                     const isActive = (activeSegment ?? undefined) === tab.segment;
 
-                    const countValue = tab.key === "overview" ? undefined : counts[tab.key] ?? 0;
+                    const countValue =
+                        tab.key === "overview"
+                            ? undefined
+                            : tab.key === "chat"
+                              ? chatCount
+                              : counts[tab.key] ?? 0;
                     const badgeLabel =
                         typeof countValue === "number"
                             ? tWorkspace(`counts.${tab.key}`, { count: countValue })
@@ -72,12 +83,15 @@ export function KnowledgeBaseTabs({ kbId, counts }: { kbId: string; counts: Reco
                                         )}
                                         aria-label={badgeLabel}
                                         title={badgeLabel}
+                                        data-testid={tab.key === "chat" ? "chat-tab-badge" : undefined}
                                     >
                                         {countValue}
                                     </Badge>
                                 ) : null}
                             </Link>
-                            {tab.key === "chat" ? <ChatHistoryNav kbId={kbId} /> : null}
+                            {tab.key === "chat" ? (
+                                <ChatHistoryNav kbId={kbId} onCountChange={setChatCount} />
+                            ) : null}
                         </li>
                     );
                 })}

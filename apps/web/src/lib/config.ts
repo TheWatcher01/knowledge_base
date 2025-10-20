@@ -12,7 +12,7 @@ function resolveRagApiBase(): string {
 }
 
 export const RAG_API_BASE = resolveRagApiBase();
-export const RAG_API_TOKEN = (process.env.RAG_API_TOKEN || "").trim();
+export const RAG_API_TOKEN = (process.env.RAG_API_TOKEN || process.env.NEXT_PUBLIC_RAG_API_TOKEN || "").trim();
 
 const slugKnowledgeBaseId = (kbId: string) => kbId.replace(/-/g, "_");
 

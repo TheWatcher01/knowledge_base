@@ -393,17 +393,18 @@ async function resolveConversation(params: {
             return null;
         }
 
-        const updateData: Record<string, unknown> = {};
+        const updateData: Prisma.ChatConversationUpdateInput = {};
         if (model && existing.model !== model) {
             updateData.model = model;
             existing.model = model;
         }
         const nextMeta = mergeConversationMeta(existing.meta ?? null, meta, rerankModel);
+        const nextMetaValue = nextMeta as Prisma.JsonObject | null;
         const existingMetaJson = JSON.stringify(existing.meta ?? null);
         const nextMetaJson = JSON.stringify(nextMeta);
         if (existingMetaJson !== nextMetaJson) {
-            updateData.meta = nextMeta ?? null;
-            existing.meta = nextMeta ?? null;
+            updateData.meta = nextMetaValue ?? Prisma.JsonNull;
+            existing.meta = nextMetaValue;
         }
         if (Object.keys(updateData).length > 0) {
             await prisma.chatConversation.update({
@@ -423,14 +424,15 @@ async function resolveConversation(params: {
     }
 
     const fallbackTitle = question.slice(0, 60) || "Conversation";
-    const initialMeta = mergeConversationMeta(null, meta, rerankModel);
+    const initialMetaRaw = mergeConversationMeta(null, meta, rerankModel);
+    const initialMeta = initialMetaRaw as Prisma.JsonObject | null;
     const created = await prisma.chatConversation.create({
         data: {
             kbId,
             userId,
             title: title ?? fallbackTitle,
             model: model ?? null,
-            meta: initialMeta ?? undefined,
+            meta: initialMeta ?? Prisma.JsonNull,
         },
     });
 
@@ -503,7 +505,8 @@ function createStreamingResponse(params: {
     model: string | null;
     sources: RetrievedDocSummary[];
 }) {
-    const { upstream, conversationId, question, sequence, sources } = params;
+    const { upstream, conversationId, question, sequence, model, sources } = params;
+    const resolvedModel = model ?? null;
     const reader = upstream.body!.getReader();
     const decoder = new TextDecoder();
     const encoder = new TextEncoder();

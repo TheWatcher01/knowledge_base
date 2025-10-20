@@ -1,5 +1,5 @@
 import axe from "axe-core";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -68,7 +68,9 @@ describe("KnowledgeBaseChatPanel accessibility", () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/models"));
     const settingsButton = await screen.findByRole("button", { name: /chat settings/i });
-    settingsButton.click();
+    await act(async () => {
+      settingsButton.click();
+    });
 
     await waitFor(() =>
       expect(screen.getByRole("combobox", { name: /available chat models/i })).toHaveTextContent(

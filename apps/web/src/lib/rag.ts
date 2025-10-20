@@ -13,8 +13,10 @@ const USE_RAG_MOCK_FLAG =
     process.env.USE_RAG_MOCK === "true" ||
     process.env.NEXT_PUBLIC_USE_RAG_MOCK === "true";
 
+const E2E_RAG_MOCK_FLAG = process.env.E2E_USE_RAG_MOCK === "true";
+
 function shouldUseRagMock(): boolean {
-    if (USE_RAG_MOCK_FLAG) {
+    if (USE_RAG_MOCK_FLAG || E2E_RAG_MOCK_FLAG) {
         return true;
     }
     if (isServer) {
